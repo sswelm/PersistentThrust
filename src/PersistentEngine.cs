@@ -183,9 +183,7 @@ namespace PersistentThrust
                 }
                 // Otherwise demand is 0
                 else
-                {
                     demandsOut[i] = 0;
-                }
             }
             // Return demand outputs
             return demandsOut;
@@ -211,63 +209,61 @@ namespace PersistentThrust
         // Physics update
         public override void OnFixedUpdate()
         {
-            if (IsPersistentEngine && FlightGlobals.fetch != null && isEnabled && PersistentEnabled)
+            if (!IsPersistentEngine || FlightGlobals.fetch == null || !isEnabled || !PersistentEnabled) return;
+
+            // Time step size
+            var dT = TimeWarp.fixedDeltaTime;
+
+            // Realtime mode
+            if (!this.vessel.packed)
             {
-                // Time step size
-                var dT = TimeWarp.fixedDeltaTime;
+                TimeWarp.GThreshold = 12;
 
-                // Realtime mode
-                if (!this.vessel.packed)
-                {
-                    // Update persistent thrust parameters if NOT transitioning from warp to realtime
-                    if (!warpToReal)
-                    {
-                        UpdatePersistentParameters();
-                    }
-                }
-
-                // Timewarp mode: perturb orbit using thrust
-                else if (part.vessel.situation != Vessel.Situations.SUB_ORBITAL)
-                {
-                    warpToReal = true; // Set to true for transition to realtime
-                    var UT = Planetarium.GetUniversalTime(); // Universal time
-                    var m0 = this.vessel.GetTotalMass(); // Current mass
-                    var thrustUV = this.part.transform.up; // Thrust direction unit vector
-                    // Calculate deltaV vector & resource demand from propellants with mass
-                    double demandMass;
-                    var deltaVV = CalculateDeltaVV(m0, dT, ThrustPersistent, IspPersistent, thrustUV, out demandMass);
-                    // Calculate resource demands
-                    var demands = CalculateDemands(demandMass);
-                    // Apply resource demands & test for resource depletion
-                    var depleted = false;
-                    var demandsOut = ApplyDemands(demands, ref depleted);
-                    // Apply deltaV vector at UT & dT to orbit if resources not depleted
-                    if (!depleted)
-                    {
-                        vessel.orbit.Perturb(deltaVV, UT);
-                    }
-                    // Otherwise log warning and drop out of timewarp if throttle on & depleted
-                    else if (ThrottlePersistent > 0)
-                    {
-                        Debug.Log("[PersistentThrust] Thrust warp stopped - propellant depleted");
-                        ScreenMessages.PostScreenMessage("Thrust warp stopped - propellant depleted", 5.0f, ScreenMessageStyle.UPPER_CENTER);
-                        // Return to realtime
-                        TimeWarp.SetRate(0, true);
-                    }
-                }
-                // Otherwise, if suborbital, set throttle to 0 and show error message
-                // TODO fix persistent thrust orbit perturbation on suborbital trajectory
-                else if (vessel.ctrlState.mainThrottle > 0)
-                {
-                    vessel.ctrlState.mainThrottle = 0;
-                    ScreenMessages.PostScreenMessage("Cannot accelerate and timewarp durring sub orbital spaceflight!", 5.0f, ScreenMessageStyle.UPPER_CENTER);
-                }
-
-                // Update display numbers
-                thrust_d = ThrustPersistent;
-                isp_d = IspPersistent;
-                throttle_d = ThrottlePersistent;
+                // Update persistent thrust parameters if NOT transitioning from warp to realtime
+                if (!warpToReal)
+                    UpdatePersistentParameters();
             }
+
+            // Timewarp mode: perturb orbit using thrust
+            else if (part.vessel.situation != Vessel.Situations.SUB_ORBITAL)
+            {
+                warpToReal = true; // Set to true for transition to realtime
+                var UT = Planetarium.GetUniversalTime(); // Universal time
+                var m0 = this.vessel.GetTotalMass(); // Current mass
+                var thrustUV = this.part.transform.up; // Thrust direction unit vector
+                // Calculate deltaV vector & resource demand from propellants with mass
+                double demandMass;
+                var deltaVV = CalculateDeltaVV(m0, dT, ThrustPersistent, IspPersistent, thrustUV, out demandMass);
+                // Calculate resource demands
+                var demands = CalculateDemands(demandMass);
+                // Apply resource demands & test for resource depletion
+                var depleted = false;
+                var demandsOut = ApplyDemands(demands, ref depleted);
+                // Apply deltaV vector at UT & dT to orbit if resources not depleted
+                if (!depleted)
+                    vessel.orbit.Perturb(deltaVV, UT);
+
+                // Otherwise log warning and drop out of timewarp if throttle on & depleted
+                else if (ThrottlePersistent > 0)
+                {
+                    Debug.Log("[PersistentThrust] Thrust warp stopped - propellant depleted");
+                    ScreenMessages.PostScreenMessage("Thrust warp stopped - propellant depleted", 5.0f, ScreenMessageStyle.UPPER_CENTER);
+                    // Return to realtime
+                    TimeWarp.SetRate(0, true);
+                }
+            }
+            // Otherwise, if suborbital, set throttle to 0 and show error message
+            // TODO fix persistent thrust orbit perturbation on suborbital trajectory
+            else if (vessel.ctrlState.mainThrottle > 0)
+            {
+                vessel.ctrlState.mainThrottle = 0;
+                ScreenMessages.PostScreenMessage("Cannot accelerate and timewarp durring sub orbital spaceflight!", 5.0f, ScreenMessageStyle.UPPER_CENTER);
+            }
+
+            // Update display numbers
+            thrust_d = ThrustPersistent;
+            isp_d = IspPersistent;
+            throttle_d = ThrottlePersistent;
         }
     }
 }
