@@ -193,7 +193,7 @@ namespace PersistentThrust
         public virtual Vector3d CalculateDeltaVV(double m0, double dT, float thrust, float isp, Vector3d thrustUV, out double demandMass)
         {
             // Mass flow rate
-            var mdot = thrust / (isp * 9.81f);
+            var mdot = thrust / (isp * PhysicsGlobals.GravitationalAcceleration);
             // Change in mass over time interval dT
             var dm = mdot * dT;
             // Resource demand from propellants with mass
@@ -201,7 +201,7 @@ namespace PersistentThrust
             // Mass at end of time interval dT
             var m1 = m0 - dm;
             // deltaV amount
-            var deltaV = isp * 9.81f * Math.Log(m0 / m1);
+            var deltaV = isp * PhysicsGlobals.GravitationalAcceleration * Math.Log(m0 / m1);
             // Return deltaV vector
             return deltaV * thrustUV;
         }

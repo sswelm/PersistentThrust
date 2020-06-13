@@ -45,9 +45,7 @@ namespace PersistentThrust
                 var pp = new PersistentPropellant(p);
                 pplist.Add(pp);
                 if (pp.density > 0.0)
-                {
                     ratioMassSum += pp.ratio;
-                }
             }
 
             // Normalize ratios to ratioMassSum
@@ -70,9 +68,7 @@ namespace PersistentThrust
             foreach (var pp in pplist)
             {
                 if (pp.density > 0.0)
-                {
                     avgDensity += pp.normalizedRatio * pp.density;
-                }
             }
             return avgDensity;
         }
