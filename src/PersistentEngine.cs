@@ -8,6 +8,9 @@ namespace PersistentThrust
 {
     public class PersistentEngine : PartModule
     {
+        [KSPField(guiActive = true, guiName = "#autoLOC_6001377", guiUnits = "#autoLOC_7001408", guiFormat = "F6")]
+        public double thrust_d;
+
         // Flag to activate force if it isn't to allow overriding stage activation
         [KSPField(isPersistant = true)]
         bool IsForceActivated;
@@ -21,23 +24,27 @@ namespace PersistentThrust
         // GUI
         // Enable/disable persistent engine features
         [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiName = "Persistent"), UI_Toggle(disabledText = "Disabled", enabledText = "Enabled")]
-        public bool PersistentEnabled = false;
+        public bool PersistentEnabled = true;
         // Thrust
-        [KSPField(guiActive = true, guiName = "Thrust")]
-        protected string Thrust = "";
-        // Isp
-        [KSPField(guiActive = true, guiName = "Isp")]
-        protected string Isp = "";
-        // Throttle
-        [KSPField(guiActive = true, guiName = "Throttle")]
-        protected string Throttle = "";
+        //[KSPField(guiActive = true, guiName = "Thrust")]
+        //protected string Thrust = "";
+        //// Isp
+        //[KSPField(guiActive = true, guiName = "Isp")]
+        //protected string Isp = "";
+        //// Throttle
+        //[KSPField(guiActive = true, guiName = "Throttle")]
+        //protected string Throttle = "";
+
+        public string powerEffectName;
+        public string runningEffectName;
+        public float powerEffectRatio;
+        public float runningEffectRatio;
 
         // Engine module on the same part
         public ModuleEngines engine;
-        ModuleEnginesFX engineFX;
+        public ModuleEnginesFX engineFX;
 
         // Numeric display values
-        protected double thrust_d = 0;
         protected double isp_d = 0;
         protected double throttle_d = 0;
 
@@ -67,43 +74,70 @@ namespace PersistentThrust
                     engine = pm as ModuleEngines;
                     IsPersistentEngine = true;
                 }
-                else
-                    Debug.Log("[PersistentThrust] No ModuleEngine found.");
+                //else
+                //    Debug.Log("[PersistentThrust] No ModuleEngine found.");
 
                 if (pm is ModuleEnginesFX)
                     engineFX = pm as ModuleEnginesFX;
+            }
+
+            if (engineFX != null)
+            {
+                if (String.IsNullOrEmpty(powerEffectName))
+                    powerEffectName = engineFX.powerEffectName;
+
+                engineFX.powerEffectName = "";
+
+                if (String.IsNullOrEmpty(runningEffectName))
+                    runningEffectName = engineFX.runningEffectName;
+
+                engineFX.runningEffectName = "";
             }
         }
 
         // Update
         public override void OnUpdate()
         {
-            if (IsPersistentEngine && PersistentEnabled)
+            if (!IsPersistentEngine || !PersistentEnabled) return;
+
+
+            // stop engines and drop out of timewarp when X pressed
+            if (vessel.packed && ThrottlePersistent > 0 && Input.GetKeyDown(KeyCode.X))
             {
-                // When transitioning from timewarp to real update throttle
-                if (warpToReal)
-                {
-                    vessel.ctrlState.mainThrottle = ThrottlePersistent;
-                    warpToReal = false;
-                }
+                // Return to realtime
+                TimeWarp.SetRate(0, true);
 
-                // Persistent thrust GUI
-                Fields["Thrust"].guiActive = isEnabled;
-                Fields["Isp"].guiActive = isEnabled;
-                Fields["Throttle"].guiActive = isEnabled;
-
-                // Update display values
-                Thrust = Utils.FormatThrust(thrust_d);
-                Isp = Math.Round(isp_d, 2).ToString() + " s";
-                Throttle = Math.Round(throttle_d * 100).ToString() + "%";
-
-                // Activate force if engine is enabled and operational
-                if (!IsForceActivated && engine.isEnabled && engine.isOperational)
-                {
-                    IsForceActivated = true;
-                    part.force_activate();
-                }
+                ThrottlePersistent = 0;
+                vessel.ctrlState.mainThrottle = ThrottlePersistent;
             }
+
+            // When transitioning from timewarp to real update throttle
+            if (warpToReal)
+            {
+                vessel.ctrlState.mainThrottle = ThrottlePersistent;
+                warpToReal = false;
+            }
+
+            // Persistent thrust GUI
+            //Fields["Thrust"].guiActive = isEnabled;
+            //Fields["Isp"].guiActive = isEnabled;
+            //Fields["Throttle"].guiActive = isEnabled;
+
+            // Update display values
+            //Thrust = Utils.FormatThrust(thrust_d);
+            //Isp = Math.Round(isp_d, 2).ToString() + " s";
+            //Throttle = Math.Round(throttle_d * 100).ToString() + "%";
+
+            // Activate force if engine is enabled and operational
+            if (!IsForceActivated && engine.isEnabled && engine.isOperational)
+            {
+                IsForceActivated = true;
+                part.force_activate();
+            }
+
+            // hide stock thrust
+            engine.Fields["finalThrust"].guiActive = false;
+
         }
 
         // Initialization
@@ -206,10 +240,25 @@ namespace PersistentThrust
             return deltaV * thrustUV;
         }
 
+        public virtual void UpdateFX(float currentThust)
+        {
+            if (!String.IsNullOrEmpty(powerEffectName))
+            {
+                powerEffectRatio = currentThust / engine.maxThrust;
+                part.Effect(powerEffectName, powerEffectRatio);
+            }
+
+            if (!String.IsNullOrEmpty(runningEffectName))
+            {
+                runningEffectRatio = currentThust / engine.maxThrust;
+                part.Effect(runningEffectName, runningEffectRatio);
+            }
+        }
+
         // Physics update
         public override void OnFixedUpdate()
         {
-            if (!IsPersistentEngine || FlightGlobals.fetch == null || !isEnabled || !PersistentEnabled) return;
+            if (FlightGlobals.fetch == null || !isEnabled ) return;
 
             // Time step size
             var dT = TimeWarp.fixedDeltaTime;
@@ -217,17 +266,18 @@ namespace PersistentThrust
             // Realtime mode
             if (!this.vessel.packed)
             {
+                UpdateFX(engine.GetCurrentThrust());
+
                 TimeWarp.GThreshold = 12;
 
                 // Update persistent thrust parameters if NOT transitioning from warp to realtime
                 if (!warpToReal)
                     UpdatePersistentParameters();
             }
-
-            // Timewarp mode: perturb orbit using thrust
-            else if (part.vessel.situation != Vessel.Situations.SUB_ORBITAL)
+            else if (IsPersistentEngine && PersistentEnabled)
             {
                 warpToReal = true; // Set to true for transition to realtime
+
                 var UT = Planetarium.GetUniversalTime(); // Universal time
                 var m0 = this.vessel.GetTotalMass(); // Current mass
                 var thrustUV = this.part.transform.up; // Thrust direction unit vector
@@ -239,6 +289,7 @@ namespace PersistentThrust
                 // Apply resource demands & test for resource depletion
                 var depleted = false;
                 var demandsOut = ApplyDemands(demands, ref depleted);
+
                 // Apply deltaV vector at UT & dT to orbit if resources not depleted
                 if (!depleted)
                     vessel.orbit.Perturb(deltaVV, UT);
@@ -246,19 +297,25 @@ namespace PersistentThrust
                 // Otherwise log warning and drop out of timewarp if throttle on & depleted
                 else if (ThrottlePersistent > 0)
                 {
+                    ThrustPersistent = 0;
                     Debug.Log("[PersistentThrust] Thrust warp stopped - propellant depleted");
                     ScreenMessages.PostScreenMessage("Thrust warp stopped - propellant depleted", 5.0f, ScreenMessageStyle.UPPER_CENTER);
                     // Return to realtime
                     TimeWarp.SetRate(0, true);
                 }
+
+                UpdateFX(depleted ? 0 : ThrustPersistent);
             }
+            else
+                UpdateFX(0);
+
             // Otherwise, if suborbital, set throttle to 0 and show error message
             // TODO fix persistent thrust orbit perturbation on suborbital trajectory
-            else if (vessel.ctrlState.mainThrottle > 0)
-            {
-                vessel.ctrlState.mainThrottle = 0;
-                ScreenMessages.PostScreenMessage("Cannot accelerate and timewarp durring sub orbital spaceflight!", 5.0f, ScreenMessageStyle.UPPER_CENTER);
-            }
+            //else if (vessel.ctrlState.mainThrottle > 0)
+            //{
+            //    vessel.ctrlState.mainThrottle = 0;
+            //    ScreenMessages.PostScreenMessage("Cannot accelerate and timewarp durring sub orbital spaceflight!", 5.0f, ScreenMessageStyle.UPPER_CENTER);
+            //}
 
             // Update display numbers
             thrust_d = ThrustPersistent;
