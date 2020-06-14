@@ -271,11 +271,13 @@ namespace PersistentThrust
             if (!engine.getIgnitionState)
                 currentThust = 0;
 
+            var exhaustRatio = (float)(engine.maxThrust > 0 ? currentThust / engine.maxThrust : 0);
+
             if (!String.IsNullOrEmpty(powerEffectName))
-                part.Effect(powerEffectName, (float)(engine.maxThrust > 0 ? currentThust / engine.maxThrust : 0));
+                part.Effect(powerEffectName, (exhaustRatio));
 
             if (!String.IsNullOrEmpty(runningEffectName))
-                part.Effect(runningEffectName, (float)(engine.maxThrust > 0 ? currentThust / engine.maxThrust : 0));
+                part.Effect(runningEffectName, (exhaustRatio));
         }
 
         // Physics update
@@ -345,23 +347,16 @@ namespace PersistentThrust
                     {
                         ThrustPersistent *= foundRatio;
                         vessel.orbit.Perturb(deltaVV * foundRatio, UT);
-                        //depletedFuelTimeout = 1;
                     }
 
                     // Otherwise log warning and drop out of timewarp if throttle on & depleted
                     else if (ThrottlePersistent > 0)
                     {
                         ThrustPersistent = 0;
-
-                        //if (depletedFuelTimeout <= 0)
-                        //{
-                            Debug.Log("[PersistentThrust] Thrust warp stopped - propellant depleted");
-                            ScreenMessages.PostScreenMessage("Thrust warp stopped - propellant depleted", 5.0f, ScreenMessageStyle.UPPER_CENTER);
-                            // Return to realtime
-                            TimeWarp.SetRate(0, true);
-                        //}
-
-                        //depletedFuelTimeout--;
+                        Debug.Log("[PersistentThrust] Thrust warp stopped - propellant depleted");
+                        ScreenMessages.PostScreenMessage("Thrust warp stopped - propellant depleted", 5.0f, ScreenMessageStyle.UPPER_CENTER);
+                        // Return to realtime
+                        TimeWarp.SetRate(0, true);
                     }
 
                     UpdateFX(ThrustPersistent * foundRatio);
