@@ -19,16 +19,10 @@ namespace PersistentThrust
             var sasIsActive = vessel.ActionGroups[KSPActionGroup.SAS];
 
             if (!canPersistDirection)
-            {
-                //UnityEngine.Debug.Log("[KSPI]: " + "orbit is not suitable for persistant heading ");
                 return 0;
-            }
 
             if (!sasIsActive)
-            {
-                //UnityEngine.Debug.Log("[KSPI]: " + "SAS is not active ");
                 return 0;
-            }
 
             var requestedDirection = Vector3d.zero;
             var universalTime = Planetarium.GetUniversalTime();
@@ -84,7 +78,7 @@ namespace PersistentThrust
                 var directionName = Enum.GetName(typeof(VesselAutopilot.AutopilotMode), vessel.Autopilot.Mode);
                 var message = "Persistant Thrust stopped - vessel is not facing " + directionName;
                 ScreenMessages.PostScreenMessage(message, 5, ScreenMessageStyle.UPPER_CENTER);
-                Debug.Log("[Persistant Thrust]: " + message);
+                Debug.Log("[PersistentThrust]: " + message);
                 TimeWarp.SetRate(0, true);
 
                 return ratioHeadingVersusRequest;

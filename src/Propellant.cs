@@ -49,9 +49,12 @@ namespace PersistentThrust
             }
 
             // Normalize ratios to ratioMassSum
-            foreach (var pp in pplist)
+            if (ratioMassSum > 0)
             {
-                pp.normalizedRatio = pp.ratio / ratioMassSum;
+                foreach (var pp in pplist)
+                {
+                    pp.normalizedRatio = pp.ratio / ratioMassSum;
+                }
             }
 
             return pplist;
@@ -100,9 +103,8 @@ namespace PersistentThrust
             {
                 // If multiple resources, put | between them
                 if (amounts != String.Empty)
-                {
                     amounts += "|";
-                }
+
                 // Add current amount * dT
                 amounts += (pp.propellant.currentAmount / dT).ToString("E3");
             }

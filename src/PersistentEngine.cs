@@ -28,8 +28,6 @@ namespace PersistentThrust
 
         public string powerEffectName;
         public string runningEffectName;
-        public float powerEffectRatio;
-        public float runningEffectRatio;
 
         private double ratioHeadingVersusRequest;
 
@@ -40,9 +38,6 @@ namespace PersistentThrust
         // Persistent values to use during timewarp
         public double ThrustPersistent = 0;
         public float ThrottlePersistent = 0;
-
-        // Keep track of number of physics ticks skipped
-        public int skipCounter = 0;
 
         // Are we transitioning from timewarp to reatime?
         bool warpToReal = false;
@@ -93,7 +88,6 @@ namespace PersistentThrust
         {
             if (!IsPersistentEngine || !PersistentEnabled) return;
 
-
             // stop engines and drop out of timewarp when X pressed
             if (vessel.packed && ThrottlePersistent > 0 && Input.GetKeyDown(KeyCode.X))
             {
@@ -102,6 +96,7 @@ namespace PersistentThrust
 
                 ThrottlePersistent = 0;
                 vessel.ctrlState.mainThrottle = ThrottlePersistent;
+                Debug.Log("[PersistentThrust] - PersistentThrust canceled after " + KeyCode.X + " pressed" );
             }
 
             // When transitioning from timewarp to real update throttle
@@ -116,6 +111,7 @@ namespace PersistentThrust
             {
                 IsForceActivated = true;
                 part.force_activate();
+                Debug.Log("[PersistentThrust] - ForceActivated");
             }
 
             // hide stock thrust
@@ -143,12 +139,6 @@ namespace PersistentThrust
 
         void UpdatePersistentParameters()
         {
-            // skip some ticks
-            if (skipCounter++ < 15) return;
-
-            // we are on the 16th tick
-            skipCounter = 0;
-
             // Update values to use during timewarp
             // Get throttle
             ThrottlePersistent = vessel.ctrlState.mainThrottle;
@@ -173,8 +163,9 @@ namespace PersistentThrust
 
         // Apply demanded resources & return results
         // Updated depleted boolean flag if resource request failed
-        public virtual double[] ApplyDemands(double[] demands, ref bool depleted)
+        public virtual double[] ApplyDemands(double[] demands, ref double foundRatio)
         {
+            foundRatio = 1;
             var demandsOut = new double[pplist.Count];
             for (var i = 0; i < pplist.Count; i++)
             {
@@ -184,15 +175,18 @@ namespace PersistentThrust
                 // - resource massless & request massless flag true
                 if ((pp.density > 0 && RequestPropMass) || (pp.density == 0 && RequestPropMassless))
                 {
-                    var demandOut = part.RequestResource(pp.propellant.name, demands[i]);
+                    var demandIn = demands[i];
+                    var demandOut = IsInfinite(pp.propellant) ? demandIn : part.RequestResource(pp.propellant.id, demandIn);
                     demandsOut[i] = demandOut;
                     // Test if resource depleted
                     // TODO test if resource partially depleted: demandOut < demands[i]
                     // For the moment, just let the full deltaV for time segment dT be applied
-                    if (demandOut == 0)
+                    if (demandOut < demandIn)
                     {
-                        depleted = true;
-                        Debug.Log(String.Format("[PersistentThrust] Part {0} failed to request {1} {2}", part.name, demands[i], pp.propellant.name));
+                        var propellantFountRatio = demandOut / demandIn;
+                        if (propellantFountRatio < foundRatio)
+                            foundRatio = propellantFountRatio;
+                        Debug.Log(String.Format("[PersistentThrust] - Part {0} failed to request {1} {2}", part.name, demands[i], pp.propellant.name));
                     }
                 }
                 // Otherwise demand is 0
@@ -203,6 +197,14 @@ namespace PersistentThrust
             return demandsOut;
         }
 
+        private bool IsInfinite(Propellant propellant)
+        {
+            if (propellant.resourceDef.density == 0)
+                return CheatOptions.InfiniteElectricity;
+            else
+                return CheatOptions.InfinitePropellant;
+        }
+
         // Calculate DeltaV vector
         public virtual Vector3d CalculateDeltaVV(double vesselMass, double deltaTime, double thrust, float isp, Vector3d thrustUV, out double demandMass)
         {
@@ -211,7 +213,7 @@ namespace PersistentThrust
             // Change in mass over time interval dT
             var deltaMass = massFlowRate * deltaTime;
             // Resource demand from propellants with mass
-            demandMass = deltaMass / densityAverage;
+            demandMass = densityAverage > 0 ? deltaMass / densityAverage : 0;
             //// Resource demand from propellants with mass
             var remainingMass = vesselMass - deltaMass;
             // deltaV amount
@@ -220,33 +222,31 @@ namespace PersistentThrust
             return deltaV * thrustUV;
         }
 
-        public virtual void UpdateFX(float currentThust)
+        public virtual void UpdateFX(double currentThust)
         {
             if (!engine.getIgnitionState)
                 currentThust = 0;
 
             if (!String.IsNullOrEmpty(powerEffectName))
             {
-                powerEffectRatio = engine.maxThrust > 0 ? currentThust / engine.maxThrust : 0;
-                part.Effect(powerEffectName, powerEffectRatio);
+                var powerEffectRatio = engine.maxThrust > 0 ? currentThust / engine.maxThrust : 0;
+                part.Effect(powerEffectName, (float)powerEffectRatio);
             }
 
             if (!String.IsNullOrEmpty(runningEffectName))
             {
-                runningEffectRatio = engine.maxThrust > 0 ? currentThust / engine.maxThrust : 0;
-                part.Effect(runningEffectName, runningEffectRatio);
+                var runningEffectRatio = engine.maxThrust > 0 ? currentThust / engine.maxThrust : 0;
+                part.Effect(runningEffectName, (float)runningEffectRatio);
             }
         }
 
         // Physics update
-        public override void OnFixedUpdate()
+        public void FixedUpdate() // FixedUpdate is also called while not staged
         {
             if (FlightGlobals.fetch == null || !isEnabled ) return;
 
             if (vesselChangedSIOCountdown > 0)
                 vesselChangedSIOCountdown--;
-
-            ThrustPersistent = engine.getIgnitionState ? (float)(engine.requestedMassFlow * PhysicsGlobals.GravitationalAcceleration * engine.realIsp) : 0;
 
             // Realtime mode
             if (!this.vessel.packed)
@@ -261,49 +261,54 @@ namespace PersistentThrust
 
                 ratioHeadingVersusRequest = 0;
             }
-            else if (engine.currentThrottle > 0 && IsPersistentEngine && PersistentEnabled && ThrustPersistent > 0.0000005)
-            {
-                warpToReal = true; // Set to true for transition to realtime
-
-                ratioHeadingVersusRequest = engine.PersistHeading(vesselChangedSIOCountdown > 0, ratioHeadingVersusRequest == 1);
-                if (ratioHeadingVersusRequest != 1)
-                {
-                    ThrustPersistent = 0;
-                    return;
-                }
-
-                var UT = Planetarium.GetUniversalTime(); // Universal time
-                var thrustUV = this.part.transform.up; // Thrust direction unit vector
-                // Calculate deltaV vector & resource demand from propellants with mass
-                double demandMass;
-                // Calculate deltaV vector & resource demand from propellants with mass
-                var deltaVV = CalculateDeltaVV(this.vessel.totalMass, TimeWarp.fixedDeltaTime, ThrustPersistent, engine.realIsp, thrustUV, out demandMass);
-                // Calculate resource demands
-                var fuelDemands = CalculateDemands(demandMass);
-                // Apply resource demands & test for resource depletion
-                var depleted = false;
-                var demandsOut = ApplyDemands(fuelDemands, ref depleted);
-
-                // Apply deltaV vector at UT & dT to orbit if resources not depleted
-                if (!depleted)
-                    vessel.orbit.Perturb(deltaVV, UT);
-
-                // Otherwise log warning and drop out of timewarp if throttle on & depleted
-                else if (ThrottlePersistent > 0)
-                {
-                    ThrustPersistent = 0;
-                    Debug.Log("[PersistentThrust] Thrust warp stopped - propellant depleted");
-                    ScreenMessages.PostScreenMessage("Thrust warp stopped - propellant depleted", 5.0f, ScreenMessageStyle.UPPER_CENTER);
-                    // Return to realtime
-                    TimeWarp.SetRate(0, true);
-                }
-
-                UpdateFX(depleted ? 0 : (float)ThrustPersistent);
-            }
             else
             {
-                ratioHeadingVersusRequest = engine.PersistHeading(vesselChangedSIOCountdown > 0);
-                UpdateFX(0);
+                ThrustPersistent = engine.getIgnitionState ? (float)(engine.requestedMassFlow * PhysicsGlobals.GravitationalAcceleration * engine.realIsp) : 0;
+
+                if (engine.currentThrottle > 0 && IsPersistentEngine && PersistentEnabled && ThrustPersistent > 0.0000005)
+                {
+                    warpToReal = true; // Set to true for transition to realtime
+
+                    ratioHeadingVersusRequest = engine.PersistHeading(vesselChangedSIOCountdown > 0, ratioHeadingVersusRequest == 1);
+                    if (ratioHeadingVersusRequest != 1)
+                    {
+                        ThrustPersistent = 0;
+                        return;
+                    }
+
+                    var UT = Planetarium.GetUniversalTime(); // Universal time
+                    var thrustUV = this.part.transform.up; // Thrust direction unit vector
+                    // Calculate deltaV vector & resource demand from propellants with mass
+                    double demandMass;
+                    // Calculate deltaV vector & resource demand from propellants with mass
+                    var deltaVV = CalculateDeltaVV(this.vessel.totalMass, TimeWarp.fixedDeltaTime, ThrustPersistent, engine.realIsp, thrustUV, out demandMass);
+                    // Calculate resource demands
+                    var fuelDemands = CalculateDemands(demandMass);
+                    // Apply resource demands & test for resource depletion
+                    double foundRatio = 1;
+                    var demandsOut = ApplyDemands(fuelDemands, ref foundRatio);
+
+                    // Apply deltaV vector at UT & dT to orbit if resources not depleted
+                    if (foundRatio > 0)
+                        vessel.orbit.Perturb(deltaVV * foundRatio, UT);
+
+                    // Otherwise log warning and drop out of timewarp if throttle on & depleted
+                    else if (ThrottlePersistent > 0)
+                    {
+                        ThrustPersistent = 0;
+                        Debug.Log("[PersistentThrust] Thrust warp stopped - propellant depleted");
+                        ScreenMessages.PostScreenMessage("Thrust warp stopped - propellant depleted", 5.0f, ScreenMessageStyle.UPPER_CENTER);
+                        // Return to realtime
+                        TimeWarp.SetRate(0, true);
+                    }
+
+                    UpdateFX(ThrustPersistent * foundRatio);
+                }
+                else
+                {
+                    ratioHeadingVersusRequest = engine.PersistHeading(vesselChangedSIOCountdown > 0);
+                    UpdateFX(0);
+                }
             }
 
             // Update display numbers
