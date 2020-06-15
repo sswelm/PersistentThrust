@@ -110,14 +110,6 @@ namespace PersistentThrust
                 warpToReal = false;
             }
 
-            // Activate force if engine is enabled and operational
-            if (!IsForceActivated && engine.isEnabled && engine.isOperational)
-            {
-                IsForceActivated = true;
-                part.force_activate();
-                Debug.Log("[PersistentThrust] - ForceActivated");
-            }
-
             // hide stock thrust
             engine.Fields["finalThrust"].guiActive = false;
         }
@@ -197,6 +189,7 @@ namespace PersistentThrust
 
                         if (pp.propellant.resourceDef.density > 0)
                         {
+                            // reset stabilize Queue when out of mass propellant
                             if (propellantFoundRatio < 0.1)
                                 foundRatioQueue.Clear();
                         }
@@ -204,6 +197,7 @@ namespace PersistentThrust
                         {
                             if (propellantFoundRatio == 0)
                             {
+                                // reset stabilize Queue when out power for too long
                                 if (missingPowerCountdown <= 0)
                                     foundRatioQueue.Clear();
                                 missingPowerCountdown--;
@@ -215,6 +209,7 @@ namespace PersistentThrust
                 }
             }
 
+            // attempt to stabilize thrust output with First In Last Out Queue 
             foundRatioQueue.Enqueue(currentFoundRatio);
             if (foundRatioQueue.Count() > 100)
                 foundRatioQueue.Dequeue();
@@ -274,16 +269,16 @@ namespace PersistentThrust
             var exhaustRatio = (float)(engine.maxThrust > 0 ? currentThust / engine.maxThrust : 0);
 
             if (!String.IsNullOrEmpty(powerEffectName))
-                part.Effect(powerEffectName, (exhaustRatio));
+                part.Effect(powerEffectName, exhaustRatio);
 
             if (!String.IsNullOrEmpty(runningEffectName))
-                part.Effect(runningEffectName, (exhaustRatio));
+                part.Effect(runningEffectName, exhaustRatio);
         }
 
         // Physics update
         public void FixedUpdate() // FixedUpdate is also called while not staged
         {
-            if (FlightGlobals.fetch == null || !isEnabled ) return;
+            if (HighLogic.LoadedSceneIsEditor || FlightGlobals.fetch == null || !isEnabled ) return;
 
             if (vesselChangedSIOCountdown > 0)
                 vesselChangedSIOCountdown--;
@@ -314,7 +309,7 @@ namespace PersistentThrust
             }
             else
             {
-                ThrustPersistent = engine.getIgnitionState ? (float)(engine.currentThrottle * engine.maxFuelFlow * PhysicsGlobals.GravitationalAcceleration * engine.realIsp) : 0;
+                ThrustPersistent = engine.getIgnitionState ? (float)(engine.requestedMassFlow * PhysicsGlobals.GravitationalAcceleration * engine.realIsp) : 0;
 
                 if (engine.currentThrottle > 0 && IsPersistentEngine && PersistentEnabled && ThrustPersistent > 0.0000005)
                 {
