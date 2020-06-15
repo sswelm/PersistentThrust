@@ -39,11 +39,15 @@ namespace PersistentThrust
         // Persistent values to use during timewarp
         public double ThrustPersistent = 0;
         public float ThrottlePersistent = 0;
+        public float IspPersistent = 0;
 
         // Are we transitioning from timewarp to reatime?
         public bool warpToReal = false;
 
-        public int vesselChangedSIOCountdown = 0;
+        // Keep track of number of physics ticks skipped
+        public int skipCounter = 0;
+
+        public int vesselChangedSOICountdown = 0;
         public int missingPowerCountdown = 0;
 
         // Propellant data
@@ -55,7 +59,7 @@ namespace PersistentThrust
 
         public void VesselChangedSOI()
         {
-            vesselChangedSIOCountdown = 10;
+            vesselChangedSOICountdown = 10;
         }
 
         // Make "engine" and "engineFX" fields refer to the ModuleEngines and ModuleEnginesFX modules in part.Modules
@@ -91,6 +95,8 @@ namespace PersistentThrust
         public override void OnUpdate()
         {
             if (!IsPersistentEngine || !PersistentEnabled) return;
+
+            TimeWarp.GThreshold = 12f;
 
             // stop engines and drop out of timewarp when X pressed
             if (vessel.packed && ThrottlePersistent > 0 && Input.GetKeyDown(KeyCode.X))
@@ -143,11 +149,17 @@ namespace PersistentThrust
 
         void UpdatePersistentParameters()
         {
+            // skip some ticks
+            if (skipCounter++ < 15) return;
+
+            // we are on the 16th tick
+            skipCounter = 0;
             // Update values to use during timewarp
             // Get throttle
             ThrottlePersistent = vessel.ctrlState.mainThrottle;
             // Get final thrust
             ThrustPersistent = engine.getIgnitionState ? engine.finalThrust : 0;
+            IspPersistent = engine.realIsp;
         }
 
         // Calculate demands of each resource
@@ -283,17 +295,15 @@ namespace PersistentThrust
         // Physics update
         public void FixedUpdate() // FixedUpdate is also called while not staged
         {
-            if (FlightGlobals.fetch == null || !isEnabled ) return;
+            if (this.vessel is null || !isEnabled) return;
 
-            if (vesselChangedSIOCountdown > 0)
-                vesselChangedSIOCountdown--;
+            if (vesselChangedSOICountdown > 0)
+                vesselChangedSOICountdown--;
 
             // Realtime mode
             if (!this.vessel.packed)
             {
                 UpdateFX(engine.GetCurrentThrust());
-
-                TimeWarp.GThreshold = 12;
 
                 // Update persistent thrust parameters if NOT transitioning from warp to realtime
                 if (!warpToReal)
@@ -314,13 +324,13 @@ namespace PersistentThrust
             }
             else
             {
-                ThrustPersistent = engine.getIgnitionState ? (float)(engine.currentThrottle * engine.maxFuelFlow * PhysicsGlobals.GravitationalAcceleration * engine.realIsp) : 0;
+                ThrustPersistent = engine.getIgnitionState ? (float)(ThrottlePersistent * engine.maxFuelFlow * PhysicsGlobals.GravitationalAcceleration * IspPersistent) : 0;
 
-                if (engine.currentThrottle > 0 && IsPersistentEngine && PersistentEnabled && ThrustPersistent > 0.0000005)
+                if (ThrottlePersistent > 0 && IsPersistentEngine && PersistentEnabled)
                 {
                     warpToReal = true; // Set to true for transition to realtime
 
-                    ratioHeadingVersusRequest = engine.PersistHeading(vesselChangedSIOCountdown > 0, ratioHeadingVersusRequest == 1);
+                    ratioHeadingVersusRequest = engine.PersistHeading(vesselChangedSOICountdown > 0, ratioHeadingVersusRequest == 1);
                     if (ratioHeadingVersusRequest != 1)
                     {
                         ThrustPersistent = 0;
@@ -333,7 +343,7 @@ namespace PersistentThrust
                     // Calculate deltaV vector & resource demand from propellants with mass
                     double demandMass;
                     // Calculate deltaV vector & resource demand from propellants with mass
-                    var deltaVV = CalculateDeltaVV(this.vessel.totalMass, TimeWarp.fixedDeltaTime, ThrustPersistent, engine.realIsp, thrustUV, out demandMass);
+                    var deltaVV = CalculateDeltaVV(this.vessel.totalMass, TimeWarp.fixedDeltaTime, ThrustPersistent, IspPersistent, thrustUV, out demandMass);
                     // Calculate resource demands
                     var fuelDemands = CalculateDemands(demandMass);
                     // Apply resource demands & test for resource depletion
@@ -363,7 +373,7 @@ namespace PersistentThrust
                 }
                 else
                 {
-                    ratioHeadingVersusRequest = engine.PersistHeading(vesselChangedSIOCountdown > 0);
+                    ratioHeadingVersusRequest = engine.PersistHeading(vesselChangedSOICountdown > 0);
                     UpdateFX(0);
                 }
             }
