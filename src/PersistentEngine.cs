@@ -30,9 +30,7 @@ namespace PersistentThrust
         public string powerEffectName;
         public string runningEffectName;
 
-        [KSPField(guiActive = true, guiFormat = "F6")]
-        public double propellantReqMet;
-        [KSPField(guiActive = true, guiFormat = "F6")]
+        [KSPField(guiActive = false, guiFormat = "F6")]
         public double fudgedPropellantReqMet;
 
         public double ratioHeadingVersusRequest;
@@ -189,7 +187,7 @@ namespace PersistentThrust
         // Updated depleted boolean flag if resource request failed
         public virtual double[] ApplyDemands(double[] demands, ref double fudgedPropellantReqMet)
         {
-            propellantReqMet = 1;
+            var propellantReqMet = 1.0;
 
             var demandsOut = new double[pplist.Count];
 
