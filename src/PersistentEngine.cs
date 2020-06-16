@@ -17,7 +17,6 @@ namespace PersistentThrust
         [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiName = "#LOC_PT_PersistentHeading"), UI_Toggle(disabledText = "#autoLOC_900890", enabledText = "#autoLOC_900889")]
         public bool HasPersistentHeadingEnabled = true;
 
-
         [KSPField]
         int queueLength = 2;
 
@@ -31,9 +30,9 @@ namespace PersistentThrust
         public string powerEffectName;
         public string runningEffectName;
 
-        [KSPField(guiActive = false, guiFormat = "F6")]
+        [KSPField(guiActive = true, guiFormat = "F6")]
         public double propellantReqMet;
-        [KSPField(guiActive = false, guiFormat = "F6")]
+        [KSPField(guiActive = true, guiFormat = "F6")]
         public double fudgedPropellantReqMet;
 
         public double ratioHeadingVersusRequest;
@@ -43,7 +42,6 @@ namespace PersistentThrust
         public ModuleEnginesFX engineFX;
 
         // Persistent values to use during timewarp
-        public double ThrustPersistent = 0;
         public float ThrottlePersistent = 0;
         public float IspPersistent = 0;
 
@@ -103,19 +101,6 @@ namespace PersistentThrust
         {
             if (!IsPersistentEngine || !HasPersistentThrust) return;
 
-            TimeWarp.GThreshold = 12f;
-
-            // stop engines and drop out of timewarp when X pressed
-            if (vessel.packed && ThrottlePersistent > 0 && Input.GetKeyDown(KeyCode.X))
-            {
-                // Return to realtime
-                TimeWarp.SetRate(0, true);
-
-                ThrottlePersistent = 0;
-                vessel.ctrlState.mainThrottle = ThrottlePersistent;
-                Debug.Log("[PersistentThrust]: PersistentThrust canceled after " + KeyCode.X + " pressed" );
-            }
-
             // When transitioning from timewarp to real update throttle
             if (warpToReal)
             {
@@ -123,8 +108,34 @@ namespace PersistentThrust
                 warpToReal = false;
             }
 
+            if (vessel.packed)
+            {
+                // stop engines when X pressed
+                if (Input.GetKeyDown(KeyCode.X))
+                    SetThrotleAndReturnToRealtime(0);
+                // full throtle when Z pressed
+                else if (Input.GetKeyDown(KeyCode.Z))
+                    SetThrotleAndReturnToRealtime(1);
+                // increase throtle when Shift pressed
+                else if (Input.GetKeyDown(KeyCode.LeftShift))
+                    SetThrotleAndReturnToRealtime(Mathf.Min(1, ThrottlePersistent + 0.01f));
+                // decrease throtle when Ctrl pressed
+                else if (Input.GetKeyDown(KeyCode.LeftControl))
+                    SetThrotleAndReturnToRealtime(Mathf.Max(0, ThrottlePersistent - 0.01f));
+            }
+            else
+                TimeWarp.GThreshold = 12f;
+
             // hide stock thrust
             engine.Fields["finalThrust"].guiActive = false;
+        }
+
+        private void SetThrotleAndReturnToRealtime (float newsetting)
+        {
+            vessel.ctrlState.mainThrottle = newsetting;
+
+            // Return to realtime
+            TimeWarp.SetRate(0, true);
         }
 
         // Initialization
@@ -153,11 +164,6 @@ namespace PersistentThrust
                 throttleQueue.Dequeue();
             ThrottlePersistent = throttleQueue.Max();
 
-            thrustQueue.Enqueue(engine.getIgnitionState ? engine.finalThrust : 0);
-            if (thrustQueue.Count > queueLength)
-                thrustQueue.Dequeue();
-            ThrustPersistent = thrustQueue.Max();
-
             ispQueue.Enqueue(engine.realIsp);
             if (ispQueue.Count > queueLength)
                 ispQueue.Dequeue();
@@ -181,9 +187,9 @@ namespace PersistentThrust
 
         // Apply demanded resources & return results
         // Updated depleted boolean flag if resource request failed
-        public virtual double[] ApplyDemands(double[] demands, ref double foundRatio)
+        public virtual double[] ApplyDemands(double[] demands, ref double fudgedPropellantReqMet)
         {
-            double propellantReqMet = 1;
+            propellantReqMet = 1;
 
             var demandsOut = new double[pplist.Count];
 
@@ -235,7 +241,7 @@ namespace PersistentThrust
             propellantReqMetQueue.Enqueue(propellantReqMet);
             if (propellantReqMetQueue.Count() > 1000)
                 propellantReqMetQueue.Dequeue();
-            foundRatio = propellantReqMetQueue.Average();
+            fudgedPropellantReqMet = Math.Pow(propellantReqMetQueue.Average(), 0.27);
 
             // secondly we can consume the resource based on propellant availability
             for (var i = 0; i < pplist.Count; i++)
@@ -246,8 +252,9 @@ namespace PersistentThrust
                 // - resource massless & request massless flag true
                 if ((pp.density > 0 && RequestPropMass) || (pp.density == 0 && RequestPropMassless))
                 {
-                    var demandIn = demands[i];
-                    var demandOut = IsInfinite(pp.propellant) ? demandIn : part.RequestResource(pp.propellant.id, propellantReqMet * demandIn, pp.propellant.GetFlowMode(), false);
+                    var demandIn = pp.density > 0 ? demands[i] : propellantReqMet * demands[i];
+
+                    var demandOut = IsInfinite(pp.propellant) ? demandIn : part.RequestResource(pp.propellant.id, demandIn, pp.propellant.GetFlowMode(), false);
                     demandsOut[i] = demandOut;
                 }
                 // Otherwise demand is 0
@@ -308,7 +315,9 @@ namespace PersistentThrust
             // Realtime mode
             if (!this.vessel.packed)
             {
-                UpdateFX(engine.GetCurrentThrust());
+                thrust_d = engine.GetCurrentThrust();
+
+                UpdateFX(thrust_d);
 
                 // Update persistent thrust parameters if NOT transitioning from warp to realtime
                 if (!warpToReal)
@@ -322,12 +331,9 @@ namespace PersistentThrust
                     propellantReqMetQueue.Enqueue(Math.Pow(engine.propellantReqMet * 0.01, 1/0.27));
                     if (propellantReqMetQueue.Count > 1000)
                         propellantReqMetQueue.Dequeue();
-                    propellantReqMet = propellantReqMetQueue.Average();
                 }
                 else
                     propellantReqMetQueue.Clear();
-
-                thrust_d = ThrustPersistent;
             }
             else
             {
@@ -335,7 +341,7 @@ namespace PersistentThrust
                 {
                     warpToReal = true; // Set to true for transition to realtime
 
-                    if (HasPersistentHeadingEnabled)
+                    if (vessel.IsControllable && HasPersistentHeadingEnabled)
                     {
                         ratioHeadingVersusRequest = engine.PersistHeading(vesselChangedSOICountdown > 0, ratioHeadingVersusRequest == 1);
                         if (ratioHeadingVersusRequest != 1)
@@ -356,10 +362,7 @@ namespace PersistentThrust
                     // Calculate resource demands
                     var fuelDemands = CalculateDemands(demandMass);
                     // Apply resource demands & test for resource depletion
-                    var demandsOut = ApplyDemands(fuelDemands, ref propellantReqMet);
-
-                    // normalize thrust similary to stock
-                    fudgedPropellantReqMet = propellantReqMet > 0 ?  Math.Pow(propellantReqMet, 0.27) : 0;
+                    var demandsOut = ApplyDemands(fuelDemands, ref fudgedPropellantReqMet);
 
                     // Apply deltaV vector at UT & dT to orbit if resources not depleted
                     if (fudgedPropellantReqMet > 0)
@@ -376,6 +379,11 @@ namespace PersistentThrust
                         ScreenMessages.PostScreenMessage(Localizer.Format("#LOC_PT_StoppedDepleted"), 5.0f, ScreenMessageStyle.UPPER_CENTER);
                         // Return to realtime
                         TimeWarp.SetRate(0, true);
+                        if (!vessel.IsControllable)
+                        {
+                            ThrottlePersistent = 0;
+                            vessel.ctrlState.mainThrottle = 0;
+                        }
                     }
                     else
                         thrust_d = 0;
@@ -384,7 +392,8 @@ namespace PersistentThrust
                 }
                 else
                 {
-                    if (HasPersistentHeadingEnabled)
+                    thrust_d = 0;
+                    if (vessel.IsControllable && HasPersistentHeadingEnabled)
                         ratioHeadingVersusRequest = engine.PersistHeading(vesselChangedSOICountdown > 0);
                     UpdateFX(0);
                 }
