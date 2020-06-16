@@ -319,7 +319,7 @@ namespace PersistentThrust
                 if (engine.propellantReqMet > 0)
                 {
                     missingPowerCountdown = 10;
-                    propellantReqMetQueue.Enqueue(Math.Pow(engine.propellantReqMet * 0.01, 1/0.267));
+                    propellantReqMetQueue.Enqueue(Math.Pow(engine.propellantReqMet * 0.01, 1/0.27));
                     if (propellantReqMetQueue.Count > 1000)
                         propellantReqMetQueue.Dequeue();
                     propellantReqMet = propellantReqMetQueue.Average();
@@ -344,25 +344,27 @@ namespace PersistentThrust
                             return;
                         }
                     }
+                    // Calculated requested thrust
+                    var requestedThrust = (engine.thrustPercentage * 0.01) * ThrottlePersistent * engine.maxThrust;
 
                     var UT = Planetarium.GetUniversalTime(); // Universal time
                     var thrustUV = this.part.transform.up; // Thrust direction unit vector
                     // Calculate deltaV vector & resource demand from propellants with mass
                     double demandMass;
                     // Calculate deltaV vector & resource demand from propellants with mass
-                    var deltaVV = CalculateDeltaVV(this.vessel.totalMass, TimeWarp.fixedDeltaTime, ThrottlePersistent * engine.maxThrust, IspPersistent, thrustUV, out demandMass);
+                    var deltaVV = CalculateDeltaVV(this.vessel.totalMass, TimeWarp.fixedDeltaTime, requestedThrust, IspPersistent, thrustUV, out demandMass);
                     // Calculate resource demands
                     var fuelDemands = CalculateDemands(demandMass);
                     // Apply resource demands & test for resource depletion
                     var demandsOut = ApplyDemands(fuelDemands, ref propellantReqMet);
 
                     // normalize thrust similary to stock
-                    fudgedPropellantReqMet = propellantReqMet > 0 ?  Math.Pow(propellantReqMet, 0.267) : 0;
+                    fudgedPropellantReqMet = propellantReqMet > 0 ?  Math.Pow(propellantReqMet, 0.27) : 0;
 
                     // Apply deltaV vector at UT & dT to orbit if resources not depleted
                     if (fudgedPropellantReqMet > 0)
                     {
-                        thrust_d = engine.maxThrust * ThrottlePersistent * fudgedPropellantReqMet;
+                        thrust_d = requestedThrust * fudgedPropellantReqMet;
                         vessel.orbit.Perturb(deltaVV * fudgedPropellantReqMet, UT);
                     }
 
@@ -378,7 +380,7 @@ namespace PersistentThrust
                     else
                         thrust_d = 0;
 
-                    UpdateFX(ThrustPersistent * propellantReqMet);
+                    UpdateFX(thrust_d);
                 }
                 else
                 {
