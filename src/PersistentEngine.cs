@@ -317,7 +317,7 @@ namespace PersistentThrust
             }
             else
             {
-                ThrustPersistent = engine.getIgnitionState ? (float)(ThrottlePersistent * engine.maxFuelFlow * PhysicsGlobals.GravitationalAcceleration * IspPersistent) : 0;
+                ThrustPersistent = engine.getIgnitionState ? (float)(engine.requestedMassFlow * PhysicsGlobals.GravitationalAcceleration * IspPersistent) : 0;
 
                 if (ThrottlePersistent > 0 && IsPersistentEngine && HasPersistentThrust)
                 {
