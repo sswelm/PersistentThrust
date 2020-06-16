@@ -19,7 +19,7 @@ namespace PersistentThrust
 
 
         [KSPField]
-        int queueLength = 10;
+        int queueLength = 2;
 
         // Flag if using PersistentEngine features
         public bool IsPersistentEngine = false;
@@ -31,7 +31,11 @@ namespace PersistentThrust
         public string powerEffectName;
         public string runningEffectName;
 
-        public double foundRatio;
+        [KSPField(guiActive = false, guiFormat = "F6")]
+        public double propellantReqMet;
+        [KSPField(guiActive = false, guiFormat = "F6")]
+        public double fudgedPropellantReqMet;
+
         public double ratioHeadingVersusRequest;
 
         // Engine module on the same part
@@ -54,7 +58,7 @@ namespace PersistentThrust
         // Average density of propellants
         public double densityAverage;
 
-        private Queue<double> propellantReqMetQueue = new Queue<double>(100);
+        private Queue<double> propellantReqMetQueue = new Queue<double>(1000);
 
         private Queue<float> throttleQueue = new Queue<float>();
         private Queue<float> thrustQueue = new Queue<float>();
@@ -229,7 +233,7 @@ namespace PersistentThrust
 
             // attempt to stabilize thrust output with First In Last Out Queue 
             propellantReqMetQueue.Enqueue(propellantReqMet);
-            if (propellantReqMetQueue.Count() > 100)
+            if (propellantReqMetQueue.Count() > 1000)
                 propellantReqMetQueue.Dequeue();
             foundRatio = propellantReqMetQueue.Average();
 
@@ -315,10 +319,10 @@ namespace PersistentThrust
                 if (engine.propellantReqMet > 0)
                 {
                     missingPowerCountdown = 10;
-                    propellantReqMetQueue.Enqueue(engine.propellantReqMet * 0.01);
-                    if (propellantReqMetQueue.Count > 100)
+                    propellantReqMetQueue.Enqueue(Math.Pow(engine.propellantReqMet * 0.01, 1/0.267));
+                    if (propellantReqMetQueue.Count > 1000)
                         propellantReqMetQueue.Dequeue();
-                    foundRatio = propellantReqMetQueue.Average();
+                    propellantReqMet = propellantReqMetQueue.Average();
                 }
                 else
                     propellantReqMetQueue.Clear();
@@ -346,20 +350,20 @@ namespace PersistentThrust
                     // Calculate deltaV vector & resource demand from propellants with mass
                     double demandMass;
                     // Calculate deltaV vector & resource demand from propellants with mass
-                    var deltaVV = CalculateDeltaVV(this.vessel.totalMass, TimeWarp.fixedDeltaTime, ThrustPersistent, IspPersistent, thrustUV, out demandMass);
+                    var deltaVV = CalculateDeltaVV(this.vessel.totalMass, TimeWarp.fixedDeltaTime, ThrottlePersistent * engine.maxThrust, IspPersistent, thrustUV, out demandMass);
                     // Calculate resource demands
                     var fuelDemands = CalculateDemands(demandMass);
                     // Apply resource demands & test for resource depletion
-                    var demandsOut = ApplyDemands(fuelDemands, ref foundRatio);
+                    var demandsOut = ApplyDemands(fuelDemands, ref propellantReqMet);
 
                     // normalize thrust similary to stock
-                    foundRatio = foundRatio > 0 ? (foundRatio + 1d) / 2d : 0;
+                    fudgedPropellantReqMet = propellantReqMet > 0 ?  Math.Pow(propellantReqMet, 0.267) : 0;
 
                     // Apply deltaV vector at UT & dT to orbit if resources not depleted
-                    if (foundRatio > 0)
+                    if (fudgedPropellantReqMet > 0)
                     {
-                        thrust_d = ThrustPersistent * foundRatio;
-                        vessel.orbit.Perturb(deltaVV * foundRatio, UT);
+                        thrust_d = engine.maxThrust * ThrottlePersistent * fudgedPropellantReqMet;
+                        vessel.orbit.Perturb(deltaVV * fudgedPropellantReqMet, UT);
                     }
 
                     // Otherwise log warning and drop out of timewarp if throttle on & depleted
@@ -374,7 +378,7 @@ namespace PersistentThrust
                     else
                         thrust_d = 0;
 
-                    UpdateFX(ThrustPersistent * foundRatio);
+                    UpdateFX(ThrustPersistent * propellantReqMet);
                 }
                 else
                 {
