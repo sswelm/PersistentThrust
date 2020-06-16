@@ -1,10 +1,10 @@
+using KSP.Localization;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-namespace PersistentThrust 
+namespace PersistentThrust
 {
     public class PersistentEngine : PartModule
     {
@@ -23,8 +23,10 @@ namespace PersistentThrust
 
         // GUI
         // Enable/disable persistent engine features
-        [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiName = "Persistent"), UI_Toggle(disabledText = "Disabled", enabledText = "Enabled")]
-        public bool PersistentEnabled = true;
+        [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiName = "#LOC_PT_PersistentThrust"), UI_Toggle(disabledText = "#autoLOC_900890", enabledText = "#autoLOC_900889")]
+        public bool HasPersistentThrust = true;
+        [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiName = "#LOC_PT_PersistentHeading"), UI_Toggle(disabledText = "#autoLOC_900890", enabledText = "#autoLOC_900889")]
+        public bool HasPersistentHeadingEnabled = true;
 
         public string powerEffectName;
         public string runningEffectName;
@@ -94,7 +96,7 @@ namespace PersistentThrust
         // Update
         public override void OnUpdate()
         {
-            if (!IsPersistentEngine || !PersistentEnabled) return;
+            if (!IsPersistentEngine || !HasPersistentThrust) return;
 
             TimeWarp.GThreshold = 12f;
 
@@ -106,7 +108,7 @@ namespace PersistentThrust
 
                 ThrottlePersistent = 0;
                 vessel.ctrlState.mainThrottle = ThrottlePersistent;
-                Debug.Log("[PersistentThrust] - PersistentThrust canceled after " + KeyCode.X + " pressed" );
+                Debug.Log("[PersistentThrust]: PersistentThrust canceled after " + KeyCode.X + " pressed" );
             }
 
             // When transitioning from timewarp to real update throttle
@@ -321,16 +323,19 @@ namespace PersistentThrust
             {
                 ThrustPersistent = engine.getIgnitionState ? (float)(ThrottlePersistent * engine.maxFuelFlow * PhysicsGlobals.GravitationalAcceleration * IspPersistent) : 0;
 
-                if (ThrottlePersistent > 0 && IsPersistentEngine && PersistentEnabled)
+                if (ThrottlePersistent > 0 && IsPersistentEngine && HasPersistentThrust)
                 {
                     warpToReal = true; // Set to true for transition to realtime
 
-                    ratioHeadingVersusRequest = engine.PersistHeading(vesselChangedSOICountdown > 0, ratioHeadingVersusRequest == 1);
-                    if (ratioHeadingVersusRequest != 1)
+                    if (HasPersistentHeadingEnabled)
                     {
-                        ThrustPersistent = 0;
-                        thrust_d = 0;
-                        return;
+                        ratioHeadingVersusRequest = engine.PersistHeading(vesselChangedSOICountdown > 0, ratioHeadingVersusRequest == 1);
+                        if (ratioHeadingVersusRequest != 1)
+                        {
+                            ThrustPersistent = 0;
+                            thrust_d = 0;
+                            return;
+                        }
                     }
 
                     var UT = Planetarium.GetUniversalTime(); // Universal time
@@ -358,8 +363,8 @@ namespace PersistentThrust
                     else if (ThrottlePersistent > 0)
                     {
                         ThrustPersistent = 0;
-                        Debug.Log("[PersistentThrust] Thrust warp stopped - propellant depleted");
-                        ScreenMessages.PostScreenMessage("Thrust warp stopped - propellant depleted", 5.0f, ScreenMessageStyle.UPPER_CENTER);
+                        Debug.Log("[PersistentThrust]: Thrust warp stopped - propellant depleted");
+                        ScreenMessages.PostScreenMessage(Localizer.Format("#LOC_PT_StoppedDepleted"), 5.0f, ScreenMessageStyle.UPPER_CENTER);
                         // Return to realtime
                         TimeWarp.SetRate(0, true);
                     }
@@ -368,7 +373,8 @@ namespace PersistentThrust
                 }
                 else
                 {
-                    ratioHeadingVersusRequest = engine.PersistHeading(vesselChangedSOICountdown > 0);
+                    if (HasPersistentHeadingEnabled)
+                        ratioHeadingVersusRequest = engine.PersistHeading(vesselChangedSOICountdown > 0);
                     UpdateFX(0);
                 }
             }
