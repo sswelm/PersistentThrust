@@ -8,12 +8,15 @@ namespace PersistentThrust
 {
     public class PersistentEngine : PartModule
     {
+        // GUI
         [KSPField(guiActive = true, guiName = "#autoLOC_6001377", guiUnits = "#autoLOC_7001408", guiFormat = "F6")]
         public double thrust_d;
+        // Enable/disable persistent engine features
+        [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiName = "#LOC_PT_PersistentThrust"), UI_Toggle(disabledText = "#autoLOC_900890", enabledText = "#autoLOC_900889")]
+        public bool HasPersistentThrust = true;
+        [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiName = "#LOC_PT_PersistentHeading"), UI_Toggle(disabledText = "#autoLOC_900890", enabledText = "#autoLOC_900889")]
+        public bool HasPersistentHeadingEnabled = true;
 
-        // Flag to activate force if it isn't to allow overriding stage activation
-        [KSPField(isPersistant = true)]
-        bool IsForceActivated;
         // Flag if using PersistentEngine features
         public bool IsPersistentEngine = false;
         // Flag whether to request massless resources
@@ -21,18 +24,11 @@ namespace PersistentThrust
         // Flag whether to request resources with mass
         public bool RequestPropMass = true;
 
-        // GUI
-        // Enable/disable persistent engine features
-        [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiName = "#LOC_PT_PersistentThrust"), UI_Toggle(disabledText = "#autoLOC_900890", enabledText = "#autoLOC_900889")]
-        public bool HasPersistentThrust = true;
-        [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiName = "#LOC_PT_PersistentHeading"), UI_Toggle(disabledText = "#autoLOC_900890", enabledText = "#autoLOC_900889")]
-        public bool HasPersistentHeadingEnabled = true;
-
         public string powerEffectName;
         public string runningEffectName;
 
         public double foundRatio;
-        private double ratioHeadingVersusRequest;
+        public double ratioHeadingVersusRequest;
 
         // Engine module on the same part
         public ModuleEngines engine;
@@ -57,7 +53,7 @@ namespace PersistentThrust
         // Average density of propellants
         public double densityAverage;
 
-        public Queue<double> foundRatioQueue = new Queue<double>(100);
+        private Queue<double> propellantReqMetQueue = new Queue<double>(100);
 
         public void VesselChangedSOI()
         {
@@ -175,7 +171,7 @@ namespace PersistentThrust
         // Updated depleted boolean flag if resource request failed
         public virtual double[] ApplyDemands(double[] demands, ref double foundRatio)
         {
-            double currentFoundRatio = 1;
+            double propellantReqMet = 1;
 
             var demandsOut = new double[pplist.Count];
 
@@ -198,14 +194,14 @@ namespace PersistentThrust
                     if (demandOut < demandIn && demandIn > 0)
                     {
                         var propellantFoundRatio = demandOut / demandIn;
-                        if (propellantFoundRatio < currentFoundRatio)
-                            currentFoundRatio = propellantFoundRatio;
+                        if (propellantFoundRatio < propellantReqMet)
+                            propellantReqMet = propellantFoundRatio;
 
                         if (pp.propellant.resourceDef.density > 0)
                         {
                             // reset stabilize Queue when out of mass propellant
                             if (propellantFoundRatio < 0.1)
-                                foundRatioQueue.Clear();
+                                propellantReqMetQueue.Clear();
                         }
                         else
                         {
@@ -213,7 +209,7 @@ namespace PersistentThrust
                             {
                                 // reset stabilize Queue when out power for too long
                                 if (missingPowerCountdown <= 0)
-                                    foundRatioQueue.Clear();
+                                    propellantReqMetQueue.Clear();
                                 missingPowerCountdown--;
                             }
                             else
@@ -224,10 +220,10 @@ namespace PersistentThrust
             }
 
             // attempt to stabilize thrust output with First In Last Out Queue 
-            foundRatioQueue.Enqueue(currentFoundRatio);
-            if (foundRatioQueue.Count() > 100)
-                foundRatioQueue.Dequeue();
-            foundRatio = foundRatioQueue.Average();
+            propellantReqMetQueue.Enqueue(propellantReqMet);
+            if (propellantReqMetQueue.Count() > 100)
+                propellantReqMetQueue.Dequeue();
+            foundRatio = propellantReqMetQueue.Average();
 
             // secondly we can consume the resource based on propellant availability
             for (var i = 0; i < pplist.Count; i++)
@@ -239,7 +235,7 @@ namespace PersistentThrust
                 if ((pp.density > 0 && RequestPropMass) || (pp.density == 0 && RequestPropMassless))
                 {
                     var demandIn = demands[i];
-                    var demandOut = IsInfinite(pp.propellant) ? demandIn : part.RequestResource(pp.propellant.id, currentFoundRatio * demandIn, pp.propellant.GetFlowMode(), false);
+                    var demandOut = IsInfinite(pp.propellant) ? demandIn : part.RequestResource(pp.propellant.id, propellantReqMet * demandIn, pp.propellant.GetFlowMode(), false);
                     demandsOut[i] = demandOut;
                 }
                 // Otherwise demand is 0
@@ -311,13 +307,13 @@ namespace PersistentThrust
                 if (engine.propellantReqMet > 0)
                 {
                     missingPowerCountdown = 10;
-                    foundRatioQueue.Enqueue(engine.propellantReqMet * 0.01);
-                    if (foundRatioQueue.Count > 100)
-                        foundRatioQueue.Dequeue();
-                    foundRatio = foundRatioQueue.Average();
+                    propellantReqMetQueue.Enqueue(engine.propellantReqMet * 0.01);
+                    if (propellantReqMetQueue.Count > 100)
+                        propellantReqMetQueue.Dequeue();
+                    foundRatio = propellantReqMetQueue.Average();
                 }
                 else
-                    foundRatioQueue.Clear();
+                    propellantReqMetQueue.Clear();
             }
             else
             {
