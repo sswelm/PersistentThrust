@@ -17,6 +17,10 @@ namespace PersistentThrust
         [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiName = "#LOC_PT_PersistentHeading"), UI_Toggle(disabledText = "#autoLOC_900890", enabledText = "#autoLOC_900889")]
         public bool HasPersistentHeadingEnabled = true;
 
+
+        [KSPField]
+        int queueLength = 10;
+
         // Flag if using PersistentEngine features
         public bool IsPersistentEngine = false;
         // Flag whether to request massless resources
@@ -42,9 +46,6 @@ namespace PersistentThrust
         // Are we transitioning from timewarp to reatime?
         public bool warpToReal = false;
 
-        // Keep track of number of physics ticks skipped
-        public int skipCounter = 0;
-
         public int vesselChangedSOICountdown = 0;
         public int missingPowerCountdown = 0;
 
@@ -54,6 +55,10 @@ namespace PersistentThrust
         public double densityAverage;
 
         private Queue<double> propellantReqMetQueue = new Queue<double>(100);
+
+        private Queue<float> throttleQueue = new Queue<float>();
+        private Queue<float> thrustQueue = new Queue<float>();
+        private Queue<float> ispQueue = new Queue<float>();
 
         public void VesselChangedSOI()
         {
@@ -139,17 +144,20 @@ namespace PersistentThrust
 
         void UpdatePersistentParameters()
         {
-            // skip some ticks
-            if (skipCounter++ < 15) return;
+            throttleQueue.Enqueue(vessel.ctrlState.mainThrottle);
+            if (throttleQueue.Count > queueLength)
+                throttleQueue.Dequeue();
+            ThrottlePersistent = throttleQueue.Max();
 
-            // we are on the 16th tick
-            skipCounter = 0;
-            // Update values to use during timewarp
-            // Get throttle
-            ThrottlePersistent = vessel.ctrlState.mainThrottle;
-            // Get final thrust
-            ThrustPersistent = engine.getIgnitionState ? engine.finalThrust : 0;
-            IspPersistent = engine.realIsp;
+            thrustQueue.Enqueue(engine.getIgnitionState ? engine.finalThrust : 0);
+            if (thrustQueue.Count > queueLength)
+                thrustQueue.Dequeue();
+            ThrustPersistent = thrustQueue.Max();
+
+            ispQueue.Enqueue(engine.realIsp);
+            if (ispQueue.Count > queueLength)
+                ispQueue.Dequeue();
+            IspPersistent = ispQueue.Max();
         }
 
         // Calculate demands of each resource
@@ -314,11 +322,11 @@ namespace PersistentThrust
                 }
                 else
                     propellantReqMetQueue.Clear();
+
+                thrust_d = ThrustPersistent;
             }
             else
             {
-                ThrustPersistent = engine.getIgnitionState ? (float)(engine.requestedMassFlow * PhysicsGlobals.GravitationalAcceleration * IspPersistent) : 0;
-
                 if (ThrottlePersistent > 0 && IsPersistentEngine && HasPersistentThrust)
                 {
                     warpToReal = true; // Set to true for transition to realtime
@@ -328,7 +336,6 @@ namespace PersistentThrust
                         ratioHeadingVersusRequest = engine.PersistHeading(vesselChangedSOICountdown > 0, ratioHeadingVersusRequest == 1);
                         if (ratioHeadingVersusRequest != 1)
                         {
-                            ThrustPersistent = 0;
                             thrust_d = 0;
                             return;
                         }
@@ -351,19 +358,21 @@ namespace PersistentThrust
                     // Apply deltaV vector at UT & dT to orbit if resources not depleted
                     if (foundRatio > 0)
                     {
-                        ThrustPersistent *= foundRatio;
+                        thrust_d = ThrustPersistent * foundRatio;
                         vessel.orbit.Perturb(deltaVV * foundRatio, UT);
                     }
 
                     // Otherwise log warning and drop out of timewarp if throttle on & depleted
                     else if (ThrottlePersistent > 0)
                     {
-                        ThrustPersistent = 0;
+                        thrust_d = 0;
                         Debug.Log("[PersistentThrust]: Thrust warp stopped - propellant depleted");
                         ScreenMessages.PostScreenMessage(Localizer.Format("#LOC_PT_StoppedDepleted"), 5.0f, ScreenMessageStyle.UPPER_CENTER);
                         // Return to realtime
                         TimeWarp.SetRate(0, true);
                     }
+                    else
+                        thrust_d = 0;
 
                     UpdateFX(ThrustPersistent * foundRatio);
                 }
@@ -374,9 +383,6 @@ namespace PersistentThrust
                     UpdateFX(0);
                 }
             }
-
-            // Update display numbers
-            thrust_d = ThrustPersistent;
         }
     }
 }
