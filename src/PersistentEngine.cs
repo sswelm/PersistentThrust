@@ -32,7 +32,7 @@ namespace PersistentThrust
         [KSPField]
         public int missingPowerCountdownSize = 10;
         [KSPField]
-        public int buffersizeMult = 100;
+        public int buffersizeMult = 50;
         [KSPField]
         public double minimumPropellantReqMetFactor = 0.2;
         [KSPField]
@@ -82,7 +82,6 @@ namespace PersistentThrust
         public double storageModifier;
 
         private float previousfixedDeltaTime;
-
 
         private Queue<double> propellantReqMetFactorQueue = new Queue<double>(100);
 
@@ -337,8 +336,21 @@ namespace PersistentThrust
 
         public double UpdateBuffer(PartResourceDefinition resource, double baseSize)
         {
-            var partresource = part.Resources[resource.name];
+            var requiredBufferSize = baseSize * TimeWarp.fixedDeltaTime * buffersizeMult;
 
+            if (previousfixedDeltaTime == TimeWarp.fixedDeltaTime)
+                return requiredBufferSize;
+
+            double amount;
+            double maxamount;
+
+            part.GetConnectedResourceTotals(resource.id, out amount, out maxamount, true);
+
+            var amountRatio = Math.Min(1, amount / maxamount);
+
+            var dynamicBufferSize = maxamount > requiredBufferSize ? baseSize : requiredBufferSize - maxamount;
+
+            var partresource = part.Resources[resource.name];
             if (partresource == null)
             {
                 var node = new ConfigNode("RESOURCE");
@@ -350,24 +362,15 @@ namespace PersistentThrust
                 partresource = part.Resources[resource.name];
             }
 
-            if (previousfixedDeltaTime != TimeWarp.fixedDeltaTime)
-            {
-                double amount;
-                double maxamount;
-                part.GetConnectedResourceTotals(resource.id, out amount, out maxamount, true);
+            partresource.maxAmount = dynamicBufferSize;
+            partresource.amount = dynamicBufferSize * amountRatio;
 
-                var resourceRatio = amount / maxamount;
+            //if (TimeWarp.fixedDeltaTime > previousfixedDeltaTime)
+            //    part.RequestResource(resource.id, -baseSize * (TimeWarp.fixedDeltaTime - previousfixedDeltaTime));
 
-                partresource.maxAmount = baseSize * TimeWarp.fixedDeltaTime * buffersizeMult;
-                partresource.amount = partresource.maxAmount * resourceRatio;
+            previousfixedDeltaTime = TimeWarp.fixedDeltaTime;
 
-                if (TimeWarp.fixedDeltaTime > previousfixedDeltaTime)
-                    partresource.amount += baseSize * TimeWarp.fixedDeltaTime;
-
-                previousfixedDeltaTime = TimeWarp.fixedDeltaTime;
-            }
-
-            return partresource.maxAmount;
+            return requiredBufferSize;
         }
 
         private bool IsInfinite(Propellant propellant)
