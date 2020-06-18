@@ -65,7 +65,9 @@ namespace PersistentThrust
 
             var ratioHeadingVersusRequest = Vector3d.Dot(engine.transform.up.normalized, requestedDirection);
 
-            if (forceRotation || ratioHeadingVersusRequest > (1 - Math.Min(1, fixedDeltaTime * headingTolerance)))
+            var finalTollerance =  Math.Min(0.995, (1 - Math.Min(1, fixedDeltaTime * headingTolerance)));
+
+            if (forceRotation || ratioHeadingVersusRequest > finalTollerance)
             {
                 vessel.transform.Rotate(Quaternion.FromToRotation(engine.transform.up.normalized, requestedDirection).eulerAngles, Space.World);
                 vessel.SetRotation(vessel.transform.rotation);
