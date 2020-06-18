@@ -35,6 +35,8 @@ namespace PersistentThrust
         public int buffersizeMult = 100;
         [KSPField]
         public double minimumPropellantReqMetFactor = 0.2;
+        [KSPField]
+        public float headingTolerance = 0.00f;
 
         // Flag whether to request massless resources
         [KSPField]
@@ -42,8 +44,6 @@ namespace PersistentThrust
         // Flag whether to request resources with mass
         [KSPField]
         public bool RequestPropMass = true;
-
-
 
         public string powerEffectName;
         public string runningEffectName;
@@ -65,9 +65,7 @@ namespace PersistentThrust
         // Are we transitioning from timewarp to reatime?
         public bool warpToReal = false;
 
-        //[KSPField(guiActive = true)]
         public bool autoMaximizePersistentIsp;
-        //[KSPField(guiActive = true)]
         public double averagePropellantReqMetFactor;
 
         public int vesselChangedSOICountdown = 0;
@@ -81,7 +79,6 @@ namespace PersistentThrust
         public double densityAverage;
 
         public double buffersize;
-        //[KSPField(guiActive = true)]
         public double storageModifier;
 
         private float previousfixedDeltaTime;
@@ -366,8 +363,6 @@ namespace PersistentThrust
 
                 if (TimeWarp.fixedDeltaTime > previousfixedDeltaTime)
                     partresource.amount += baseSize * TimeWarp.fixedDeltaTime;
-                else
-                    partresource.amount -= baseSize * TimeWarp.fixedDeltaTime;
 
                 previousfixedDeltaTime = TimeWarp.fixedDeltaTime;
             }
@@ -457,7 +452,7 @@ namespace PersistentThrust
 
                     if (vessel.IsControllable && HasPersistentHeadingEnabled)
                     {
-                        ratioHeadingVersusRequest = engine.PersistHeading(vesselChangedSOICountdown > 0, ratioHeadingVersusRequest == 1);
+                        ratioHeadingVersusRequest = engine.PersistHeading(TimeWarp.fixedDeltaTime, headingTolerance, vesselChangedSOICountdown > 0, ratioHeadingVersusRequest == 1);
                         if (ratioHeadingVersusRequest != 1)
                         {
                             finalThrust = 0;
@@ -508,7 +503,7 @@ namespace PersistentThrust
                 {
                     finalThrust = 0;
                     if (vessel.IsControllable && HasPersistentHeadingEnabled)
-                        ratioHeadingVersusRequest = engine.PersistHeading(vesselChangedSOICountdown > 0);
+                        ratioHeadingVersusRequest = engine.PersistHeading(TimeWarp.fixedDeltaTime, headingTolerance, vesselChangedSOICountdown > 0);
                     UpdateFX(0);
 
                     UpdateBuffers(fuelDemands);

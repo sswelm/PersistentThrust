@@ -5,7 +5,7 @@ namespace PersistentThrust
 {
     public static class VesselExtension
     {
-        public static double PersistHeading(this ModuleEngines engine, bool forceRotation = false, bool canDropOutOfTimeWarp = true)
+        public static double PersistHeading(this ModuleEngines engine, float fixedDeltaTime, float headingTolerance = 0.001f, bool forceRotation = false, bool canDropOutOfTimeWarp = true)
         {
             if (engine.getIgnitionState == false)
                 return 0;
@@ -16,10 +16,11 @@ namespace PersistentThrust
                 return 0;
 
             var canPersistDirection = vessel.situation == Vessel.Situations.SUB_ORBITAL || vessel.situation == Vessel.Situations.ESCAPING || vessel.situation == Vessel.Situations.ORBITING;
-            var sasIsActive = vessel.ActionGroups[KSPActionGroup.SAS];
 
             if (!canPersistDirection)
                 return 0;
+
+            var sasIsActive = vessel.ActionGroups[KSPActionGroup.SAS];
 
             if (!sasIsActive)
                 return 0;
@@ -59,11 +60,12 @@ namespace PersistentThrust
                     break;
             }
 
-            if (requestedDirection == Vector3d.zero) return 1;
+            if (requestedDirection == Vector3d.zero) 
+                return 1;
 
             var ratioHeadingVersusRequest = Vector3d.Dot(engine.transform.up.normalized, requestedDirection);
 
-            if (forceRotation || ratioHeadingVersusRequest > 0.995)
+            if (forceRotation || ratioHeadingVersusRequest > (1 - Math.Min(1, fixedDeltaTime * headingTolerance)))
             {
                 vessel.transform.Rotate(Quaternion.FromToRotation(engine.transform.up.normalized, requestedDirection).eulerAngles, Space.World);
                 vessel.SetRotation(vessel.transform.rotation);
