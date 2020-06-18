@@ -36,7 +36,7 @@ namespace PersistentThrust
         [KSPField]
         public double minimumPropellantReqMetFactor = 0.2;
         [KSPField]
-        public float headingTolerance = 0.00f;
+        public float headingTolerance = 0.001f;
 
         // Flag whether to request massless resources
         [KSPField]
