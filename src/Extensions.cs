@@ -1,7 +1,3 @@
-using System;
-using System.Linq;
-using UnityEngine;
-
 namespace PersistentThrust
 {
     public static class OrbitExtensions

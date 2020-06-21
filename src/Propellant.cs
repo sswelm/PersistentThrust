@@ -18,6 +18,7 @@ namespace PersistentThrust
         public double normalizedRatio;
 
         public double normalizedDemand;
+        public double totalEnginesDemand;
 
         public double maxamount;
         public double amount;

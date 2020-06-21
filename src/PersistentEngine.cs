@@ -255,8 +255,12 @@ namespace PersistentThrust
             var firstProcessedEngine = persistentEngines.FirstOrDefault(m => m.pplist.Any(l => l.missionTime == vessel.missionTime && l.definition.id == pp.definition.id));
             if (firstProcessedEngine == null)
             {
+                // store mission time to prevent other engines doing unnesisary work
                 pp.missionTime = vessel.missionTime;
+                // determine amount and maxamount at start of PersistenEngine testing
                 part.GetConnectedResourceTotals(pp.definition.id, pp.propellant.GetFlowMode(), out pp.amount, out pp.maxamount, true);
+                // calculate total demand
+                pp.totalEnginesDemand = persistentEngines.Sum(m => m.pplist.Where(l => l.definition.id == pp.definition.id).Sum(l => l.normalizedDemand));
             }
             else
                 activePropellant = firstProcessedEngine.pplist.First(m => m.definition.id == pp.definition.id);
@@ -294,15 +298,13 @@ namespace PersistentThrust
                         // update power buffer
                         buffersize = UpdateBuffer(workPropellant, demandIn);
 
-                        // calculate total demand
-                        var totalEnginesDemand = persistentEngines.Sum(m => m.pplist.Where(l => l.definition.id == pp.definition.id).Sum(l => l.normalizedDemand));
-
-                        var bufferedTotalEnginesDemand = Math.Min(workPropellant.maxamount, totalEnginesDemand * 50);
+                        var bufferedTotalEnginesDemand = Math.Min(workPropellant.maxamount, workPropellant.totalEnginesDemand * 50);
 
                         if (bufferedTotalEnginesDemand > workPropellant.amount)
-                            storageModifier = Math.Min(1,(demandIn / totalEnginesDemand) + ((workPropellant.amount / bufferedTotalEnginesDemand) * (demandIn / totalEnginesDemand)));
-                        else if (!MaximizePersistentPower && workPropellant.amount < buffersize)
-                            storageModifier = workPropellant.amount / buffersize;
+                            storageModifier = Math.Min(1,(demandIn / workPropellant.totalEnginesDemand) + ((workPropellant.amount / bufferedTotalEnginesDemand) * (demandIn / workPropellant.totalEnginesDemand)));
+                        
+                        if (!MaximizePersistentPower && workPropellant.amount < buffersize)
+                            storageModifier *= workPropellant.amount / buffersize;
                     }
 
                     var demandOut = IsInfinite(pp.propellant) ? demandIn : part.RequestResource(pp.definition.id, demandIn * storageModifier, pp.propellant.GetFlowMode(), true);
