@@ -16,6 +16,10 @@ namespace PersistentThrust
         public double ratio;
         public double normalizedRatio;
 
+        public double maxamount;
+        public double amount;
+        public double missionTime;
+
         // Constructor
         PersistentPropellant(Propellant p)
         {
