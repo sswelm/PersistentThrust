@@ -297,7 +297,7 @@ namespace PersistentThrust
                         // calculate total demand
                         var totalEnginesDemand = persistentEngines.Sum(m => m.pplist.Where(l => l.definition.id == pp.definition.id).Sum(l => l.normalizedDemand));
 
-                        var bufferedTotalEnginesDemand = totalEnginesDemand * 50;
+                        var bufferedTotalEnginesDemand = Math.Min(workPropellant.maxamount, totalEnginesDemand * 50);
 
                         if (bufferedTotalEnginesDemand > workPropellant.amount)
                             storageModifier = Math.Min(1,(demandIn / totalEnginesDemand) + ((workPropellant.amount / bufferedTotalEnginesDemand) * (demandIn / totalEnginesDemand)));
