@@ -226,7 +226,7 @@ namespace PersistentThrust
                 // Per propellant demand
                 for (var i = 0; i < pplist.Count; i++)
                 {
-                    demands[i] = pplist[i].Demand(demandMass);
+                    demands[i] = pplist[i].CalculateDemand(demandMass);
                 }
             }
             return demands;
@@ -294,7 +294,8 @@ namespace PersistentThrust
                         // update power buffer
                         buffersize = UpdateBuffer(workPropellant, demandIn);
 
-                        var totalEnginesDemand = demandIn * persistentEngines.Sum(m => m.pplist.Count(l => l.definition.id == pp.definition.id));
+                        // calculate total demand
+                        var totalEnginesDemand = persistentEngines.Sum(m => m.pplist.Where(l => l.definition.id == pp.definition.id).Sum(l => l.normalizedDemand));
 
                         var bufferedTotalEnginesDemand = totalEnginesDemand * 50;
 

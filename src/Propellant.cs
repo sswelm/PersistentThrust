@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices.WindowsRuntime;
 using UnityEngine;
 
 namespace PersistentThrust
@@ -15,6 +16,8 @@ namespace PersistentThrust
         public double density;
         public double ratio;
         public double normalizedRatio;
+
+        public double normalizedDemand;
 
         public double maxamount;
         public double amount;
@@ -30,9 +33,11 @@ namespace PersistentThrust
         }
 
         // Calculate demand of this propellant given the total demand of the engine
-        public double Demand(double demand)
+        public double CalculateDemand(double demand)
         {
-            return demand * normalizedRatio;
+            normalizedDemand = demand * normalizedRatio;
+
+            return normalizedDemand;
         }
 
         // Static methods
