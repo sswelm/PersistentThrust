@@ -23,8 +23,8 @@ namespace PersistentThrust
         public bool HasPersistentHeadingEnabled = true;
         [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiActiveUnfocused = true, guiName = "#LOC_PT_MaximizePersistentIsp"), UI_Toggle(disabledText = "#autoLOC_900890", enabledText = "#autoLOC_900889", affectSymCounterparts = UI_Scene.All)]
         public bool MaximizePersistentIsp = false;
-        [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiActiveUnfocused = true, guiName = "#LOC_PT_MaximizePersistentThrust"), UI_Toggle(disabledText = "#autoLOC_900890", enabledText = "#autoLOC_900889", affectSymCounterparts = UI_Scene.All)]
-        public bool MaximizePersistentThrust = false;
+        [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiActiveUnfocused = true, guiName = "#LOC_PT_MaximizePersistentPower"), UI_Toggle(disabledText = "#autoLOC_900890", enabledText = "#autoLOC_900889", affectSymCounterparts = UI_Scene.All)]
+        public bool MaximizePersistentPower = false;
 
         // Config Settings
         [KSPField]
@@ -301,7 +301,7 @@ namespace PersistentThrust
 
                         if (bufferedTotalEnginesDemand > workPropellant.amount)
                             storageModifier = Math.Min(1,(demandIn / totalEnginesDemand) + ((workPropellant.amount / bufferedTotalEnginesDemand) * (demandIn / totalEnginesDemand)));
-                        else if (!MaximizePersistentThrust && workPropellant.amount < buffersize)
+                        else if (!MaximizePersistentPower && workPropellant.amount < buffersize)
                             storageModifier = workPropellant.amount / buffersize;
                     }
 
