@@ -1,7 +1,7 @@
 using KSP.Localization;
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using UniLinq;
 using UnityEngine;
 
 namespace PersistentThrust
@@ -27,6 +27,8 @@ namespace PersistentThrust
         public bool MaximizePersistentPower = false;
 
         // Config Settings
+        [KSPField]
+        public bool useKerbalismInFlight = true;
         [KSPField]
         public bool useDynamicBuffer = false;
         [KSPField]
@@ -92,6 +94,8 @@ namespace PersistentThrust
         private Queue<float> throttleQueue = new Queue<float>();
         private Queue<float> ispQueue = new Queue<float>();
 
+        private Dictionary<string, double> availableResources = new Dictionary<string, double>();
+        private Dictionary<string, double> engineResourceChangeRequest = new Dictionary<string, double>();
 
         private List<PersistentEngine> persistentEngines;
 
@@ -245,6 +249,9 @@ namespace PersistentThrust
 
                     // update power buffer
                     buffersize = UpdateBuffer(availablePropellant, demands[i]);
+
+                    // update request
+                    RequestResource(pp, 0);
                 }
             }
         }
@@ -293,21 +300,26 @@ namespace PersistentThrust
                     if (pp.density == 0)
                     {
                         // find initial resource amount for propellant
-                        var workPropellant = LoadPropellantAvailability(pp);
+                        var availablePropellant = LoadPropellantAvailability(pp);
+
+                        double kerbalismAmount = 0;
+                        availableResources.TryGetValue(pp.definition.name, out kerbalismAmount);
+
+                        var currentPropellantAmount = useKerbalismInFlight ? kerbalismAmount : availablePropellant.amount;
 
                         // update power buffer
-                        buffersize = UpdateBuffer(workPropellant, demandIn);
+                        buffersize = UpdateBuffer(availablePropellant, demandIn);
 
-                        var bufferedTotalEnginesDemand = Math.Min(workPropellant.maxamount, workPropellant.totalEnginesDemand * 50);
+                        var bufferedTotalEnginesDemand = Math.Min(availablePropellant.maxamount, availablePropellant.totalEnginesDemand * 50);
 
-                        if (bufferedTotalEnginesDemand > workPropellant.amount)
-                            storageModifier = Math.Min(1,(demandIn / workPropellant.totalEnginesDemand) + ((workPropellant.amount / bufferedTotalEnginesDemand) * (demandIn / workPropellant.totalEnginesDemand)));
+                        if (bufferedTotalEnginesDemand > currentPropellantAmount)
+                            storageModifier = Math.Min(1,(demandIn / availablePropellant.totalEnginesDemand) + ((currentPropellantAmount / bufferedTotalEnginesDemand) * (demandIn / availablePropellant.totalEnginesDemand)));
                         
-                        if (!MaximizePersistentPower && workPropellant.amount < buffersize)
-                            storageModifier *= workPropellant.amount / buffersize;
+                        if (!MaximizePersistentPower && currentPropellantAmount < buffersize)
+                            storageModifier *= currentPropellantAmount / buffersize;
                     }
 
-                    var demandOut = IsInfinite(pp.propellant) ? demandIn : part.RequestResource(pp.definition.id, demandIn * storageModifier, pp.propellant.GetFlowMode(), true);
+                    var demandOut = IsInfinite(pp.propellant) ? demandIn : RequestResource(pp, demandIn * storageModifier, true);
 
                     // Test if resource depleted
                     // TODO test if resource partially depleted: demandOut < demands[i]
@@ -367,7 +379,7 @@ namespace PersistentThrust
                     if (pp.density == 0)
                         consumedPower = demandIn;
 
-                    var demandOut = IsInfinite(pp.propellant) ? demandIn : part.RequestResource(pp.definition.id, demandIn, pp.propellant.GetFlowMode(), false);
+                    var demandOut = IsInfinite(pp.propellant) ? demandIn : RequestResource(pp, demandIn, false);
                     demandsOut[i] = demandOut;
                 }
                 // Otherwise demand is 0
@@ -376,6 +388,34 @@ namespace PersistentThrust
             }
             // Return demand outputs
             return demandsOut;
+        }
+
+        private double RequestResource(PersistentPropellant propellant, double demand, bool simulate = false)
+        {
+            if (useKerbalismInFlight)
+            {
+                double currentAmount;
+                availableResources.TryGetValue(propellant.definition.name, out currentAmount);
+
+                double available = Math.Min(currentAmount, demand);
+
+                double updateAmount = Math.Max(0, currentAmount - demand);
+
+                if (simulate)
+                    availableResources[propellant.definition.name] = updateAmount;
+                else
+                {
+                    var demandPerSecond = demand / TimeWarp.fixedDeltaTime;
+
+                    double currentDemand;
+                    engineResourceChangeRequest.TryGetValue(propellant.definition.name, out currentDemand);
+                    engineResourceChangeRequest[propellant.definition.name] = currentDemand - demandPerSecond;
+                }
+
+                return available;
+            }
+            else
+                return part.RequestResource(propellant.definition.id, demand, propellant.propellant.GetFlowMode(), simulate);
         }
 
         public double UpdateBuffer(PersistentPropellant propellant, double baseSize)
@@ -452,6 +492,8 @@ namespace PersistentThrust
         public void FixedUpdate() // FixedUpdate is also called while not staged
         {
             if (this.vessel is null || !isEnabled) return;
+
+            engineResourceChangeRequest.Clear();
 
             if (vesselChangedSOICountdown > 0)
                 vesselChangedSOICountdown--;
@@ -548,6 +590,20 @@ namespace PersistentThrust
                     UpdateBuffers(fuelDemands);
                 }
             }
+        }
+
+        public virtual string ResourceUpdate(Dictionary<string, double> availableResources, List<KeyValuePair<string, double>> resourceChangeRequest)
+        {
+            this.availableResources = availableResources;
+
+            resourceChangeRequest.Clear();
+
+            foreach (var resourceRequest in engineResourceChangeRequest)
+            {
+                resourceChangeRequest.Add(new KeyValuePair<string, double>(resourceRequest.Key, resourceRequest.Value));
+            }
+
+            return part.partInfo.title;
         }
     }
 }
