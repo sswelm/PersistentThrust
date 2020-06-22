@@ -28,8 +28,6 @@ namespace PersistentThrust
 
         // Config Settings
         [KSPField]
-        public bool useKerbalismInFlight = true;
-        [KSPField]
         public bool useDynamicBuffer = false;
         [KSPField]
         public int queueLength = 2;
@@ -66,6 +64,7 @@ namespace PersistentThrust
         public bool warpToReal = false;                     // Are we transitioning from timewarp to reatime?
 
         public bool autoMaximizePersistentIsp;
+        public bool useKerbalismInFlight = false;
 
         public int vesselChangedSOICountdown = 0;
         public int missingPowerCountdown = 0;
@@ -586,8 +585,12 @@ namespace PersistentThrust
             }
         }
 
+        #region Kerbalism
+
         public virtual string ResourceUpdate(Dictionary<string, double> availableResources, List<KeyValuePair<string, double>> resourceChangeRequest)
         {
+            useKerbalismInFlight = true;
+
             this.availableResources = availableResources;
 
             resourceChangeRequest.Clear();
@@ -599,5 +602,7 @@ namespace PersistentThrust
 
             return part.partInfo.title;
         }
+
+        #endregion
     }
 }
