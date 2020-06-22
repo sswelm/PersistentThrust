@@ -43,13 +43,10 @@ namespace PersistentThrust
         public double minimumPropellantReqMetFactor = 0.2;
         [KSPField]
         public float headingTolerance = 0.001f;
-
-        // Flag whether to request massless resources
         [KSPField]
-        public bool RequestPropMassless = true;
-        // Flag whether to request resources with mass
+        public bool RequestPropMassless = true;             // Flag whether to request massless resources
         [KSPField]
-        public bool RequestPropMass = true;
+        public bool RequestPropMass = true;                 // Flag whether to request resources with mass
 
         public string powerEffectName;
         public string runningEffectName;
@@ -60,16 +57,13 @@ namespace PersistentThrust
         public ModuleEngines engine;
         public ModuleEnginesFX engineFX;
 
-        // Persistent values to use during timewarp
-        public float ThrottlePersistent = 0;
+        public float ThrottlePersistent = 0;                // Persistent values to use during timewarp
         public float IspPersistent = 0;
 
         public float propellantReqMetFactor;
-
-        // Flag if using PersistentEngine features
-        public bool IsPersistentEngine = false;
-        // Are we transitioning from timewarp to reatime?
-        public bool warpToReal = false;
+        
+        public bool IsPersistentEngine = false;             // Flag if using PersistentEngine features        
+        public bool warpToReal = false;                     // Are we transitioning from timewarp to reatime?
 
         public bool autoMaximizePersistentIsp;
 
@@ -333,7 +327,7 @@ namespace PersistentThrust
                         if (pp.propellant.resourceDef.density > 0)
                         {
                             // reset stabilize Queue when out of mass propellant
-                            if (propellantFoundRatio < 0.1)
+                            if (propellantFoundRatio < 1)
                                 propellantReqMetFactorQueue.Clear();
                         }
                         else
