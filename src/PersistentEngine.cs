@@ -27,7 +27,7 @@ namespace PersistentThrust
         public bool MaximizePersistentPower = false;
 
         // Config Settings
-        [KSPField]
+        [KSPField(guiActive =true)]
         public bool useDynamicBuffer = false;
         [KSPField]
         public int queueLength = 2;
@@ -50,9 +50,9 @@ namespace PersistentThrust
         public string runningEffectName;
 
         public double ratioHeadingVersusRequest;
-
-        [KSPField(guiActive = true)]
         public double demandMass;
+        [KSPField(guiActive = true)]
+        public double dynamicBufferSize;
 
         // Engine module on the same part
         public ModuleEngines engine;
@@ -476,7 +476,7 @@ namespace PersistentThrust
 
             var amountRatio = propellant.maxamount > 0 ? Math.Min(1, propellant.amount / propellant.maxamount) : 0;
 
-            var dynamicBufferSize = useDynamicBuffer ? requiredBufferSize : 0; 
+            dynamicBufferSize = useDynamicBuffer ? requiredBufferSize : 0; 
 
             var partresource = part.Resources[propellant.definition.name];
             if (partresource == null)
@@ -573,7 +573,7 @@ namespace PersistentThrust
                 if (!engine.propellants.Any(m => m.resourceDef.density == 0))
                 {
                     // Mass flow rate
-                    var massFlowRate = IspPersistent > 0 ? (engine.requestedThrottle * engine.maxThrust) / (engine.realIsp * PhysicsGlobals.GravitationalAcceleration) : 0;
+                    var massFlowRate = IspPersistent > 0 ?  (engine.requestedThrottle * engine.maxThrust) / (IspPersistent * PhysicsGlobals.GravitationalAcceleration): 0;
                     // Change in mass over time interval dT
                     var deltaMass = massFlowRate * TimeWarp.fixedDeltaTime;
                     // Resource demand from propellants with mass
@@ -585,10 +585,11 @@ namespace PersistentThrust
                     ApplyDemands(fuelDemands, ref propellantReqMetFactor);
 
                     // calculate maximum flow
-                    var maxFuelFlow = engine.maxThrust / (engine.realIsp * PhysicsGlobals.GravitationalAcceleration);
+                    var maxFuelFlow = IspPersistent > 0 ? engine.maxThrust / (IspPersistent * PhysicsGlobals.GravitationalAcceleration) : 0;
                     // adjust fuel flow 
-                    engine.maxFuelFlow = (float)(maxFuelFlow * propellantReqMetFactor);
-                    // update displayed maxum th
+                    if (maxFuelFlow > 0)
+                        engine.maxFuelFlow = (float)(maxFuelFlow * propellantReqMetFactor);
+                    // update displayed thrust and fx
                     finalThrust = engine.currentThrottle * engine.maxThrust * propellantReqMetFactor;
                 }
 
