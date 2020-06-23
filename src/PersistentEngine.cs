@@ -51,6 +51,9 @@ namespace PersistentThrust
 
         public double ratioHeadingVersusRequest;
 
+        [KSPField(guiActive = true)]
+        public double demandMass;
+
         // Engine module on the same part
         public ModuleEngines engine;
         public ModuleEnginesFX engineFX;
@@ -138,6 +141,9 @@ namespace PersistentThrust
         {
             if (engine == null) return;
 
+            if (engine.currentThrottle == 0 && engine.propellants.Any(m => m.resourceDef.density == 0))
+                UpdateFuel(pplist);
+
             // hide stock thrust
             engine.Fields["finalThrust"].guiActive = false;
             engine.Fields["realIsp"].guiActive = false;
@@ -199,6 +205,48 @@ namespace PersistentThrust
                 // Initialize density of propellant used in deltaV and mass calculations
                 densityAverage = pplist.AverageDensity();
             }
+        }
+
+        [KSPEvent(guiActive = true, guiActiveEditor = true, guiName = "UpdateFuel")]
+        public void UpdateFuelEvent()
+        {
+            UpdateFuel(pplist);
+        }
+
+        private void UpdateFuel(List<PersistentPropellant> pplist)
+        {
+            var akPropellants = new ConfigNode();
+
+            //Get the Ignition state, i.e. is the engine shutdown or activated
+            var ignitionState = engine.getIgnitionState;
+
+            engine.Shutdown();
+
+            foreach (var propellant in pplist)
+            {
+                if (propellant.density == 0)
+                    continue;
+
+                var propellantConfig = LoadPropellant(propellant.propellant.name, propellant.propellant.ratio);
+                akPropellants.AddNode(propellantConfig);
+            }
+
+            engine.Load(akPropellants);
+
+            if (ignitionState)
+                engine.Activate();
+        }
+
+        private ConfigNode LoadPropellant(string akName, float akRatio)
+        {
+            Debug.Log("[PersistenThrust]: LoadPropellant: " + akName + " " + akRatio);
+
+            var propellantNode = new ConfigNode().AddNode("PROPELLANT");
+            propellantNode.AddValue("name", akName);
+            propellantNode.AddValue("ratio", akRatio);
+            propellantNode.AddValue("DrawGauge", true);
+
+            return propellantNode;
         }
 
         void UpdatePersistentParameters()
@@ -385,6 +433,9 @@ namespace PersistentThrust
 
         private double RequestResource(PersistentPropellant propellant, double demand, bool simulate = false)
         {
+            if (propellant.density > 0 && !this.vessel.packed)
+                return demand;
+
             if (useKerbalismInFlight)
             {
                 double currentAmount;
@@ -516,6 +567,19 @@ namespace PersistentThrust
                 else
                     propellantReqMetFactorQueue.Clear();
 
+                if (!engine.propellants.Any(m => m.resourceDef.density == 0))
+                {
+                    // Calculated requested thrust
+                    var requestedThrust = engine.thrustPercentage * 0.01f * ThrottlePersistent * engine.maxThrust;
+                    var thrustUV = this.part.transform.up; // Thrust direction unit vector
+                    // Calculate deltaV vector & resource demand from propellants with mass
+                    var deltaVV = CalculateDeltaVV(this.vessel.totalMass, TimeWarp.fixedDeltaTime, requestedThrust, IspPersistent, thrustUV, out demandMass);
+                    // Calculate resource demands
+                    fuelDemands = CalculateDemands(demandMass);
+                    // Apply resource demands & test for resource depletion
+                    ApplyDemands(fuelDemands, ref propellantReqMetFactor);
+                }
+
                 UpdateBuffers(fuelDemands);
             }
             else
@@ -535,17 +599,14 @@ namespace PersistentThrust
                     }
                     // Calculated requested thrust
                     var requestedThrust = engine.thrustPercentage * 0.01f * ThrottlePersistent * engine.maxThrust;
-
                     var UT = Planetarium.GetUniversalTime(); // Universal time
                     var thrustUV = this.part.transform.up; // Thrust direction unit vector
-                    // Calculate deltaV vector & resource demand from propellants with mass
-                    double demandMass;
                     // Calculate deltaV vector & resource demand from propellants with mass
                     var deltaVV = CalculateDeltaVV(this.vessel.totalMass, TimeWarp.fixedDeltaTime, requestedThrust, IspPersistent, thrustUV, out demandMass);
                     // Calculate resource demands
                     fuelDemands = CalculateDemands(demandMass);
                     // Apply resource demands & test for resource depletion
-                    var demandsOut = ApplyDemands(fuelDemands, ref propellantReqMetFactor);
+                    ApplyDemands(fuelDemands, ref propellantReqMetFactor);
 
                     // Apply deltaV vector at UT & dT to orbit if resources not depleted
                     if (propellantReqMetFactor > 0)
