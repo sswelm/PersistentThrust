@@ -406,7 +406,7 @@ namespace PersistentThrust
             if (averagePropellantReqMetFactor < minimumPropellantReqMetFactor)
                 autoMaximizePersistentIsp = true;
 
-            finalPropellantReqMetFactor = (MaximizePersistentIsp || autoMaximizePersistentIsp) ? (float)averagePropellantReqMetFactor : (float)Math.Pow(averagePropellantReqMetFactor, fudgeExponent);
+            finalPropellantReqMetFactor = (!this.vessel.packed || MaximizePersistentIsp || autoMaximizePersistentIsp) ? (float)averagePropellantReqMetFactor : (float)Math.Pow(averagePropellantReqMetFactor, fudgeExponent);
 
             // secondly we can consume the resource based on propellant availability
             for (var i = 0; i < pplist.Count; i++)
