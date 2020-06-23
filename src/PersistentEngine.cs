@@ -150,7 +150,11 @@ namespace PersistentThrust
             engine.Fields["propellantReqMet"].guiActive = false;
 
             propellantReqMet = propellantReqMetFactor * 100;
-            realIsp = (this.vessel.packed && (MaximizePersistentIsp || autoMaximizePersistentIsp)) || ThrottlePersistent == 0 ? IspPersistent : IspPersistent * propellantReqMetFactor;
+            realIsp = !this.vessel.packed && !engine.propellants.Any(m => m.resourceDef.density == 0)
+                ? engine.realIsp 
+                : (this.vessel.packed && (MaximizePersistentIsp || autoMaximizePersistentIsp)) || ThrottlePersistent == 0 
+                        ? IspPersistent 
+                        : IspPersistent * propellantReqMetFactor;
 
             if (!IsPersistentEngine || !HasPersistentThrust) return;
 
@@ -547,8 +551,6 @@ namespace PersistentThrust
             {
                 finalThrust = engine.GetCurrentThrust();
 
-                UpdateFX(finalThrust);
-
                 // Update persistent thrust parameters if NOT transitioning from warp to realtime
                 if (!warpToReal)
                     UpdatePersistentParameters();
@@ -569,16 +571,27 @@ namespace PersistentThrust
 
                 if (!engine.propellants.Any(m => m.resourceDef.density == 0))
                 {
-                    // Calculated requested thrust
-                    var requestedThrust = engine.thrustPercentage * 0.01f * ThrottlePersistent * engine.maxThrust;
-                    var thrustUV = this.part.transform.up; // Thrust direction unit vector
-                    // Calculate deltaV vector & resource demand from propellants with mass
-                    var deltaVV = CalculateDeltaVV(this.vessel.totalMass, TimeWarp.fixedDeltaTime, requestedThrust, IspPersistent, thrustUV, out demandMass);
+                    // Mass flow rate
+                    var massFlowRate = IspPersistent > 0 ? (engine.requestedThrottle * engine.maxThrust) / (engine.realIsp * PhysicsGlobals.GravitationalAcceleration) : 0;
+                    // Change in mass over time interval dT
+                    var deltaMass = massFlowRate * TimeWarp.fixedDeltaTime;
+                    // Resource demand from propellants with mass
+                    demandMass = densityAverage > 0 ? deltaMass / densityAverage : 0;
+
                     // Calculate resource demands
                     fuelDemands = CalculateDemands(demandMass);
                     // Apply resource demands & test for resource depletion
                     ApplyDemands(fuelDemands, ref propellantReqMetFactor);
+
+                    // calculate maximum flow
+                    var maxFuelFlow = engine.maxThrust / (engine.realIsp * PhysicsGlobals.GravitationalAcceleration);
+                    // adjust fuel flow 
+                    engine.maxFuelFlow = (float)(maxFuelFlow * propellantReqMetFactor);
+                    // update displayed maxum th
+                    finalThrust = engine.maxThrust * propellantReqMetFactor;
                 }
+
+                UpdateFX(finalThrust);
 
                 UpdateBuffers(fuelDemands);
             }
