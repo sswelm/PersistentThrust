@@ -71,6 +71,7 @@ namespace PersistentThrust
 
         public int vesselChangedSOICountdown = 0;
         public int missingPowerCountdown = 0;
+        public int updateFuelCounter = 0;
 
         public double[] fuelDemands = new double[0];
 
@@ -588,7 +589,7 @@ namespace PersistentThrust
                     // adjust fuel flow 
                     engine.maxFuelFlow = (float)(maxFuelFlow * propellantReqMetFactor);
                     // update displayed maxum th
-                    finalThrust = engine.maxThrust * propellantReqMetFactor;
+                    finalThrust = engine.currentThrottle * engine.maxThrust * propellantReqMetFactor;
                 }
 
                 UpdateFX(finalThrust);
