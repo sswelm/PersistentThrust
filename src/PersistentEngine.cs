@@ -30,6 +30,8 @@ namespace PersistentThrust
         [KSPField]
         public bool useDynamicBuffer = false;
         [KSPField]
+        public bool processMasslessSeperately = true;
+        [KSPField]
         public int queueLength = 2;
         [KSPField]
         public double fudgeExponent = 0.27;
@@ -64,6 +66,7 @@ namespace PersistentThrust
         
         public bool IsPersistentEngine = false;             // Flag if using PersistentEngine features        
         public bool warpToReal = false;                     // Are we transitioning from timewarp to reatime?
+        public bool engineHasAnyMassLessPropellants;
 
         public bool autoMaximizePersistentIsp;
         public bool useKerbalismInFlight = false;
@@ -91,7 +94,7 @@ namespace PersistentThrust
         private Queue<float> ispQueue = new Queue<float>();
 
         private Dictionary<string, double> availableResources = new Dictionary<string, double>();
-        private Dictionary<string, double> engineResourceChangeRequest = new Dictionary<string, double>();
+        private Dictionary<string, double> kerbalismResourceChangeRequest = new Dictionary<string, double>();
 
         private List<PersistentEngine> persistentEngines;
 
@@ -141,8 +144,8 @@ namespace PersistentThrust
         {
             if (engine == null) return;
 
-            if (engine.currentThrottle == 0 && engine.propellants.Any(m => m.resourceDef.density == 0))
-                UpdateFuel(pplist);
+            if (processMasslessSeperately && engine.currentThrottle == 0 && engineHasAnyMassLessPropellants)
+                RemoveMasslessPropellantsFromEngine(pplist);
 
             // hide stock thrust
             engine.Fields["finalThrust"].guiActive = false;
@@ -211,13 +214,13 @@ namespace PersistentThrust
             }
         }
 
-        [KSPEvent(guiActive = true, guiActiveEditor = true, guiName = "UpdateFuel")]
-        public void UpdateFuelEvent()
-        {
-            UpdateFuel(pplist);
-        }
+        //[KSPEvent(guiActive = true, guiActiveEditor = true, guiName = "UpdateFuel")]
+        //public void UpdateFuelEvent()
+        //{
+        //    RemoveMasslessPropellantsFromEngine(pplist);
+        //}
 
-        private void UpdateFuel(List<PersistentPropellant> pplist)
+        private void RemoveMasslessPropellantsFromEngine(List<PersistentPropellant> pplist)
         {
             var akPropellants = new ConfigNode();
 
@@ -358,41 +361,36 @@ namespace PersistentThrust
                         var bufferedTotalEnginesDemand = Math.Min(availablePropellant.maxamount, availablePropellant.totalEnginesDemand * 50);
 
                         if (bufferedTotalEnginesDemand > currentPropellantAmount)
-                            storageModifier = Math.Min(1,(demandIn / availablePropellant.totalEnginesDemand) + ((currentPropellantAmount / bufferedTotalEnginesDemand) * (demandIn / availablePropellant.totalEnginesDemand)));
-                        
+                            storageModifier = Math.Min(1, (demandIn / availablePropellant.totalEnginesDemand) + ((currentPropellantAmount / bufferedTotalEnginesDemand) * (demandIn / availablePropellant.totalEnginesDemand)));
+
                         if (!MaximizePersistentPower && currentPropellantAmount < buffersize)
                             storageModifier *= currentPropellantAmount / buffersize;
                     }
 
                     var demandOut = IsInfinite(pp.propellant) ? demandIn : RequestResource(pp, demandIn * storageModifier, true);
 
-                    // Test if resource depleted
-                    // TODO test if resource partially depleted: demandOut < demands[i]
-                    // For the moment, just let the full deltaV for time segment dT be applied
-                    if (demandOut < demandIn && demandIn > 0)
-                    {
-                        var propellantFoundRatio =  demandOut / demandIn;
-                        if (propellantFoundRatio < overalPropellantReqMet)
-                            overalPropellantReqMet = propellantFoundRatio;
+                    var propellantFoundRatio = demandOut >= demandIn ? 1 : demandIn > 0 ? demandOut / demandIn : 0;
 
-                        if (pp.propellant.resourceDef.density > 0)
+                    if (propellantFoundRatio < overalPropellantReqMet)
+                        overalPropellantReqMet = propellantFoundRatio;
+
+                    if (pp.propellant.resourceDef.density > 0)
+                    {
+                        // reset stabilize Queue when out of mass propellant
+                        if (propellantFoundRatio < 1)
+                            propellantReqMetFactorQueue.Clear();
+                    }
+                    else
+                    {
+                        if (propellantFoundRatio == 0)
                         {
-                            // reset stabilize Queue when out of mass propellant
-                            if (propellantFoundRatio < 1)
+                            // reset stabilize Queue when out power for too long
+                            if (missingPowerCountdown <= 0)
                                 propellantReqMetFactorQueue.Clear();
+                            missingPowerCountdown--;
                         }
                         else
-                        {
-                            if (propellantFoundRatio == 0)
-                            {
-                                // reset stabilize Queue when out power for too long
-                                if (missingPowerCountdown <= 0)
-                                    propellantReqMetFactorQueue.Clear();
-                                missingPowerCountdown--;
-                            }
-                            else
-                                missingPowerCountdown = missingPowerCountdownSize;
-                        }
+                            missingPowerCountdown = missingPowerCountdownSize;
                     }
                 }
             }
@@ -456,8 +454,8 @@ namespace PersistentThrust
                     var demandPerSecond = demand / TimeWarp.fixedDeltaTime;
 
                     double currentDemand;
-                    engineResourceChangeRequest.TryGetValue(propellant.definition.name, out currentDemand);
-                    engineResourceChangeRequest[propellant.definition.name] = currentDemand - demandPerSecond;
+                    kerbalismResourceChangeRequest.TryGetValue(propellant.definition.name, out currentDemand);
+                    kerbalismResourceChangeRequest[propellant.definition.name] = currentDemand - demandPerSecond;
                 }
 
                 return available;
@@ -540,8 +538,11 @@ namespace PersistentThrust
         {
             if (propellantReqMetFactor > 0 && engine.currentThrottle > 0)
             {
-                missingPowerCountdown = missingPowerCountdownSize;
-                propellantReqMetFactorQueue.Enqueue(propellantReqMetFactor);
+                if (engineHasAnyMassLessPropellants)
+                    propellantReqMetFactorQueue.Enqueue(Math.Pow(propellantReqMetFactor, 1 / fudgeExponent));
+                else
+                    propellantReqMetFactorQueue.Enqueue(propellantReqMetFactor);
+
                 if (propellantReqMetFactorQueue.Count > 100)
                     propellantReqMetFactorQueue.Dequeue();
             }
@@ -554,7 +555,7 @@ namespace PersistentThrust
         {
             if (this.vessel is null || !isEnabled) return;
 
-            engineResourceChangeRequest.Clear();
+            kerbalismResourceChangeRequest.Clear();
 
             if (vesselChangedSOICountdown > 0)
                 vesselChangedSOICountdown--;
@@ -562,13 +563,15 @@ namespace PersistentThrust
             // Realtime mode
             if (!this.vessel.packed)
             {
+                engineHasAnyMassLessPropellants = engine.propellants.Any(m => m.resourceDef.density == 0);
+
                 // Update persistent thrust parameters if NOT transitioning from warp to realtime
                 if (!warpToReal)
                     UpdatePersistentParameters();
 
                 ratioHeadingVersusRequest = 0;
 
-                if (!engine.propellants.Any(m => m.resourceDef.density == 0))
+                if (!engineHasAnyMassLessPropellants)
                 {
                     // Mass flow rate
                     var massFlowRate = IspPersistent > 0 ?  (engine.requestedThrottle * engine.maxThrust) / (IspPersistent * PhysicsGlobals.GravitationalAcceleration): 0;
@@ -592,6 +595,8 @@ namespace PersistentThrust
                 }
                 else
                 {
+                    missingPowerCountdown = missingPowerCountdownSize;
+
                     propellantReqMetFactor = engine.propellantReqMet * 0.01f;
 
                     finalThrust = engine.GetCurrentThrust();
@@ -677,7 +682,7 @@ namespace PersistentThrust
 
             resourceChangeRequest.Clear();
 
-            foreach (var resourceRequest in engineResourceChangeRequest)
+            foreach (var resourceRequest in kerbalismResourceChangeRequest)
             {
                 resourceChangeRequest.Add(new KeyValuePair<string, double>(resourceRequest.Key, resourceRequest.Value));
             }
