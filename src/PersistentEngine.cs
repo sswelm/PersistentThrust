@@ -22,7 +22,7 @@ namespace PersistentThrust
         [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiActiveUnfocused = true, guiName = "#LOC_PT_PersistentHeading"), UI_Toggle(disabledText = "#autoLOC_900890", enabledText = "#autoLOC_900889", affectSymCounterparts = UI_Scene.All)]
         public bool HasPersistentHeadingEnabled = true;
         [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiActiveUnfocused = true, guiName = "#LOC_PT_MaximizePersistentIsp"), UI_Toggle(disabledText = "#autoLOC_900890", enabledText = "#autoLOC_900889", affectSymCounterparts = UI_Scene.All)]
-        public bool MaximizePersistentIsp = false;
+        public bool MaximizePersistentIsp = true;
         [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiActiveUnfocused = true, guiName = "#LOC_PT_MaximizePersistentPower"), UI_Toggle(disabledText = "#autoLOC_900890", enabledText = "#autoLOC_900889", affectSymCounterparts = UI_Scene.All)]
         public bool MaximizePersistentPower = false;
 
@@ -143,9 +143,6 @@ namespace PersistentThrust
         public override void OnUpdate()
         {
             if (engine == null) return;
-
-            if (processMasslessSeperately && engine.currentThrottle == 0 && engineHasAnyMassLessPropellants)
-                RemoveMasslessPropellantsFromEngine(pplist);
 
             // hide stock thrust
             engine.Fields["finalThrust"].guiActive = false;
@@ -555,6 +552,9 @@ namespace PersistentThrust
             if (!this.vessel.packed)
             {
                 engineHasAnyMassLessPropellants = engine.propellants.Any(m => m.resourceDef.density == 0);
+
+                if (processMasslessSeperately && engine.currentThrottle == 0 && engineHasAnyMassLessPropellants)
+                    RemoveMasslessPropellantsFromEngine(pplist);
 
                 // Update persistent thrust parameters if NOT transitioning from warp to realtime
                 if (!warpToReal)
