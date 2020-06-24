@@ -214,12 +214,6 @@ namespace PersistentThrust
             }
         }
 
-        //[KSPEvent(guiActive = true, guiActiveEditor = true, guiName = "UpdateFuel")]
-        //public void UpdateFuelEvent()
-        //{
-        //    RemoveMasslessPropellantsFromEngine(pplist);
-        //}
-
         private void RemoveMasslessPropellantsFromEngine(List<PersistentPropellant> pplist)
         {
             var akPropellants = new ConfigNode();
@@ -350,7 +344,7 @@ namespace PersistentThrust
                         // find initial resource amount for propellant
                         var availablePropellant = LoadPropellantAvailability(pp);
 
-                        double kerbalismAmount = 0;
+                        double kerbalismAmount;
                         availableResources.TryGetValue(pp.definition.name, out kerbalismAmount);
 
                         var currentPropellantAmount = useKerbalismInFlight ? kerbalismAmount : availablePropellant.amount;
@@ -380,18 +374,15 @@ namespace PersistentThrust
                         if (propellantFoundRatio < 1)
                             propellantReqMetFactorQueue.Clear();
                     }
-                    else
+                    else if (propellantFoundRatio == 0)
                     {
-                        if (propellantFoundRatio == 0)
-                        {
-                            // reset stabilize Queue when out power for too long
-                            if (missingPowerCountdown <= 0)
-                                propellantReqMetFactorQueue.Clear();
-                            missingPowerCountdown--;
-                        }
-                        else
-                            missingPowerCountdown = missingPowerCountdownSize;
+                        // reset stabilize Queue when out power for too long
+                        if (missingPowerCountdown <= 0)
+                            propellantReqMetFactorQueue.Clear();
+                        missingPowerCountdown--;
                     }
+                    else
+                        missingPowerCountdown = missingPowerCountdownSize;
                 }
             }
 
@@ -527,10 +518,10 @@ namespace PersistentThrust
 
             var exhaustRatio = (float)(engine.maxThrust > 0 ? currentThust / engine.maxThrust : 0);
 
-            if (!String.IsNullOrEmpty(powerEffectName))
+            if (!string.IsNullOrEmpty(powerEffectName))
                 part.Effect(powerEffectName, exhaustRatio);
 
-            if (!String.IsNullOrEmpty(runningEffectName))
+            if (!string.IsNullOrEmpty(runningEffectName))
                 part.Effect(runningEffectName, exhaustRatio);
         }
 
