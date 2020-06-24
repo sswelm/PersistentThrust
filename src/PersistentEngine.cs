@@ -27,7 +27,7 @@ namespace PersistentThrust
         public bool MaximizePersistentPower = false;
 
         // Config Settings
-        [KSPField(guiActive =true)]
+        [KSPField]
         public bool useDynamicBuffer = false;
         [KSPField]
         public int queueLength = 2;
@@ -51,7 +51,6 @@ namespace PersistentThrust
 
         public double ratioHeadingVersusRequest;
         public double demandMass;
-        [KSPField(guiActive = true)]
         public double dynamicBufferSize;
 
         // Engine module on the same part
@@ -537,6 +536,19 @@ namespace PersistentThrust
                 part.Effect(runningEffectName, exhaustRatio);
         }
 
+        private void UpdatePropellantReqMetFactorQueue()
+        {
+            if (propellantReqMetFactor > 0 && engine.currentThrottle > 0)
+            {
+                missingPowerCountdown = missingPowerCountdownSize;
+                propellantReqMetFactorQueue.Enqueue(propellantReqMetFactor);
+                if (propellantReqMetFactorQueue.Count > 100)
+                    propellantReqMetFactorQueue.Dequeue();
+            }
+            else
+                propellantReqMetFactorQueue.Clear();
+        }
+
         // Physics update
         public void FixedUpdate() // FixedUpdate is also called while not staged
         {
@@ -550,25 +562,11 @@ namespace PersistentThrust
             // Realtime mode
             if (!this.vessel.packed)
             {
-                finalThrust = engine.GetCurrentThrust();
-
                 // Update persistent thrust parameters if NOT transitioning from warp to realtime
                 if (!warpToReal)
                     UpdatePersistentParameters();
 
                 ratioHeadingVersusRequest = 0;
-
-                propellantReqMetFactor = engine.propellantReqMet * 0.01f;
-
-                if (propellantReqMet > 0)
-                {
-                    missingPowerCountdown = missingPowerCountdownSize;
-                    propellantReqMetFactorQueue.Enqueue(Math.Pow(propellantReqMetFactor, 1/fudgeExponent));
-                    if (propellantReqMetFactorQueue.Count > 100)
-                        propellantReqMetFactorQueue.Dequeue();
-                }
-                else
-                    propellantReqMetFactorQueue.Clear();
 
                 if (!engine.propellants.Any(m => m.resourceDef.density == 0))
                 {
@@ -592,6 +590,14 @@ namespace PersistentThrust
                     // update displayed thrust and fx
                     finalThrust = engine.currentThrottle * engine.maxThrust * propellantReqMetFactor;
                 }
+                else
+                {
+                    propellantReqMetFactor = engine.propellantReqMet * 0.01f;
+
+                    finalThrust = engine.GetCurrentThrust();
+                }
+
+                UpdatePropellantReqMetFactorQueue();
 
                 UpdateFX(finalThrust);
 
