@@ -27,6 +27,8 @@ namespace PersistentThrust
         public bool MaximizePersistentPower = false;
 
         // Config Settings
+        [KSPField(guiActive = true)]
+        public string throttleAnimationName;
         [KSPField]
         public bool returnToRealtimeAfterKeyPressed = true;
         [KSPField]
@@ -60,6 +62,7 @@ namespace PersistentThrust
         // Engine module on the same part
         public ModuleEngines engine;
         public ModuleEnginesFX engineFX;
+        public AnimationState[] throttleAnimationState;
 
         public float ThrottlePersistent = 0;                // Persistent values to use during timewarp
         public float IspPersistent = 0;
@@ -103,6 +106,9 @@ namespace PersistentThrust
         public override void OnStart(PartModule.StartState state)
         {
             if (state == StartState.Editor) return;
+
+            if (!String.IsNullOrEmpty(throttleAnimationName))
+                throttleAnimationState = SetUpAnimation(throttleAnimationName, this.part);
 
             persistentEngines = vessel.FindPartModulesImplementing<PersistentEngine>();
         }
@@ -596,12 +602,16 @@ namespace PersistentThrust
 
                 UpdateFX(finalThrust);
 
+                SetAnimationRatio(finalThrust / engine.maxThrust, throttleAnimationState);
+
                 UpdateBuffers(fuelDemands);
             }
             else
             {
                 if (ThrottlePersistent > 0 && IspPersistent > 0 && IsPersistentEngine && HasPersistentThrust)
                 {
+                    SetAnimationRatio(ThrottlePersistent, throttleAnimationState);
+
                     warpToReal = true; // Set to true for transition to realtime
 
                     if (vessel.IsControllable && HasPersistentHeadingEnabled)
@@ -652,6 +662,8 @@ namespace PersistentThrust
                 }
                 else
                 {
+                    SetAnimationRatio(0, throttleAnimationState);
+
                     finalThrust = 0;
                     if (vessel.IsControllable && HasPersistentHeadingEnabled)
                         ratioHeadingVersusRequest = engine.PersistHeading(TimeWarp.fixedDeltaTime, headingTolerance, vesselChangedSOICountdown > 0);
@@ -659,6 +671,31 @@ namespace PersistentThrust
 
                     UpdateBuffers(fuelDemands);
                 }
+            }
+        }
+
+        public static AnimationState[] SetUpAnimation(string animationName, Part part)
+        {
+            var states = new List<AnimationState>();
+            foreach (var animation in part.FindModelAnimators(animationName))
+            {
+                var animationState = animation[animationName];
+                animationState.speed = 0;
+                animationState.enabled = true;
+                animationState.wrapMode = WrapMode.ClampForever;
+                animation.Blend(animationName);
+                states.Add(animationState);
+            }
+            return states.ToArray();
+        }
+
+        public static void SetAnimationRatio(float ratio, AnimationState[] animationState)
+        {
+            if (animationState == null) return;
+
+            foreach (AnimationState anim in animationState)
+            {
+                anim.normalizedTime = ratio;
             }
         }
 
