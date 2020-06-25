@@ -28,6 +28,8 @@ namespace PersistentThrust
 
         // Config Settings
         [KSPField]
+        public bool returnToRealtimeAfterKeyPressed = true;
+        [KSPField]
         public bool useDynamicBuffer = false;
         [KSPField]
         public bool processMasslessSeperately = true;
@@ -169,27 +171,30 @@ namespace PersistentThrust
             {
                 // stop engines when X pressed
                 if (Input.GetKeyDown(KeyCode.X))
-                    SetThrotleAndReturnToRealtime(0);
+                    SetThrotle(0);
                 // full throtle when Z pressed
                 else if (Input.GetKeyDown(KeyCode.Z))
-                    SetThrotleAndReturnToRealtime(1);
+                    SetThrotle(1);
                 // increase throtle when Shift pressed
                 else if (Input.GetKeyDown(KeyCode.LeftShift))
-                    SetThrotleAndReturnToRealtime(Mathf.Min(1, ThrottlePersistent + 0.01f));
+                    SetThrotle(Mathf.Min(1, ThrottlePersistent + 0.01f));
                 // decrease throtle when Ctrl pressed
                 else if (Input.GetKeyDown(KeyCode.LeftControl))
-                    SetThrotleAndReturnToRealtime(Mathf.Max(0, ThrottlePersistent - 0.01f));
+                    SetThrotle(Mathf.Max(0, ThrottlePersistent - 0.01f));
             }
             else
                 TimeWarp.GThreshold = 12f;
         }
 
-        private void SetThrotleAndReturnToRealtime(float newsetting)
+        private void SetThrotle(float newsetting)
         {
             vessel.ctrlState.mainThrottle = newsetting;
 
-            // Return to realtime
-            TimeWarp.SetRate(0, true);
+            if (returnToRealtimeAfterKeyPressed)
+            {
+                // Return to realtime
+                TimeWarp.SetRate(0, true);
+            }
         }
 
         // Initialization
@@ -341,8 +346,7 @@ namespace PersistentThrust
                         // find initial resource amount for propellant
                         var availablePropellant = LoadPropellantAvailability(pp);
 
-                        double kerbalismAmount;
-                        availableResources.TryGetValue(pp.definition.name, out kerbalismAmount);
+                        availableResources.TryGetValue(pp.definition.name, out double kerbalismAmount);
 
                         var currentPropellantAmount = useKerbalismInFlight ? kerbalismAmount : availablePropellant.amount;
 
@@ -428,11 +432,9 @@ namespace PersistentThrust
 
             if (useKerbalismInFlight)
             {
-                double currentAmount;
-                availableResources.TryGetValue(propellant.definition.name, out currentAmount);
+                availableResources.TryGetValue(propellant.definition.name, out double currentAmount);
 
                 double available = Math.Min(currentAmount, demand);
-
                 double updateAmount = Math.Max(0, currentAmount - demand);
 
                 if (simulate)
@@ -441,8 +443,7 @@ namespace PersistentThrust
                 {
                     var demandPerSecond = demand / TimeWarp.fixedDeltaTime;
 
-                    double currentDemand;
-                    kerbalismResourceChangeRequest.TryGetValue(propellant.definition.name, out currentDemand);
+                    kerbalismResourceChangeRequest.TryGetValue(propellant.definition.name, out double currentDemand);
                     kerbalismResourceChangeRequest[propellant.definition.name] = currentDemand - demandPerSecond;
                 }
 
