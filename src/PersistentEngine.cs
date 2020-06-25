@@ -587,8 +587,6 @@ namespace PersistentThrust
                 }
                 else
                 {
-                    missingPowerCountdown = missingPowerCountdownSize;
-
                     propellantReqMetFactor = engine.propellantReqMet * 0.01f;
 
                     finalThrust = engine.GetCurrentThrust();
