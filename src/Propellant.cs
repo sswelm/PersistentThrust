@@ -1,9 +1,4 @@
-using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
-//using System.Runtime.InteropServices.WindowsRuntime;
-using UnityEngine;
 
 namespace PersistentThrust
 {
@@ -93,7 +88,7 @@ namespace PersistentThrust
             foreach (var pp in pplist)
             {
                 // If multiple resources, put | between them
-                if (title != String.Empty)
+                if (title != string.Empty)
                 {
                     title += "|";
                 }
@@ -112,7 +107,7 @@ namespace PersistentThrust
             foreach (var pp in pplist)
             {
                 // If multiple resources, put | between them
-                if (amounts != String.Empty)
+                if (amounts != string.Empty)
                     amounts += "|";
 
                 // Add current amount * dT
