@@ -38,7 +38,7 @@ namespace PersistentThrust
         [KSPField]
         public int queueLength = 2;
         [KSPField]
-        public double fudgeExponent = 0.27;
+        public float fudgeExponent = 0.27f;
         [KSPField]
         public int missingPowerCountdownSize = 10;
         [KSPField]
@@ -95,7 +95,7 @@ namespace PersistentThrust
 
         public double consumedPower;
 
-        private Queue<double> propellantReqMetFactorQueue = new Queue<double>();
+        private Queue<float> propellantReqMetFactorQueue = new Queue<float>();
 
         private Queue<float> throttleQueue = new Queue<float>();
         private Queue<float> ispQueue = new Queue<float>();
@@ -363,7 +363,7 @@ namespace PersistentThrust
 
                         var bufferedTotalEnginesDemand = Math.Min(availablePropellant.maxamount, availablePropellant.totalEnginesDemand * buffersizeMult);
 
-                        if (bufferedTotalEnginesDemand > currentPropellantAmount)
+                        if (bufferedTotalEnginesDemand > currentPropellantAmount && availablePropellant.totalEnginesDemand > 0)
                             storageModifier = Math.Min(1, (demandIn / availablePropellant.totalEnginesDemand) + ((currentPropellantAmount / bufferedTotalEnginesDemand) * (demandIn / availablePropellant.totalEnginesDemand)));
 
                         if (!MaximizePersistentPower && currentPropellantAmount < buffersize)
@@ -396,7 +396,7 @@ namespace PersistentThrust
             }
 
             // attempt to stabilize thrust output with First In Last Out Queue 
-            propellantReqMetFactorQueue.Enqueue(overalPropellantReqMet);
+            propellantReqMetFactorQueue.Enqueue((float)overalPropellantReqMet);
             if (propellantReqMetFactorQueue.Count() > propellantReqMetFactorQueueSize)
                 propellantReqMetFactorQueue.Dequeue();
             var averagePropellantReqMetFactor = propellantReqMetFactorQueue.Average();
@@ -404,7 +404,7 @@ namespace PersistentThrust
             if (averagePropellantReqMetFactor < minimumPropellantReqMetFactor)
                 autoMaximizePersistentIsp = true;
 
-            finalPropellantReqMetFactor = (!vessel.packed || MaximizePersistentIsp || autoMaximizePersistentIsp) ? (float)averagePropellantReqMetFactor : (float)Math.Pow(averagePropellantReqMetFactor, fudgeExponent);
+            finalPropellantReqMetFactor = (!vessel.packed || MaximizePersistentIsp || autoMaximizePersistentIsp) ? averagePropellantReqMetFactor : Mathf.Pow(averagePropellantReqMetFactor, fudgeExponent);
 
             // secondly we can consume the resource based on propellant availability
             for (var i = 0; i < pplist.Count; i++)
@@ -538,7 +538,7 @@ namespace PersistentThrust
             if (propellantReqMetFactor > 0 && engine.currentThrottle > 0)
             {
                 if (engineHasAnyMassLessPropellants)
-                    propellantReqMetFactorQueue.Enqueue(Math.Pow(propellantReqMetFactor, 1 / fudgeExponent));
+                    propellantReqMetFactorQueue.Enqueue(Mathf.Pow(propellantReqMetFactor, 1 / fudgeExponent));
                 else
                     propellantReqMetFactorQueue.Enqueue(propellantReqMetFactor);
 
@@ -606,7 +606,7 @@ namespace PersistentThrust
 
                 UpdateFX(finalThrust);
 
-                SetAnimationRatio(finalThrust / engine.maxThrust, throttleAnimationState);
+                SetAnimationRatio(engine.maxThrust > 0 ? finalThrust / engine.maxThrust: 0, throttleAnimationState);
 
                 UpdateBuffers(fuelDemands);
             }
