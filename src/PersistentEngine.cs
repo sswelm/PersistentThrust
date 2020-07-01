@@ -12,10 +12,11 @@ namespace PersistentThrust
         // GUI
         [KSPField(guiFormat = "F1", guiActive = true, guiName = "#autoLOC_6001378", guiUnits = "#autoLOC_7001400")]
         public float realIsp;
-        [KSPField(guiFormat = "F6", guiActive = true, guiName = "#autoLOC_6001377", guiUnits = "#autoLOC_7001408")]
-        public float finalThrust;
+        [KSPField(guiFormat = "F6", guiActive = true, guiName = "#autoLOC_6001377")]
+        public string thrust_d;
         [KSPField(guiFormat = "F2", guiActive = true, guiName = "#autoLOC_6001376", guiUnits = "%")]
         public float propellantReqMet;
+        public float finalThrust;
 
         // Enable/disable persistent engine features
         [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiActiveUnfocused = true, guiName = "#LOC_PT_PersistentThrust"), UI_Toggle(disabledText = "#autoLOC_900890", enabledText = "#autoLOC_900889", affectSymCounterparts = UI_Scene.All)]
@@ -628,6 +629,8 @@ namespace PersistentThrust
 
                 UpdateFX(finalThrust);
 
+                thrust_d = Utils.FormatThrust(finalThrust);
+
                 SetAnimationRatio(engine.maxThrust > 0 ? finalThrust / engine.maxThrust: 0, throttleAnimationState);
 
                 UpdateBuffers(fuelDemands);
@@ -685,6 +688,7 @@ namespace PersistentThrust
                         finalThrust = 0;
 
                     UpdateFX(finalThrust);
+                    thrust_d = Utils.FormatThrust(finalThrust);
                 }
                 else
                 {
