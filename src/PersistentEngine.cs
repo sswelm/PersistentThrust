@@ -112,7 +112,10 @@ namespace PersistentThrust
             if (state == StartState.Editor) return;
 
             if (!string.IsNullOrEmpty(throttleAnimationName))
+            {
                 throttleAnimationState = SetUpAnimation(throttleAnimationName, this.part);
+                SetAnimationRatio(ThrottlePersistent, throttleAnimationState);
+            }
 
             persistentEngines = vessel.FindPartModulesImplementing<PersistentEngine>();
         }
@@ -202,19 +205,20 @@ namespace PersistentThrust
             engine.requestedThrottle = newsetting;
             engine.currentThrottle = newsetting;
 
-            if (returnToRealTime)
-            {
-                // Return to realtime
-                TimeWarp.SetRate(0, true);
+            if (!returnToRealTime) return;
 
-                if (RealFuelsAssembly != null && newsetting > 0)
-                {
-                    FieldInfo ignitedInfo = engine.GetType().GetField("ignited",
-                        BindingFlags.NonPublic | BindingFlags.Instance);
+            // Return to realtime
+            TimeWarp.SetRate(0, true);
 
-                    ignitedInfo.SetValue(engine, true);
-                }
-            }
+            if (RealFuelsAssembly == null || !(newsetting > 0)) return;
+
+            FieldInfo ignitedInfo = engine.GetType().GetField("ignited",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+
+            if (ignitedInfo == null)
+                return;
+
+            ignitedInfo.SetValue(engine, true);
         }
 
         // Check if RealFuels is installed 
@@ -297,13 +301,12 @@ namespace PersistentThrust
         public virtual double[] CalculateDemands(double demandMass)
         {
             var demands = new double[pplist.Count];
-            if (demandMass > 0)
+            if (!(demandMass > 0)) return demands;
+
+            // Per propellant demand
+            for (var i = 0; i < pplist.Count; i++)
             {
-                // Per propellant demand
-                for (var i = 0; i < pplist.Count; i++)
-                {
-                    demands[i] = pplist[i].CalculateDemand(demandMass);
-                }
+                demands[i] = pplist[i].CalculateDemand(demandMass);
             }
             return demands;
         }
@@ -351,7 +354,7 @@ namespace PersistentThrust
         // Updated depleted boolean flag if resource request failed
         public virtual double[] ApplyDemands(double[] demands, ref float finalPropellantReqMetFactor)
         {
-            double overalPropellantReqMet = 1;
+            double overallPropellantReqMet = 1;
 
             autoMaximizePersistentIsp = false;
 
@@ -364,59 +367,58 @@ namespace PersistentThrust
                 // Request resources if:
                 // - resource has mass & request mass flag true
                 // - resource massless & request massless flag true
-                if ((pp.density > 0 && RequestPropMass) || (pp.density == 0 && RequestPropMassless))
+                if ((!(pp.density > 0) || !RequestPropMass) && (pp.density != 0 || !RequestPropMassless)) continue;
+
+                var demandIn = demands[i];
+                var storageModifier = 1.0;
+
+                if (pp.density == 0)
                 {
-                    var demandIn = demands[i];
-                    var storageModifier = 1.0;
+                    // find initial resource amount for propellant
+                    var availablePropellant = LoadPropellantAvailability(pp);
 
-                    if (pp.density == 0)
-                    {
-                        // find initial resource amount for propellant
-                        var availablePropellant = LoadPropellantAvailability(pp);
+                    availableResources.TryGetValue(pp.definition.name, out double kerbalismAmount);
 
-                        availableResources.TryGetValue(pp.definition.name, out double kerbalismAmount);
+                    var currentPropellantAmount = useKerbalismInFlight ? kerbalismAmount : availablePropellant.amount;
 
-                        var currentPropellantAmount = useKerbalismInFlight ? kerbalismAmount : availablePropellant.amount;
+                    // update power buffer
+                    buffersize = UpdateBuffer(availablePropellant, demandIn);
 
-                        // update power buffer
-                        buffersize = UpdateBuffer(availablePropellant, demandIn);
+                    var bufferedTotalEnginesDemand = Math.Min(availablePropellant.maxamount, availablePropellant.totalEnginesDemand * buffersizeMult);
 
-                        var bufferedTotalEnginesDemand = Math.Min(availablePropellant.maxamount, availablePropellant.totalEnginesDemand * buffersizeMult);
+                    if (bufferedTotalEnginesDemand > currentPropellantAmount && availablePropellant.totalEnginesDemand > 0)
+                        storageModifier = Math.Min(1, (demandIn / availablePropellant.totalEnginesDemand) + ((currentPropellantAmount / bufferedTotalEnginesDemand) * (demandIn / availablePropellant.totalEnginesDemand)));
 
-                        if (bufferedTotalEnginesDemand > currentPropellantAmount && availablePropellant.totalEnginesDemand > 0)
-                            storageModifier = Math.Min(1, (demandIn / availablePropellant.totalEnginesDemand) + ((currentPropellantAmount / bufferedTotalEnginesDemand) * (demandIn / availablePropellant.totalEnginesDemand)));
-
-                        if (!MaximizePersistentPower && currentPropellantAmount < buffersize)
-                            storageModifier *= currentPropellantAmount / buffersize;
-                    }
-
-                    var demandOut = IsInfinite(pp.propellant) ? demandIn : RequestResource(pp, demandIn * storageModifier, true);
-
-                    var propellantFoundRatio = demandOut >= demandIn ? 1 : demandIn > 0 ? demandOut / demandIn : 0;
-
-                    if (propellantFoundRatio < overalPropellantReqMet)
-                        overalPropellantReqMet = propellantFoundRatio;
-
-                    if (pp.propellant.resourceDef.density > 0)
-                    {
-                        // reset stabilize Queue when out of mass propellant
-                        if (propellantFoundRatio < 1)
-                            propellantReqMetFactorQueue.Clear();
-                    }
-                    else if (propellantFoundRatio == 0)
-                    {
-                        // reset stabilize Queue when out power for too long
-                        if (missingPowerCountdown <= 0)
-                            propellantReqMetFactorQueue.Clear();
-                        missingPowerCountdown--;
-                    }
-                    else
-                        missingPowerCountdown = missingPowerCountdownSize;
+                    if (!MaximizePersistentPower && currentPropellantAmount < buffersize)
+                        storageModifier *= currentPropellantAmount / buffersize;
                 }
+
+                var demandOut = IsInfinite(pp.propellant) ? demandIn : RequestResource(pp, demandIn * storageModifier, true);
+
+                var propellantFoundRatio = demandOut >= demandIn ? 1 : demandIn > 0 ? demandOut / demandIn : 0;
+
+                if (propellantFoundRatio < overallPropellantReqMet)
+                    overallPropellantReqMet = propellantFoundRatio;
+
+                if (pp.propellant.resourceDef.density > 0)
+                {
+                    // reset stabilize Queue when out of mass propellant
+                    if (propellantFoundRatio < 1)
+                        propellantReqMetFactorQueue.Clear();
+                }
+                else if (propellantFoundRatio == 0)
+                {
+                    // reset stabilize Queue when out power for too long
+                    if (missingPowerCountdown <= 0)
+                        propellantReqMetFactorQueue.Clear();
+                    missingPowerCountdown--;
+                }
+                else
+                    missingPowerCountdown = missingPowerCountdownSize;
             }
 
             // attempt to stabilize thrust output with First In Last Out Queue 
-            propellantReqMetFactorQueue.Enqueue((float)overalPropellantReqMet);
+            propellantReqMetFactorQueue.Enqueue((float)overallPropellantReqMet);
             if (propellantReqMetFactorQueue.Count() > propellantReqMetFactorQueueSize)
                 propellantReqMetFactorQueue.Dequeue();
             var averagePropellantReqMetFactor = propellantReqMetFactorQueue.Average();
@@ -437,7 +439,7 @@ namespace PersistentThrust
                 {
                     var demandIn = pp.density > 0 
                         ? ((MaximizePersistentIsp || autoMaximizePersistentIsp) ? averagePropellantReqMetFactor * demands[i] :  demands[i]) 
-                        : overalPropellantReqMet * demands[i];
+                        : overallPropellantReqMet * demands[i];
 
                     if (pp.density == 0)
                         consumedPower = demandIn;
@@ -584,7 +586,7 @@ namespace PersistentThrust
             {
                 engineHasAnyMassLessPropellants = engine.propellants.Any(m => m.resourceDef.density == 0);
 
-                if (processMasslessSeperately && engine.requestedThrottle == 0 && engineHasAnyMassLessPropellants)
+                if (processMasslessSeperately && engine.currentThrottle == 0 && engineHasAnyMassLessPropellants)
                     RemoveMasslessPropellantsFromEngine(pplist);
 
                 // Update persistent thrust parameters if NOT transitioning from warp to realtime
@@ -596,7 +598,7 @@ namespace PersistentThrust
                 if (!engineHasAnyMassLessPropellants)
                 {
                     // Mass flow rate
-                    var massFlowRate = IspPersistent > 0 ?  (engine.requestedThrottle * engine.maxThrust) / (IspPersistent * PhysicsGlobals.GravitationalAcceleration): 0;
+                    var massFlowRate = IspPersistent > 0 ?  (engine.currentThrottle * engine.maxThrust) / (IspPersistent * PhysicsGlobals.GravitationalAcceleration): 0;
                     // Change in mass over time interval dT
                     var deltaMass = massFlowRate * TimeWarp.fixedDeltaTime;
                     // Resource demand from propellants with mass
