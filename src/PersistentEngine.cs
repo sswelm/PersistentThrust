@@ -67,21 +67,20 @@ namespace PersistentThrust
         public ModuleEnginesFX engineFX;
         public AnimationState[] throttleAnimationState;
 
-        public float ThrottlePersistent = 0;                // Persistent values to use during timewarp
-        public float IspPersistent = 0;
+        public float ThrottlePersistent;                // Persistent values to use during timewarp
+        public float IspPersistent;
 
         public float propellantReqMetFactor;
         
-        public bool IsPersistentEngine = false;             // Flag if using PersistentEngine features        
-        public bool warpToReal = false;                     // Are we transitioning from timewarp to reatime?
+        public bool IsPersistentEngine;             // Flag if using PersistentEngine features        
+        public bool warpToReal;                     // Are we transitioning from timewarp to reatime?
         public bool engineHasAnyMassLessPropellants;
 
         public bool autoMaximizePersistentIsp;
-        public bool useKerbalismInFlight = false;
+        public bool useKerbalismInFlight;
 
-        public int vesselChangedSOICountdown = 0;
-        public int missingPowerCountdown = 0;
-        public int updateFuelCounter = 0;
+        public int vesselChangedSOICountdown;
+        public int missingPowerCountdown;
 
         public double[] fuelDemands = new double[0];
 
@@ -114,7 +113,6 @@ namespace PersistentThrust
             if (!string.IsNullOrEmpty(throttleAnimationName))
             {
                 throttleAnimationState = SetUpAnimation(throttleAnimationName, this.part);
-                SetAnimationRatio(ThrottlePersistent, throttleAnimationState);
             }
 
             persistentEngines = vessel.FindPartModulesImplementing<PersistentEngine>();
@@ -128,11 +126,11 @@ namespace PersistentThrust
         // Make "engine" and "engineFX" fields refer to the ModuleEngines and ModuleEnginesFX modules in part.Modules
         void FindModuleEngines()
         {
-            foreach (PartModule pm in part.Modules)
+            foreach (var pm in part.Modules)
             {
-                if (pm is ModuleEngines)
+                if (pm is ModuleEngines engines)
                 {
-                    engine = pm as ModuleEngines;
+                    engine = engines;
                     IsPersistentEngine = true;
                 }
 
@@ -140,18 +138,25 @@ namespace PersistentThrust
                     engineFX = pm as ModuleEnginesFX;
             }
 
-            if (engineFX != null)
-            {
-                if (string.IsNullOrEmpty(powerEffectName))
-                    powerEffectName = engineFX.powerEffectName;
+            if (engineFX == null) return;
 
-                engineFX.powerEffectName = "";
+            if (string.IsNullOrEmpty(powerEffectName))
+                powerEffectName = engineFX.powerEffectName;
 
-                if (string.IsNullOrEmpty(runningEffectName))
-                    runningEffectName = engineFX.runningEffectName;
+            engineFX.powerEffectName = "";
 
-                engineFX.runningEffectName = "";
-            }
+            if (string.IsNullOrEmpty(runningEffectName))
+                runningEffectName = engineFX.runningEffectName;
+
+            engineFX.runningEffectName = "";
+        }
+
+        public void Update()
+        {
+            if (!HighLogic.LoadedSceneIsEditor) return;
+
+            SetAnimationRatio(0, throttleAnimationState);
+            UpdateFX(0);
         }
 
         // Update is called durring refresh frame, which can be less frequent than FixedUpdate which is called every processing frame
@@ -719,7 +724,7 @@ namespace PersistentThrust
         {
             if (animationState == null) return;
 
-            foreach (AnimationState anim in animationState)
+            foreach (var anim in animationState)
             {
                 anim.normalizedTime = ratio;
             }
