@@ -1,6 +1,7 @@
 using KSP.Localization;
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using UniLinq;
 using UnityEngine;
 
@@ -102,6 +103,7 @@ namespace PersistentThrust
 
         private Dictionary<string, double> availableResources = new Dictionary<string, double>();
         private Dictionary<string, double> kerbalismResourceChangeRequest = new Dictionary<string, double>();
+        private static Assembly RealFuelsAssembly = null;
 
         private List<PersistentEngine> persistentEngines;
 
@@ -171,7 +173,7 @@ namespace PersistentThrust
             // When transitioning from timewarp to real update throttle
             if (warpToReal)
             {
-                vessel.ctrlState.mainThrottle = ThrottlePersistent;
+                SetThrottle(ThrottlePersistent, true);
                 warpToReal = false;
             }
 
@@ -179,30 +181,48 @@ namespace PersistentThrust
             {
                 // stop engines when X pressed
                 if (Input.GetKeyDown(KeyCode.X))
-                    SetThrotle(0);
+                    SetThrottle(0, returnToRealtimeAfterKeyPressed);
                 // full throtle when Z pressed
                 else if (Input.GetKeyDown(KeyCode.Z))
-                    SetThrotle(1);
+                    SetThrottle(1, returnToRealtimeAfterKeyPressed);
                 // increase throtle when Shift pressed
                 else if (Input.GetKeyDown(KeyCode.LeftShift))
-                    SetThrotle(Mathf.Min(1, ThrottlePersistent + 0.01f));
+                    SetThrottle(Mathf.Min(1, ThrottlePersistent + 0.01f), returnToRealtimeAfterKeyPressed);
                 // decrease throtle when Ctrl pressed
                 else if (Input.GetKeyDown(KeyCode.LeftControl))
-                    SetThrotle(Mathf.Max(0, ThrottlePersistent - 0.01f));
+                    SetThrottle(Mathf.Max(0, ThrottlePersistent - 0.01f), returnToRealtimeAfterKeyPressed);
             }
             else
                 TimeWarp.GThreshold = 12f;
         }
 
-        private void SetThrotle(float newsetting)
+        private void SetThrottle(float newsetting, bool returnToRealTime)
         {
             vessel.ctrlState.mainThrottle = newsetting;
+            engine.requestedThrottle = newsetting;
+            engine.currentThrottle = newsetting;
 
-            if (returnToRealtimeAfterKeyPressed)
+            if (returnToRealTime)
             {
                 // Return to realtime
                 TimeWarp.SetRate(0, true);
+
+                if (RealFuelsAssembly != null && newsetting > 0)
+                {
+                    FieldInfo ignitedInfo = engine.GetType().GetField("ignited",
+                        BindingFlags.NonPublic | BindingFlags.Instance);
+
+                    ignitedInfo.SetValue(engine, true);
+                }
             }
+        }
+
+        // Check if RealFuels is installed 
+        public override void OnAwake()
+        {
+            base.OnAwake();
+            if (HighLogic.LoadedScene != GameScenes.LOADING && RealFuelsAssembly == null)
+                RealFuelsAssembly = AssemblyLoader.loadedAssemblies.FirstOrDefault(x => x.name.StartsWith("RealFuels"))?.assembly;
         }
 
         // Initialization
@@ -535,7 +555,7 @@ namespace PersistentThrust
 
         private void UpdatePropellantReqMetFactorQueue()
         {
-            if (propellantReqMetFactor > 0 && engine.currentThrottle > 0)
+            if (propellantReqMetFactor > 0 && ThrottlePersistent > 0)
             {
                 if (engineHasAnyMassLessPropellants)
                     propellantReqMetFactorQueue.Enqueue(Mathf.Pow(propellantReqMetFactor, 1 / fudgeExponent));
@@ -564,7 +584,7 @@ namespace PersistentThrust
             {
                 engineHasAnyMassLessPropellants = engine.propellants.Any(m => m.resourceDef.density == 0);
 
-                if (processMasslessSeperately && engine.currentThrottle == 0 && engineHasAnyMassLessPropellants)
+                if (processMasslessSeperately && engine.requestedThrottle == 0 && engineHasAnyMassLessPropellants)
                     RemoveMasslessPropellantsFromEngine(pplist);
 
                 // Update persistent thrust parameters if NOT transitioning from warp to realtime
@@ -593,7 +613,7 @@ namespace PersistentThrust
                     if (maxFuelFlow > 0)
                         engine.maxFuelFlow = (float)(maxFuelFlow * propellantReqMetFactor);
                     // update displayed thrust and fx
-                    finalThrust = engine.currentThrottle * engine.maxThrust * propellantReqMetFactor;
+                    finalThrust = engine.requestedThrottle * engine.maxThrust * propellantReqMetFactor;
                 }
                 else
                 {
@@ -615,8 +635,8 @@ namespace PersistentThrust
                 if (ThrottlePersistent > 0 && IspPersistent > 0 && IsPersistentEngine && HasPersistentThrust)
                 {
                     SetAnimationRatio(ThrottlePersistent, throttleAnimationState);
-
-                    warpToReal = true; // Set to true for transition to realtime
+                    if(TimeWarp.CurrentRateIndex == 0)
+                        warpToReal = true; // Set to true for transition to realtime
 
                     if (vessel.IsControllable && HasPersistentHeadingEnabled)
                     {
