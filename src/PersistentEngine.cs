@@ -129,9 +129,9 @@ namespace PersistentThrust
         {
             foreach (var pm in part.Modules)
             {
-                if (pm is ModuleEngines engines)
+                if (pm is ModuleEngines)
                 {
-                    engine = engines;
+                    engine = pm as ModuleEngines;
                     IsPersistentEngine = true;
                 }
 
@@ -601,7 +601,7 @@ namespace PersistentThrust
 
                 ratioHeadingVersusRequest = 0;
 
-                if (!engineHasAnyMassLessPropellants)
+                if (!engineHasAnyMassLessPropellants && engine.propellantReqMet > 0)
                 {
                     // Mass flow rate
                     var massFlowRate = IspPersistent > 0 ?  (engine.currentThrottle * engine.maxThrust) / (IspPersistent * PhysicsGlobals.GravitationalAcceleration): 0;
@@ -617,11 +617,15 @@ namespace PersistentThrust
 
                     // calculate maximum flow
                     var maxFuelFlow = IspPersistent > 0 ? engine.maxThrust / (IspPersistent * PhysicsGlobals.GravitationalAcceleration) : 0;
+                    
                     // adjust fuel flow 
-                    if (maxFuelFlow > 0)
+                    if (maxFuelFlow > 0 && propellantReqMetFactor > 0)
                         engine.maxFuelFlow = (float)(maxFuelFlow * propellantReqMetFactor);
+                    else
+                        vessel.ctrlState.mainThrottle = 0;
+
                     // update displayed thrust and fx
-                    finalThrust = engine.currentThrottle * engine.maxThrust * propellantReqMetFactor;
+                    finalThrust = engine.currentThrottle * engine.maxThrust * Math.Min(propellantReqMetFactor, engine.propellantReqMet * 0.01f);
                 }
                 else
                 {
