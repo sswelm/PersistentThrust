@@ -615,7 +615,7 @@ namespace PersistentThrust
                     if (maxFuelFlow > 0)
                         engine.maxFuelFlow = (float)(maxFuelFlow * propellantReqMetFactor);
                     // update displayed thrust and fx
-                    finalThrust = engine.requestedThrottle * engine.maxThrust * propellantReqMetFactor;
+                    finalThrust = engine.currentThrottle * engine.maxThrust * propellantReqMetFactor;
                 }
                 else
                 {
