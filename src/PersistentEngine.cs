@@ -28,16 +28,6 @@ namespace PersistentThrust
         [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiActiveUnfocused = true, guiName = "#LOC_PT_MaximizePersistentPower"), UI_Toggle(disabledText = "#autoLOC_900890", enabledText = "#autoLOC_900889", affectSymCounterparts = UI_Scene.All)]
         public bool MaximizePersistentPower = false;
 
-
-        [KSPField(guiActive = true)] 
-        public string powerEffectName0;
-        [KSPField(guiActive = true)]
-        public string powerEffectName1;
-        [KSPField(guiActive = true)]
-        public string runningEffectName0;
-        [KSPField(guiActive = true)]
-        public string runningEffectName1;
-
         // Config Settings
         [KSPField]
         public string throttleAnimationName;
@@ -124,31 +114,6 @@ namespace PersistentThrust
 
         private List<PersistentEngine> persistentEngines;
 
-        //[KSPEvent(guiActive = true, guiActiveEditor = true, guiName = "switch")] // "#autoLOC_6001393"
-        //public void ModeEvent()
-        //{
-        //    var oldPowerEffectName = multiMode.runningPrimary ? powerEffectNameList[0] : powerEffectNameList[1];
-        //    var oldRunningEffectName = multiMode.runningPrimary ? runningEffectNameList[0] : runningEffectNameList[1];
-
-        //    var newPowerEffectName = multiMode.runningPrimary ? powerEffectNameList[1] : powerEffectNameList[0];
-        //    var newRunningEffectName = multiMode.runningPrimary ? runningEffectNameList[1] : runningEffectNameList[0];
-
-        //    if (!string.IsNullOrEmpty(oldPowerEffectName))
-        //        part.Effect(oldPowerEffectName, 0);
-        //    if (!string.IsNullOrEmpty(oldRunningEffectName))
-        //        part.Effect(oldRunningEffectName, 0);
-
-        //    multiMode.ModeEvent();
-
-        //    powerEffectName = newPowerEffectName;
-        //    runningEffectName = newRunningEffectName;
-
-        //    if (!string.IsNullOrEmpty(powerEffectName))
-        //        part.Effect(powerEffectName, 0);
-        //    if (!string.IsNullOrEmpty(runningEffectName))
-        //        part.Effect(runningEffectName, 0);
-        //}
-
         public override void OnStart(StartState state)
         {
             if (state == StartState.Editor) return;
@@ -169,7 +134,7 @@ namespace PersistentThrust
         // Make "engine" and "engineFX" fields refer to the ModuleEngines and ModuleEnginesFX modules in part.Modules
         void FindModuleEngines()
         {
-            //var moduleEnginesFXCount = 0;
+            var moduleEnginesFXCount = 0;
 
             foreach (var pm in part.Modules)
             {
@@ -184,14 +149,6 @@ namespace PersistentThrust
                     multiMode = pm as MultiModeEngine;
 
                     isMultiMode = true;
-
-                    powerEffectNameList[0] = powerEffectName0;
-                    powerEffectNameList[1] = powerEffectName1;
-                    runningEffectNameList[0] = runningEffectName0;
-                    runningEffectNameList[1] = runningEffectName1;
-
-                    powerEffectName = powerEffectName0;
-                    runningEffectName = runningEffectName0;
                 }
 
                 if (pm is ModuleEnginesFX)
@@ -199,23 +156,23 @@ namespace PersistentThrust
                     engineFX = pm as ModuleEnginesFX;
                     IsPersistentEngine = true;
 
-                    //if (!string.IsNullOrEmpty(engineFX.powerEffectName))
-                    //{
-                    //    powerEffectName = engineFX.powerEffectName;
-                    //    part.Effect(powerEffectName, 0);
-                    //    powerEffectNameList[moduleEnginesFXCount] = engineFX.powerEffectName;
+                    if (!string.IsNullOrEmpty(engineFX.powerEffectName))
+                    {
+                        powerEffectName = engineFX.powerEffectName;
+                        part.Effect(powerEffectName, 0);
+                        powerEffectNameList[moduleEnginesFXCount] = engineFX.powerEffectName;
                         engineFX.powerEffectName = "";
-                    //}
+                    }
 
-                    //if (!string.IsNullOrEmpty(engineFX.runningEffectName))
-                    //{
-                    //    runningEffectName = engineFX.runningEffectName;
-                    //    part.Effect(runningEffectName, 0);
-                    //    runningEffectNameList[moduleEnginesFXCount] = engineFX.runningEffectName;
+                    if (!string.IsNullOrEmpty(engineFX.runningEffectName))
+                    {
+                        runningEffectName = engineFX.runningEffectName;
+                        part.Effect(runningEffectName, 0);
+                        runningEffectNameList[moduleEnginesFXCount] = engineFX.runningEffectName;
                         engineFX.runningEffectName = "";
-                    //}
+                    }
 
-                    //moduleEnginesFXCount++;
+                    moduleEnginesFXCount++;
                 }
             }
 
@@ -223,18 +180,6 @@ namespace PersistentThrust
             {
                 Debug.Log("[PersistentThrust] No ModuleEngine found.");
             }
-
-            //if (engineFX == null) return;
-
-            //if (string.IsNullOrEmpty(powerEffectName))
-            //    powerEffectName = engineFX.powerEffectName;
-
-            //engineFX.powerEffectName = "";
-
-            //if (string.IsNullOrEmpty(runningEffectName))
-            //    runningEffectName = engineFX.runningEffectName;
-
-            //engineFX.runningEffectName = "";
         }
 
         public void Update()
@@ -265,7 +210,7 @@ namespace PersistentThrust
                     if (i == index)
                         powerEffectName = powerEffectNameList[i];
                     else
-                        part.Effect(effect, 0, -1);
+                        ApplyEffect(effect, 0);
                 }
 
                 for (int i = 0; i < runningEffectNameList.Count; i++)
@@ -274,10 +219,18 @@ namespace PersistentThrust
 
                     if (i == index)
                         runningEffectName = runningEffectNameList[i];
-                    else   
-                        part.Effect(effect, 0, -1);
+                    else
+                        ApplyEffect(effect, 0);
                 }
             }
+        }
+
+        private void ApplyEffect(string effect, float ratio)
+        {
+            if (string.IsNullOrEmpty(name))
+                return;
+
+            part.Effect(effect, ratio, -1);
         }
 
         // Update is called durring refresh frame, which can be less frequent than FixedUpdate which is called every processing frame
@@ -688,47 +641,8 @@ namespace PersistentThrust
 
             var exhaustRatio = (float)(engine.maxThrust > 0 ? currentThrust / engine.maxThrust : 0);
 
-            //var selectedModeIndex = isMultiMode ? (multiMode.runningPrimary ? 0 : 1) : 0;
-
-            //for (var i = 0; i < 2; i++)
-            //{
-            //    powerEffectName = powerEffectNameList[i];
-            //    runningEffectName = runningEffectNameList[i];
-
-            //    if (!string.IsNullOrEmpty(powerEffectName))
-            //    {
-            //        if (i == selectedModeIndex)
-            //            part.Effect(powerEffectName, exhaustRatio);
-            //        else
-            //            part.Effect(powerEffectName, 0);
-            //    }
-
-            //    if (!string.IsNullOrEmpty(runningEffectName))
-            //    {
-            //        if (i == selectedModeIndex)
-            //            part.Effect(runningEffectName, exhaustRatio);
-            //        else
-            //            part.Effect(runningEffectName, 0);
-            //    }
-            //}
-
-            //foreach (var effect in powerEffectNameList)
-            //{
-            //    if (effect != powerEffectName)
-            //        part.Effect(effect, 0);
-            //}
-
-            //foreach (var effect in runningEffectNameList)
-            //{
-            //    if (effect != runningEffectName)
-            //        part.Effect(effect, 0);
-            //}
-
-            if (!string.IsNullOrEmpty(powerEffectName))
-                part.Effect(powerEffectName, exhaustRatio, -1);
-
-            if (!string.IsNullOrEmpty(runningEffectName))
-                part.Effect(runningEffectName, exhaustRatio, -1);
+            ApplyEffect(powerEffectName, exhaustRatio);
+            ApplyEffect(runningEffectName, exhaustRatio);
         }
 
         private void UpdatePropellantReqMetFactorQueue()
