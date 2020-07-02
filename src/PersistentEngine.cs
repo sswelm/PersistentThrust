@@ -61,14 +61,15 @@ namespace PersistentThrust
         [KSPField(guiActive = true)]
         public string runningEffectName;
 
-        public List<string> powerEffectNameList = new List<string>(){"", ""};
-        public List<string> runningEffectNameList = new List<string>(){ "", "" };
+        public string[] powerEffectNameList = {"", ""};
+        public string[] runningEffectNameList = { "", ""};
 
         public double ratioHeadingVersusRequest;
         public double demandMass;
         public double dynamicBufferSize;
 
         // Engine module on the same part
+        public ModuleEngines[] engines = new ModuleEngines[2];
         public ModuleEngines engine;
         public ModuleEnginesFX engineFX;
         public AnimationState[] throttleAnimationState;
@@ -82,7 +83,7 @@ namespace PersistentThrust
         public bool IsPersistentEngine;             // Flag if using PersistentEngine features        
         public bool warpToReal;                     // Are we transitioning from timewarp to reatime?
         public bool engineHasAnyMassLessPropellants;
-        public bool isMultiMode = false;
+        public bool isMultiMode;
 
         public bool autoMaximizePersistentIsp;
         public bool useKerbalismInFlight;
@@ -94,6 +95,7 @@ namespace PersistentThrust
 
         // Propellant data
         public List<PersistentPropellant> pplist = new List<PersistentPropellant>();
+        public List<PersistentPropellant>[] pplistList = new List<PersistentPropellant>[2];
 
         // Average density of propellants
         public double densityAverage;
@@ -141,6 +143,7 @@ namespace PersistentThrust
                 if (pm is ModuleEngines)
                 {
                     engine = pm as ModuleEngines;
+                    engines[moduleEnginesFXCount] = engine;
                     IsPersistentEngine = true;
                 }
 
@@ -154,6 +157,7 @@ namespace PersistentThrust
                 if (pm is ModuleEnginesFX)
                 {
                     engineFX = pm as ModuleEnginesFX;
+                    engines[moduleEnginesFXCount] = engineFX;
                     IsPersistentEngine = true;
 
                     if (!string.IsNullOrEmpty(engineFX.powerEffectName))
@@ -203,7 +207,7 @@ namespace PersistentThrust
             {
                 var index = multiMode.runningPrimary ? 0 : 1;
 
-                for (int i = 0 ; i < powerEffectNameList.Count ; i++)
+                for (int i = 0 ; i < powerEffectNameList.Length ; i++)
                 {
                     var effect = powerEffectNameList[i];
 
@@ -213,7 +217,7 @@ namespace PersistentThrust
                         ApplyEffect(effect, 0);
                 }
 
-                for (int i = 0; i < runningEffectNameList.Count; i++)
+                for (int i = 0; i < runningEffectNameList.Length; i++)
                 {
                     var effect = runningEffectNameList[i];
 
@@ -222,6 +226,12 @@ namespace PersistentThrust
                     else
                         ApplyEffect(effect, 0);
                 }
+
+                // select active propellant list
+                pplist = pplistList[index];
+
+                // Initialize density of propellant used in deltaV and mass calculations
+                densityAverage = pplist.AverageDensity();
             }
         }
 
@@ -237,16 +247,6 @@ namespace PersistentThrust
         public override void OnUpdate()
         {
             if (engine == null) return;
-
-            if (multiMode != null)
-            {
-                //var button = multiMode.Events["ModeEvent"];
-                //if (button != null)
-                //{
-                //    button.active = false;
-                //    button.guiActive = false;
-                //}
-            }
 
             // hide stock thrust
             engine.Fields["finalThrust"].guiActive = false;
@@ -327,17 +327,26 @@ namespace PersistentThrust
             // Populate engine and engineFX fields
             FindModuleEngines();
 
-            if (IsPersistentEngine)
+            // Initialize PersistentPropellant list
+            if (isMultiMode)
             {
-                // Initialize PersistentPropellant list
-                pplist = PersistentPropellant.MakeList(engine.propellants);
-
-                // Initialize density of propellant used in deltaV and mass calculations
-                densityAverage = pplist.AverageDensity();
+                pplistList[0] = PersistentPropellant.MakeList(engines[0].propellants);
+                pplistList[1] = PersistentPropellant.MakeList(engines[1].propellants);
             }
+            else
+            {
+                pplistList[0] = PersistentPropellant.MakeList(engine.propellants);
+                pplistList[1] = new List<PersistentPropellant>();
+            }
+
+            // select active propellant list
+            pplist = pplistList[0];
+
+            // Initialize density of propellant used in deltaV and mass calculations
+            densityAverage = pplist.AverageDensity();
         }
 
-        private void RemoveMasslessPropellantsFromEngine(List<PersistentPropellant> pplist)
+        private void ReloadPropellantsWithoutMasslessPropellants(List<PersistentPropellant> pplist)
         {
             var akPropellants = new ConfigNode();
 
@@ -679,8 +688,8 @@ namespace PersistentThrust
 
                 engineHasAnyMassLessPropellants = engine.propellants.Any(m => m.resourceDef.density == 0);
 
-                if (processMasslessSeperately && engine.currentThrottle == 0 && engineHasAnyMassLessPropellants)
-                    RemoveMasslessPropellantsFromEngine(pplist);
+                if (processMasslessSeperately && engineHasAnyMassLessPropellants)
+                    ReloadPropellantsWithoutMasslessPropellants(pplist);
 
                 // Update persistent thrust parameters if NOT transitioning from warp to realtime
                 if (!warpToReal)
