@@ -58,6 +58,8 @@ namespace PersistentThrust
 
         public string powerEffectName;
         public string runningEffectName;
+        public List<string> powerEffectNameList = new List<string>(){"", ""};
+        public List<string> runningEffectNameList = new List<string>(){ "", "" };
 
         public double ratioHeadingVersusRequest;
         public double demandMass;
@@ -129,6 +131,8 @@ namespace PersistentThrust
         // Make "engine" and "engineFX" fields refer to the ModuleEngines and ModuleEnginesFX modules in part.Modules
         void FindModuleEngines()
         {
+            var moduleEnginesFXCount = 0;
+
             foreach (var pm in part.Modules)
             {
                 if (pm is ModuleEngines)
@@ -147,6 +151,24 @@ namespace PersistentThrust
                 {
                     engineFX = pm as ModuleEnginesFX;
                     IsPersistentEngine = true;
+
+                    if (!string.IsNullOrEmpty(engineFX.powerEffectName))
+                    {
+                        powerEffectName = engineFX.powerEffectName;
+                        part.Effect(powerEffectName, 0);
+                        powerEffectNameList[moduleEnginesFXCount] = engineFX.powerEffectName;
+                        engineFX.powerEffectName = "";
+                    }
+
+                    if (!string.IsNullOrEmpty(engineFX.runningEffectName))
+                    {
+                        runningEffectName = engineFX.runningEffectName;
+                        part.Effect(runningEffectName, 0);
+                        runningEffectNameList[moduleEnginesFXCount] = engineFX.runningEffectName;
+                        engineFX.runningEffectName = "";
+                    }
+
+                    moduleEnginesFXCount++;
                 }
             }
 
@@ -155,17 +177,17 @@ namespace PersistentThrust
                 Debug.Log("[PersistentThrust] No ModuleEngine found.");
             }
 
-            if (engineFX == null) return;
+            //if (engineFX == null) return;
 
-            if (string.IsNullOrEmpty(powerEffectName))
-                powerEffectName = engineFX.powerEffectName;
+            //if (string.IsNullOrEmpty(powerEffectName))
+            //    powerEffectName = engineFX.powerEffectName;
 
-            engineFX.powerEffectName = "";
+            //engineFX.powerEffectName = "";
 
-            if (string.IsNullOrEmpty(runningEffectName))
-                runningEffectName = engineFX.runningEffectName;
+            //if (string.IsNullOrEmpty(runningEffectName))
+            //    runningEffectName = engineFX.runningEffectName;
 
-            engineFX.runningEffectName = "";
+            //engineFX.runningEffectName = "";
         }
 
         public void Update()
@@ -179,16 +201,30 @@ namespace PersistentThrust
         // Finds the active engine module from the MultiModeEngine partmodule
         private void FetchActiveMode()
         {
-            engine = multiMode.runningPrimary ? multiMode.PrimaryEngine as ModuleEngines : multiMode.SecondaryEngine as ModuleEngines;
-            engineFX = multiMode.runningPrimary ? multiMode.PrimaryEngine as ModuleEnginesFX : multiMode.SecondaryEngine as ModuleEnginesFX;
+            if (!isMultiMode)
+                return;
+
+            engine = multiMode.runningPrimary ? multiMode.PrimaryEngine : multiMode.SecondaryEngine;
+            engineFX = multiMode.runningPrimary ? multiMode.PrimaryEngine : multiMode.SecondaryEngine;
 
             if (engineFX != null)
             {
-                if (string.IsNullOrEmpty(powerEffectName))
-                    powerEffectName = engineFX.powerEffectName;
+                var newPowerEffectName = multiMode.runningPrimary ? powerEffectNameList[0] : powerEffectNameList[1];
+                var newRunningEffectName = multiMode.runningPrimary ? runningEffectNameList[0] : runningEffectNameList[1];
 
-                if (string.IsNullOrEmpty(runningEffectName))
-                    runningEffectName = engineFX.runningEffectName;
+                if (powerEffectName != newPowerEffectName)
+                {
+                    if (!string.IsNullOrEmpty(powerEffectName))
+                        part.Effect(powerEffectName, 0);
+                    powerEffectName = newPowerEffectName;
+                }
+
+                if (runningEffectName != newRunningEffectName)
+                {
+                    if (!string.IsNullOrEmpty(runningEffectName))
+                        part.Effect(runningEffectName, 0);
+                    runningEffectName = newRunningEffectName;
+                }
             }
         }
 
@@ -583,12 +619,48 @@ namespace PersistentThrust
             return deltaV * thrustUV;
         }
 
-        public virtual void UpdateFX(double currentThust)
+        public virtual void UpdateFX(double currentThrust)
         {
             if (!engine.getIgnitionState)
-                currentThust = 0;
+                currentThrust = 0;
 
-            var exhaustRatio = (float)(engine.maxThrust > 0 ? currentThust / engine.maxThrust : 0);
+            var exhaustRatio = (float)(engine.maxThrust > 0 ? currentThrust / engine.maxThrust : 0);
+
+            //var selectedModeIndex = isMultiMode ? (multiMode.runningPrimary ? 0 : 1) : 0;
+
+            //for (var i = 0; i < 2; i++)
+            //{
+            //    powerEffectName = powerEffectNameList[i];
+            //    runningEffectName = runningEffectNameList[i];
+
+            //    if (!string.IsNullOrEmpty(powerEffectName))
+            //    {
+            //        if (i == selectedModeIndex)
+            //            part.Effect(powerEffectName, exhaustRatio);
+            //        else
+            //            part.Effect(powerEffectName, 0);
+            //    }
+
+            //    if (!string.IsNullOrEmpty(runningEffectName))
+            //    {
+            //        if (i == selectedModeIndex)
+            //            part.Effect(runningEffectName, exhaustRatio);
+            //        else
+            //            part.Effect(runningEffectName, 0);
+            //    }
+            //}
+
+            //foreach (var effect in powerEffectNameList)
+            //{
+            //    if (effect != powerEffectName)
+            //        part.Effect(effect, 0);
+            //}
+
+            //foreach (var effect in runningEffectNameList)
+            //{
+            //    if (effect != runningEffectName)
+            //        part.Effect(effect, 0);
+            //}
 
             if (!string.IsNullOrEmpty(powerEffectName))
                 part.Effect(powerEffectName, exhaustRatio);
@@ -627,8 +699,7 @@ namespace PersistentThrust
             if (!vessel.packed)
             {
                 // Checks if engine mode wasn't switched
-                if (isMultiMode)
-                    FetchActiveMode();
+                FetchActiveMode();
 
                 engineHasAnyMassLessPropellants = engine.propellants.Any(m => m.resourceDef.density == 0);
 
