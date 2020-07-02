@@ -29,7 +29,7 @@ namespace PersistentThrust
         public bool MaximizePersistentPower = false;
 
         // Config Settings
-        [KSPField(guiActive = true)]
+        [KSPField]
         public string throttleAnimationName;
         [KSPField]
         public bool returnToRealtimeAfterKeyPressed = true;
@@ -131,9 +131,9 @@ namespace PersistentThrust
         {
             foreach (var pm in part.Modules)
             {
-                if (pm is ModuleEngines engines)
+                if (pm is ModuleEngines)
                 {
-                    engine = engines;
+                    engine = pm as ModuleEngines;
                     IsPersistentEngine = true;
                 }
 
@@ -379,8 +379,12 @@ namespace PersistentThrust
                 pp.missionTime = vessel.missionTime;
                 // determine amount and maxamount at start of PersistenEngine testing
                 part.GetConnectedResourceTotals(pp.definition.id, pp.propellant.GetFlowMode(), out pp.amount, out pp.maxamount, true);
-                // calculate total demand
-                pp.totalEnginesDemand = persistentEngines.Sum(m => m.pplist.Where(l => l.definition.id == pp.definition.id).Sum(l => l.normalizedDemand));
+                // calculate total demand on operational engines
+                pp.totalEnginesDemand = persistentEngines
+                    .Where(e => e.engine.getIgnitionState)
+                    .Sum(m => m.pplist
+                        .Where(l => l.definition.id == pp.definition.id)
+                        .Sum(l => l.normalizedDemand));
             }
             else
                 activePropellant = firstProcessedEngine.pplist.First(m => m.definition.id == pp.definition.id);
@@ -612,7 +616,7 @@ namespace PersistentThrust
         // Physics update
         public void FixedUpdate() // FixedUpdate is also called while not staged
         {
-            if (this.vessel is null || !isEnabled) return;
+            if (this.vessel is null || engine is null || !isEnabled) return;
 
             kerbalismResourceChangeRequest.Clear();
 
@@ -637,7 +641,7 @@ namespace PersistentThrust
 
                 ratioHeadingVersusRequest = 0;
 
-                if (!engineHasAnyMassLessPropellants)
+                if (!engineHasAnyMassLessPropellants && engine.propellantReqMet > 0)
                 {
                     // Mass flow rate
                     var massFlowRate = IspPersistent > 0 ?  (engine.currentThrottle * engine.maxThrust) / (IspPersistent * PhysicsGlobals.GravitationalAcceleration): 0;
@@ -653,11 +657,15 @@ namespace PersistentThrust
 
                     // calculate maximum flow
                     var maxFuelFlow = IspPersistent > 0 ? engine.maxThrust / (IspPersistent * PhysicsGlobals.GravitationalAcceleration) : 0;
+                    
                     // adjust fuel flow 
-                    if (maxFuelFlow > 0)
+                    if (maxFuelFlow > 0 && propellantReqMetFactor > 0)
                         engine.maxFuelFlow = (float)(maxFuelFlow * propellantReqMetFactor);
+                    else
+                        vessel.ctrlState.mainThrottle = 0;
+
                     // update displayed thrust and fx
-                    finalThrust = engine.currentThrottle * engine.maxThrust * propellantReqMetFactor;
+                    finalThrust = engine.currentThrottle * engine.maxThrust * Math.Min(propellantReqMetFactor, engine.propellantReqMet * 0.01f);
                 }
                 else
                 {
