@@ -29,7 +29,7 @@ namespace PersistentThrust
         public bool MaximizePersistentPower = false;
 
         // Config Settings
-        [KSPField(guiActive = true)]
+        [KSPField]
         public string throttleAnimationName;
         [KSPField]
         public bool returnToRealtimeAfterKeyPressed = true;
@@ -347,8 +347,12 @@ namespace PersistentThrust
                 pp.missionTime = vessel.missionTime;
                 // determine amount and maxamount at start of PersistenEngine testing
                 part.GetConnectedResourceTotals(pp.definition.id, pp.propellant.GetFlowMode(), out pp.amount, out pp.maxamount, true);
-                // calculate total demand
-                pp.totalEnginesDemand = persistentEngines.Sum(m => m.pplist.Where(l => l.definition.id == pp.definition.id).Sum(l => l.normalizedDemand));
+                // calculate total demand on operational engines
+                pp.totalEnginesDemand = persistentEngines
+                    .Where(e => e.engine.getIgnitionState)
+                    .Sum(m => m.pplist
+                        .Where(l => l.definition.id == pp.definition.id)
+                        .Sum(l => l.normalizedDemand));
             }
             else
                 activePropellant = firstProcessedEngine.pplist.First(m => m.definition.id == pp.definition.id);
