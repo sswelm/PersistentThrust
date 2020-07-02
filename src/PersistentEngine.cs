@@ -56,9 +56,9 @@ namespace PersistentThrust
         [KSPField]
         public bool RequestPropMass = true;                 // Flag whether to request resources with mass
 
-        [KSPField(guiActive = true)]
+        [KSPField]
         public string powerEffectName;
-        [KSPField(guiActive = true)]
+        [KSPField]
         public string runningEffectName;
 
         public string[] powerEffectNameList = {"", ""};
