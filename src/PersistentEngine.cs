@@ -584,7 +584,7 @@ namespace PersistentThrust
         // Physics update
         public void FixedUpdate() // FixedUpdate is also called while not staged
         {
-            if (this.vessel is null || !isEnabled) return;
+            if (this.vessel is null || engine is null || !isEnabled) return;
 
             kerbalismResourceChangeRequest.Clear();
 
