@@ -67,6 +67,7 @@ namespace PersistentThrust
         public ModuleEngines engine;
         public ModuleEnginesFX engineFX;
         public AnimationState[] throttleAnimationState;
+        public MultiModeEngine multiMode;
 
         public float ThrottlePersistent;                // Persistent values to use during timewarp
         public float IspPersistent;
@@ -76,6 +77,7 @@ namespace PersistentThrust
         public bool IsPersistentEngine;             // Flag if using PersistentEngine features        
         public bool warpToReal;                     // Are we transitioning from timewarp to reatime?
         public bool engineHasAnyMassLessPropellants;
+        public bool isMultiMode = false;
 
         public bool autoMaximizePersistentIsp;
         public bool useKerbalismInFlight;
@@ -135,8 +137,22 @@ namespace PersistentThrust
                     IsPersistentEngine = true;
                 }
 
+                if (pm is MultiModeEngine)
+                {
+                    multiMode = pm as MultiModeEngine;
+                    isMultiMode = true;
+                }
+
                 if (pm is ModuleEnginesFX)
+                {
                     engineFX = pm as ModuleEnginesFX;
+                    IsPersistentEngine = true;
+                }
+            }
+
+            if (!IsPersistentEngine)
+            {
+                Debug.Log("[PersistentThrust] No ModuleEngine found.");
             }
 
             if (engineFX == null) return;
@@ -158,6 +174,22 @@ namespace PersistentThrust
 
             SetAnimationRatio(0, throttleAnimationState);
             UpdateFX(0);
+        }
+
+        // Finds the active engine module from the MultiModeEngine partmodule
+        private void FetchActiveMode()
+        {
+            engine = multiMode.runningPrimary ? multiMode.PrimaryEngine as ModuleEngines : multiMode.SecondaryEngine as ModuleEngines;
+            engineFX = multiMode.runningPrimary ? multiMode.PrimaryEngine as ModuleEnginesFX : multiMode.SecondaryEngine as ModuleEnginesFX;
+
+            if (engineFX != null)
+            {
+                if (string.IsNullOrEmpty(powerEffectName))
+                    powerEffectName = engineFX.powerEffectName;
+
+                if (string.IsNullOrEmpty(runningEffectName))
+                    runningEffectName = engineFX.runningEffectName;
+            }
         }
 
         // Update is called durring refresh frame, which can be less frequent than FixedUpdate which is called every processing frame
@@ -590,6 +622,10 @@ namespace PersistentThrust
             // Realtime mode
             if (!vessel.packed)
             {
+                // Checks if engine mode wasn't switched
+                if (isMultiMode)
+                    FetchActiveMode();
+
                 engineHasAnyMassLessPropellants = engine.propellants.Any(m => m.resourceDef.density == 0);
 
                 if (processMasslessSeperately && engine.currentThrottle == 0 && engineHasAnyMassLessPropellants)
