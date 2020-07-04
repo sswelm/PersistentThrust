@@ -28,7 +28,10 @@ namespace PersistentThrust
         [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiActiveUnfocused = true, guiName = "#LOC_PT_MaximizePersistentPower"), UI_Toggle(disabledText = "#autoLOC_900890", enabledText = "#autoLOC_900889", affectSymCounterparts = UI_Scene.All)]
         public bool MaximizePersistentPower = false;
 
-        // Config Settings
+        [KSPField(isPersistant = true)] 
+        public VesselAutopilot.AutopilotMode PersistentAutopilotModel;
+
+// Config Settings
         [KSPField]
         public string throttleAnimationName;
         [KSPField]
@@ -79,7 +82,8 @@ namespace PersistentThrust
         public float IspPersistent;
 
         public float propellantReqMetFactor;
-        
+        private float previousfixedDeltaTime;
+
         public bool IsPersistentEngine;             // Flag if using PersistentEngine features        
         public bool warpToReal;                     // Are we transitioning from timewarp to reatime?
         public bool engineHasAnyMassLessPropellants;
@@ -88,8 +92,9 @@ namespace PersistentThrust
         public bool autoMaximizePersistentIsp;
         public bool useKerbalismInFlight;
 
-        public int vesselChangedSOICountdown;
+        public int vesselChangedSOICountdown = 10;
         public int missingPowerCountdown;
+        public int fixedUpdateCount;
 
         public double[] fuelDemands = new double[0];
 
@@ -99,9 +104,7 @@ namespace PersistentThrust
 
         // Average density of propellants
         public double densityAverage;
-        public double buffersize;
-
-        private float previousfixedDeltaTime;
+        public double bufferSize;
 
         public double consumedPower;
 
@@ -203,36 +206,35 @@ namespace PersistentThrust
             engine = multiMode.runningPrimary ? multiMode.PrimaryEngine : multiMode.SecondaryEngine;
             engineFX = multiMode.runningPrimary ? multiMode.PrimaryEngine : multiMode.SecondaryEngine;
 
-            if (isMultiMode)
+            if (!isMultiMode) return;
+
+            var index = multiMode.runningPrimary ? 0 : 1;
+
+            for (int i = 0 ; i < powerEffectNameList.Length ; i++)
             {
-                var index = multiMode.runningPrimary ? 0 : 1;
+                var effect = powerEffectNameList[i];
 
-                for (int i = 0 ; i < powerEffectNameList.Length ; i++)
-                {
-                    var effect = powerEffectNameList[i];
-
-                    if (i == index)
-                        powerEffectName = powerEffectNameList[i];
-                    else
-                        ApplyEffect(effect, 0);
-                }
-
-                for (int i = 0; i < runningEffectNameList.Length; i++)
-                {
-                    var effect = runningEffectNameList[i];
-
-                    if (i == index)
-                        runningEffectName = runningEffectNameList[i];
-                    else
-                        ApplyEffect(effect, 0);
-                }
-
-                // select active propellant list
-                pplist = pplistList[index];
-
-                // Initialize density of propellant used in deltaV and mass calculations
-                densityAverage = pplist.AverageDensity();
+                if (i == index)
+                    powerEffectName = powerEffectNameList[i];
+                else
+                    ApplyEffect(effect, 0);
             }
+
+            for (int i = 0; i < runningEffectNameList.Length; i++)
+            {
+                var effect = runningEffectNameList[i];
+
+                if (i == index)
+                    runningEffectName = runningEffectNameList[i];
+                else
+                    ApplyEffect(effect, 0);
+            }
+
+            // select active propellant list
+            pplist = pplistList[index];
+
+            // Initialize density of propellant used in deltaV and mass calculations
+            densityAverage = pplist.AverageDensity();
         }
 
         private void ApplyEffect(string effect, float ratio)
@@ -421,7 +423,7 @@ namespace PersistentThrust
                     var availablePropellant = LoadPropellantAvailability(pp);
 
                     // update power buffer
-                    buffersize = UpdateBuffer(availablePropellant, demands[i]);
+                    bufferSize = UpdateBuffer(availablePropellant, demands[i]);
 
                     // update request
                     RequestResource(pp, 0);
@@ -484,15 +486,15 @@ namespace PersistentThrust
                     var currentPropellantAmount = useKerbalismInFlight ? kerbalismAmount : availablePropellant.amount;
 
                     // update power buffer
-                    buffersize = UpdateBuffer(availablePropellant, demandIn);
+                    bufferSize = UpdateBuffer(availablePropellant, demandIn);
 
                     var bufferedTotalEnginesDemand = Math.Min(availablePropellant.maxamount, availablePropellant.totalEnginesDemand * buffersizeMult);
 
                     if (bufferedTotalEnginesDemand > currentPropellantAmount && availablePropellant.totalEnginesDemand > 0)
                         storageModifier = Math.Min(1, (demandIn / availablePropellant.totalEnginesDemand) + ((currentPropellantAmount / bufferedTotalEnginesDemand) * (demandIn / availablePropellant.totalEnginesDemand)));
 
-                    if (!MaximizePersistentPower && currentPropellantAmount < buffersize)
-                        storageModifier *= currentPropellantAmount / buffersize;
+                    if (!MaximizePersistentPower && currentPropellantAmount < bufferSize)
+                        storageModifier *= currentPropellantAmount / bufferSize;
                 }
 
                 var demandOut = IsInfinite(pp.propellant) ? demandIn : RequestResource(pp, demandIn * storageModifier, true);
@@ -566,8 +568,8 @@ namespace PersistentThrust
             {
                 availableResources.TryGetValue(propellant.definition.name, out double currentAmount);
 
-                double available = Math.Min(currentAmount, demand);
-                double updateAmount = Math.Max(0, currentAmount - demand);
+                var available = Math.Min(currentAmount, demand);
+                var updateAmount = Math.Max(0, currentAmount - demand);
 
                 if (simulate)
                     availableResources[propellant.definition.name] = updateAmount;
@@ -597,8 +599,8 @@ namespace PersistentThrust
             dynamicBufferSize = useDynamicBuffer ? requiredBufferSize : 0;
             if (dynamicBufferSize > 0)
             {
-                var partresource = part.Resources[propellant.definition.name];
-                if (partresource == null)
+                var partResource = part.Resources[propellant.definition.name];
+                if (partResource == null)
                 {
                     var node = new ConfigNode("RESOURCE");
                     node.AddValue("name", propellant.definition.name);
@@ -606,11 +608,11 @@ namespace PersistentThrust
                     node.AddValue("amount", 0);
                     part.AddResource(node);
 
-                    partresource = part.Resources[propellant.definition.name];
+                    partResource = part.Resources[propellant.definition.name];
                 }
 
-                partresource.maxAmount = dynamicBufferSize;
-                partresource.amount = dynamicBufferSize * amountRatio;
+                partResource.maxAmount = dynamicBufferSize;
+                partResource.amount = dynamicBufferSize * amountRatio;
             }
 
             previousfixedDeltaTime = TimeWarp.fixedDeltaTime;
@@ -674,6 +676,17 @@ namespace PersistentThrust
         public void FixedUpdate() // FixedUpdate is also called while not staged
         {
             if (this.vessel is null || engine is null || !isEnabled) return;
+
+            // restore heading at load
+            fixedUpdateCount++;
+            if (HasPersistentHeadingEnabled && fixedUpdateCount <= 60)
+            {
+                vessel.Autopilot.SetMode(PersistentAutopilotModel);
+                engine.PersistHeading(TimeWarp.fixedDeltaTime, headingTolerance, vesselChangedSOICountdown > 0);
+            }
+            else
+                PersistentAutopilotModel = vessel.Autopilot.Mode;
+            
 
             kerbalismResourceChangeRequest.Clear();
 

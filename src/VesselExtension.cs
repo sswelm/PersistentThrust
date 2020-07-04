@@ -12,7 +12,7 @@ namespace PersistentThrust
 
             var vessel = engine.vessel;
 
-            if (!vessel.packed)
+            if (!vessel.packed && !forceRotation)
                 return 0;
 
             var canPersistDirection = vessel.situation == Vessel.Situations.SUB_ORBITAL || vessel.situation == Vessel.Situations.ESCAPING || vessel.situation == Vessel.Situations.ORBITING;
