@@ -16,7 +16,6 @@ namespace PersistentThrust
         public string thrust_d;
         [KSPField(guiFormat = "F2", guiActive = true, guiName = "#autoLOC_6001376", guiUnits = "%")]
         public float propellantReqMet;
-        public float finalThrust;
 
         // Enable/disable persistent engine features
         [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiActiveUnfocused = true, guiName = "#LOC_PT_PersistentThrust"), UI_Toggle(disabledText = "#autoLOC_900890", enabledText = "#autoLOC_900889", affectSymCounterparts = UI_Scene.All)]
@@ -29,9 +28,11 @@ namespace PersistentThrust
         public bool MaximizePersistentPower = false;
 
         [KSPField(isPersistant = true)] 
-        public VesselAutopilot.AutopilotMode PersistentAutopilotModel;
+        public VesselAutopilot.AutopilotMode persistentAutopilotMode;
+        [KSPField(isPersistant = true)]
+        public double vesselAlignmentWithAutopilotMode;
 
-// Config Settings
+        // Config Settings
         [KSPField]
         public string throttleAnimationName;
         [KSPField]
@@ -67,7 +68,6 @@ namespace PersistentThrust
         public string[] powerEffectNameList = {"", ""};
         public string[] runningEffectNameList = { "", ""};
 
-        public double ratioHeadingVersusRequest;
         public double demandMass;
         public double dynamicBufferSize;
 
@@ -81,8 +81,9 @@ namespace PersistentThrust
         public float ThrottlePersistent;                // Persistent values to use during timewarp
         public float IspPersistent;
 
+        public float finalThrust;
         public float propellantReqMetFactor;
-        private float previousfixedDeltaTime;
+        public float previousfixedDeltaTime;
 
         public bool IsPersistentEngine;             // Flag if using PersistentEngine features        
         public bool warpToReal;                     // Are we transitioning from timewarp to reatime?
@@ -105,11 +106,9 @@ namespace PersistentThrust
         // Average density of propellants
         public double densityAverage;
         public double bufferSize;
-
         public double consumedPower;
 
         private Queue<float> propellantReqMetFactorQueue = new Queue<float>();
-
         private Queue<float> throttleQueue = new Queue<float>();
         private Queue<float> ispQueue = new Queue<float>();
 
@@ -677,16 +676,16 @@ namespace PersistentThrust
         {
             if (this.vessel is null || engine is null || !isEnabled) return;
 
-            // restore heading at load
             fixedUpdateCount++;
-            if (HasPersistentHeadingEnabled && fixedUpdateCount <= 60)
+
+            // restore heading at load
+            if (HasPersistentHeadingEnabled && fixedUpdateCount <= 60 && vesselAlignmentWithAutopilotMode > 0.995)
             {
-                vessel.Autopilot.SetMode(PersistentAutopilotModel);
+                vessel.Autopilot.SetMode(persistentAutopilotMode);
                 engine.PersistHeading(TimeWarp.fixedDeltaTime, headingTolerance, vesselChangedSOICountdown > 0);
             }
             else
-                PersistentAutopilotModel = vessel.Autopilot.Mode;
-            
+                persistentAutopilotMode = vessel.Autopilot.Mode;
 
             kerbalismResourceChangeRequest.Clear();
 
@@ -708,7 +707,7 @@ namespace PersistentThrust
                 if (!warpToReal)
                     UpdatePersistentParameters();
 
-                ratioHeadingVersusRequest = 0;
+                vesselAlignmentWithAutopilotMode = engine.CheckHeadingWithSAS();
 
                 if (!engineHasAnyMassLessPropellants && engine.propellantReqMet > 0)
                 {
@@ -763,8 +762,8 @@ namespace PersistentThrust
 
                     if (vessel.IsControllable && HasPersistentHeadingEnabled)
                     {
-                        ratioHeadingVersusRequest = engine.PersistHeading(TimeWarp.fixedDeltaTime, headingTolerance, vesselChangedSOICountdown > 0, ratioHeadingVersusRequest == 1);
-                        if (ratioHeadingVersusRequest != 1)
+                        vesselAlignmentWithAutopilotMode = engine.PersistHeading(TimeWarp.fixedDeltaTime, headingTolerance, vesselChangedSOICountdown > 0, vesselAlignmentWithAutopilotMode == 1);
+                        if (vesselAlignmentWithAutopilotMode != 1)
                         {
                             finalThrust = 0;
                             return;
@@ -814,7 +813,7 @@ namespace PersistentThrust
 
                     finalThrust = 0;
                     if (vessel.IsControllable && HasPersistentHeadingEnabled)
-                        ratioHeadingVersusRequest = engine.PersistHeading(TimeWarp.fixedDeltaTime, headingTolerance, vesselChangedSOICountdown > 0);
+                        vesselAlignmentWithAutopilotMode = engine.PersistHeading(TimeWarp.fixedDeltaTime, headingTolerance, vesselChangedSOICountdown > 0);
                     UpdateFX(0);
 
                     UpdateBuffers(fuelDemands);
