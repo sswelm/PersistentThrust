@@ -48,7 +48,7 @@ namespace PersistentThrust
         [KSPField]
         public int missingPowerCountdownSize = 10;
         [KSPField]
-        public int buffersizeMult = 50;
+        public int bufferSizeMult = 50;
         [KSPField]
         public int propellantReqMetFactorQueueSize = 100;
         [KSPField]
@@ -83,7 +83,7 @@ namespace PersistentThrust
 
         public float finalThrust;
         public float propellantReqMetFactor;
-        public float previousfixedDeltaTime;
+        public float previousFixedDeltaTime;
 
         public bool IsPersistentEngine;             // Flag if using PersistentEngine features        
         public bool warpToReal;                     // Are we transitioning from timewarp to reatime?
@@ -108,12 +108,12 @@ namespace PersistentThrust
         public double bufferSize;
         public double consumedPower;
 
-        private Queue<float> propellantReqMetFactorQueue = new Queue<float>();
-        private Queue<float> throttleQueue = new Queue<float>();
-        private Queue<float> ispQueue = new Queue<float>();
+        private readonly Queue<float> propellantReqMetFactorQueue = new Queue<float>();
+        private readonly Queue<float> throttleQueue = new Queue<float>();
+        private readonly Queue<float> ispQueue = new Queue<float>();
 
         private Dictionary<string, double> availableResources = new Dictionary<string, double>();
-        private Dictionary<string, double> kerbalismResourceChangeRequest = new Dictionary<string, double>();
+        private readonly Dictionary<string, double> kerbalismResourceChangeRequest = new Dictionary<string, double>();
         private static Assembly RealFuelsAssembly = null;
 
         private List<PersistentEngine> persistentEngines;
@@ -487,7 +487,7 @@ namespace PersistentThrust
                     // update power buffer
                     bufferSize = UpdateBuffer(availablePropellant, demandIn);
 
-                    var bufferedTotalEnginesDemand = Math.Min(availablePropellant.maxamount, availablePropellant.totalEnginesDemand * buffersizeMult);
+                    var bufferedTotalEnginesDemand = Math.Min(availablePropellant.maxamount, availablePropellant.totalEnginesDemand * bufferSizeMult);
 
                     if (bufferedTotalEnginesDemand > currentPropellantAmount && availablePropellant.totalEnginesDemand > 0)
                         storageModifier = Math.Min(1, (demandIn / availablePropellant.totalEnginesDemand) + ((currentPropellantAmount / bufferedTotalEnginesDemand) * (demandIn / availablePropellant.totalEnginesDemand)));
@@ -588,9 +588,9 @@ namespace PersistentThrust
 
         public double UpdateBuffer(PersistentPropellant propellant, double baseSize)
         {
-            var requiredBufferSize = useDynamicBuffer ? Math.Max(baseSize / TimeWarp.fixedDeltaTime * 10 * buffersizeMult, baseSize * buffersizeMult) : Math.Max(0, propellant.maxamount - baseSize);
+            var requiredBufferSize = useDynamicBuffer ? Math.Max(baseSize / TimeWarp.fixedDeltaTime * 10 * bufferSizeMult, baseSize * bufferSizeMult) : Math.Max(0, propellant.maxamount - baseSize);
 
-            if (previousfixedDeltaTime == TimeWarp.fixedDeltaTime)
+            if (previousFixedDeltaTime == TimeWarp.fixedDeltaTime)
                 return requiredBufferSize;
 
             var amountRatio = propellant.maxamount > 0 ? Math.Min(1, propellant.amount / propellant.maxamount) : 0;
@@ -614,7 +614,7 @@ namespace PersistentThrust
                 partResource.amount = dynamicBufferSize * amountRatio;
             }
 
-            previousfixedDeltaTime = TimeWarp.fixedDeltaTime;
+            previousFixedDeltaTime = TimeWarp.fixedDeltaTime;
 
             return requiredBufferSize;
         }
@@ -848,6 +848,7 @@ namespace PersistentThrust
 
         #region Kerbalism
 
+        // Called by Kerbalism every frame
         public virtual string ResourceUpdate(Dictionary<string, double> availableResources, List<KeyValuePair<string, double>> resourceChangeRequest)
         {
             useKerbalismInFlight = true;
