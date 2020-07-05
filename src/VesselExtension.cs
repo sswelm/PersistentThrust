@@ -66,19 +66,34 @@ namespace PersistentThrust
         public static double VesselOrbitHeadingVersusManeuverVector(this Vessel vessel)
         {
             if (vessel == null || vessel.patchedConicSolver == null || vessel.orbit == null ||  vessel.patchedConicSolver.maneuverNodes == null)
-                return 0;
+                return 1;
 
             if (vessel.patchedConicSolver.maneuverNodes.Count > 0)
             {
                 var maneuverNode = vessel.patchedConicSolver.maneuverNodes[0];
 
                 if (maneuverNode == null)
-                    return 0;
+                    return 1;
 
-                return Vector3d.Dot(vessel.obt_velocity.normalized, maneuverNode.GetBurnVector(vessel.orbit).normalized);
+                var forward = Vector3d.Dot(vessel.obt_velocity.normalized, vessel.transform.up.normalized) > 0;
+
+                if (forward)
+                {
+                    if (vessel.Autopilot.Mode == VesselAutopilot.AutopilotMode.Prograde || vessel.Autopilot.Mode == VesselAutopilot.AutopilotMode.Maneuver)
+                        return Vector3d.Dot(vessel.obt_velocity.normalized,maneuverNode.GetBurnVector(vessel.orbit).normalized);
+                    else
+                        return 1;
+                }
+                else
+                {
+                    if (vessel.Autopilot.Mode == VesselAutopilot.AutopilotMode.Retrograde || vessel.Autopilot.Mode == VesselAutopilot.AutopilotMode.Maneuver)
+                        return Vector3d.Dot(-vessel.obt_velocity.normalized,maneuverNode.GetBurnVector(vessel.orbit).normalized);
+                    else
+                        return 1;
+                }
             }
             else
-                return Vector3d.Dot(vessel.obt_velocity.normalized, vessel.obt_velocity.normalized);
+                return 1;
         }
 
         public static Vector3d GetRequestedDirection(this ModuleEngines engine, double universalTime)
