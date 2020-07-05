@@ -25,7 +25,7 @@ namespace PersistentThrust
             if (!sasIsActive)
                 return 0;
 
-            var requestedDirection = GetRequestedDirection(engine);
+            var requestedDirection = GetRequestedDirection(engine, Planetarium.GetUniversalTime());
 
             if (requestedDirection == Vector3d.zero) 
                 return 1;
@@ -56,27 +56,35 @@ namespace PersistentThrust
             }
         }
 
-        public static double VesselHeadingVersusAutopilotVector(this ModuleEngines engine)
+        public static double VesselHeadingVersusAutopilotVector(this ModuleEngines engine, double universalTime)
         {
-            var requestedDirection = GetRequestedDirection(engine);
+            var requestedDirection = GetRequestedDirection(engine, universalTime);
 
             return Vector3d.Dot(engine.vessel.transform.up.normalized, requestedDirection);
         }
 
-        public static double VesselOrbitHeadingVersusManeuverVector(this ModuleEngines engine)
+        public static double VesselOrbitHeadingVersusManeuverVector(this Vessel vessel)
         {
-            var vessel = engine.vessel;
+            if (vessel == null || vessel.patchedConicSolver == null || vessel.orbit == null ||  vessel.patchedConicSolver.maneuverNodes == null)
+                return 0;
 
-            var maneuverDirection = vessel.patchedConicSolver.maneuverNodes.Count > 0 ? vessel.patchedConicSolver.maneuverNodes[0].GetBurnVector(vessel.orbit).normalized : vessel.obt_velocity.normalized;
+            if (vessel.patchedConicSolver.maneuverNodes.Count > 0)
+            {
+                var maneuverNode = vessel.patchedConicSolver.maneuverNodes[0];
 
-            return Vector3d.Dot(vessel.obt_velocity.normalized, maneuverDirection);
+                if (maneuverNode == null)
+                    return 0;
+
+                return Vector3d.Dot(vessel.obt_velocity.normalized, maneuverNode.GetBurnVector(vessel.orbit).normalized);
+            }
+            else
+                return Vector3d.Dot(vessel.obt_velocity.normalized, vessel.obt_velocity.normalized);
         }
 
-        public static Vector3d GetRequestedDirection(this ModuleEngines engine)
+        public static Vector3d GetRequestedDirection(this ModuleEngines engine, double universalTime)
         {
             var vessel = engine.vessel;
             var requestedDirection = Vector3d.zero;
-            var universalTime = Planetarium.GetUniversalTime();
             var vesselPosition = vessel.orbit.getPositionAtUT(universalTime);
 
             switch (vessel.Autopilot.Mode)

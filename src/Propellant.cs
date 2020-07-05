@@ -28,7 +28,7 @@ namespace PersistentThrust
             ratio = propellant.ratio;
         }
 
-        // Calculate demand of this propellant given the total demand of the engine
+        // Calculate demand of this propellant given the total demand of the moduleEngine
         public double CalculateDemand(double demand)
         {
             normalizedDemand = demand * normalizedRatio;
@@ -81,7 +81,7 @@ namespace PersistentThrust
             return avgDensity;
         }
 
-        // Generate string with list of propellant names for use in engine GUI
+        // Generate string with list of propellant names for use in moduleEngine GUI
         public static string ResourceNames(this List<PersistentPropellant> pplist)
         {
             var title = "";
@@ -99,7 +99,7 @@ namespace PersistentThrust
             return title;
         }
 
-        // Generate string with list of current propellant amounts for use in engine GUI
+        // Generate string with list of current propellant amounts for use in moduleEngine GUI
         // Give current step size as argument
         public static string ResourceAmounts(this List<PersistentPropellant> pplist, double dT)
         {
