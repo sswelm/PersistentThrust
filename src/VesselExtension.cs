@@ -66,31 +66,21 @@ namespace PersistentThrust
         public static double VesselOrbitHeadingVersusManeuverVector(this Vessel vessel)
         {
             if (vessel == null || vessel.patchedConicSolver == null || vessel.orbit == null ||  vessel.patchedConicSolver.maneuverNodes == null)
-                return 1;
+                return -1;
 
             if (vessel.patchedConicSolver.maneuverNodes.Count > 0)
             {
                 var maneuverNode = vessel.patchedConicSolver.maneuverNodes[0];
 
                 if (maneuverNode == null)
-                    return 1;
+                    return -1;
 
-                var forward = Vector3d.Dot(vessel.obt_velocity.normalized, vessel.transform.up.normalized) > 0;
+                //var forward = Vector3d.Dot(maneuverNode.patch.getOrbitalVelocityAtUT(Planetarium.GetUniversalTime()).normalized, vessel.orbit.getOrbitalVelocityAtUT(Planetarium.GetUniversalTime())) > 0;
 
-                if (forward)
-                {
-                    if (vessel.Autopilot.Mode == VesselAutopilot.AutopilotMode.Prograde || vessel.Autopilot.Mode == VesselAutopilot.AutopilotMode.Maneuver)
-                        return Vector3d.Dot(vessel.obt_velocity.normalized,maneuverNode.GetBurnVector(vessel.orbit).normalized);
-                    else
-                        return 1;
-                }
-                else
-                {
-                    if (vessel.Autopilot.Mode == VesselAutopilot.AutopilotMode.Retrograde || vessel.Autopilot.Mode == VesselAutopilot.AutopilotMode.Maneuver)
-                        return Vector3d.Dot(-vessel.obt_velocity.normalized,maneuverNode.GetBurnVector(vessel.orbit).normalized);
-                    else
-                        return 1;
-                }
+                //if (forward)
+                    return Vector3d.Dot(vessel.obt_velocity.normalized,maneuverNode.GetBurnVector(vessel.orbit).normalized);
+                //else
+                //    return Vector3d.Dot(-vessel.obt_velocity.normalized,maneuverNode.GetBurnVector(vessel.orbit).normalized);
             }
             else
                 return 1;

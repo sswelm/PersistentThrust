@@ -55,7 +55,7 @@ namespace PersistentThrust
         [KSPField]
         public double minimumPropellantReqMetFactor = 0.2;
         [KSPField]
-        public float headingTolerance = 0.001f;
+        public float headingTolerance = 0.002f;
         [KSPField]
         public bool requestPropMassless = true;             // Flag whether to request massless resources
         [KSPField]
@@ -279,6 +279,9 @@ namespace PersistentThrust
 
             if (vessel.packed)
             {
+                // maintain thrust setting durring timewarp
+                vessel.ctrlState.mainThrottle = throttlePersistent;
+
                 // stop engines when X pressed
                 if (Input.GetKeyDown(KeyCode.X))
                     SetThrottle(0, returnToRealtimeAfterKeyPressed);
