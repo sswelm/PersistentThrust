@@ -56,11 +56,20 @@ namespace PersistentThrust
             }
         }
 
-        public static double CheckHeadingWithSAS(this ModuleEngines engine)
+        public static double VesselHeadingVersusAutopilotVector(this ModuleEngines engine)
         {
             var requestedDirection = GetRequestedDirection(engine);
 
-            return Vector3d.Dot(engine.transform.up.normalized, requestedDirection);
+            return Vector3d.Dot(engine.vessel.transform.up.normalized, requestedDirection);
+        }
+
+        public static double VesselHeadingVersusManeuverVector(this ModuleEngines engine)
+        {
+            var vessel = engine.vessel;
+
+            var maneuverDirection = vessel.patchedConicSolver.maneuverNodes.Count > 0 ? vessel.patchedConicSolver.maneuverNodes[0].GetBurnVector(vessel.orbit).normalized : vessel.obt_velocity.normalized;
+
+            return Vector3d.Dot(vessel.transform.up.normalized, maneuverDirection);
         }
 
         public static Vector3d GetRequestedDirection(this ModuleEngines engine)
@@ -88,16 +97,16 @@ namespace PersistentThrust
                     requestedDirection = -(vessel.targetObject.GetOrbit().getPositionAtUT(universalTime) - vesselPosition).normalized;
                     break;
                 case VesselAutopilot.AutopilotMode.Normal:
-                    requestedDirection = Vector3.Cross(vessel.obt_velocity, (vesselPosition - vessel.mainBody.position)).normalized;
+                    requestedDirection = Vector3.Cross(vessel.obt_velocity, vesselPosition - vessel.mainBody.position).normalized;
                     break;
                 case VesselAutopilot.AutopilotMode.Antinormal:
-                    requestedDirection = -Vector3.Cross(vessel.obt_velocity, (vesselPosition - vessel.mainBody.position)).normalized;
+                    requestedDirection = -Vector3.Cross(vessel.obt_velocity, vesselPosition - vessel.mainBody.position).normalized;
                     break;
                 case VesselAutopilot.AutopilotMode.RadialIn:
-                    requestedDirection = -Vector3.Cross(vessel.obt_velocity, Vector3.Cross(vessel.obt_velocity, (vesselPosition - vessel.mainBody.position))).normalized;
+                    requestedDirection = -Vector3.Cross(vessel.obt_velocity, Vector3.Cross(vessel.obt_velocity, vesselPosition - vessel.mainBody.position)).normalized;
                     break;
                 case VesselAutopilot.AutopilotMode.RadialOut:
-                    requestedDirection = Vector3.Cross(vessel.obt_velocity, Vector3.Cross(vessel.obt_velocity, (vesselPosition - vessel.mainBody.position))).normalized;
+                    requestedDirection = Vector3.Cross(vessel.obt_velocity, Vector3.Cross(vessel.obt_velocity, vesselPosition - vessel.mainBody.position)).normalized;
                     break;
             }
 

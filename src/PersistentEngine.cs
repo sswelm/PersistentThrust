@@ -9,15 +9,7 @@ namespace PersistentThrust
 {
     public class PersistentEngine : PartModule
     {
-        // GUI
-        [KSPField(guiFormat = "F1", guiActive = true, guiName = "#autoLOC_6001378", guiUnits = "#autoLOC_7001400")]
-        public float realIsp;
-        [KSPField(guiFormat = "F6", guiActive = true, guiName = "#autoLOC_6001377")]
-        public string thrust_d;
-        [KSPField(guiFormat = "F2", guiActive = true, guiName = "#autoLOC_6001376", guiUnits = "%")]
-        public float propellantReqMet;
-
-        // Enable/disable persistent engine features
+        // Persistant
         [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiActiveUnfocused = true, guiName = "#LOC_PT_PersistentThrust"), UI_Toggle(disabledText = "#autoLOC_900890", enabledText = "#autoLOC_900889", affectSymCounterparts = UI_Scene.All)]
         public bool HasPersistentThrust = true;
         [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiActiveUnfocused = true, guiName = "#LOC_PT_PersistentHeading"), UI_Toggle(disabledText = "#autoLOC_900890", enabledText = "#autoLOC_900889", affectSymCounterparts = UI_Scene.All)]
@@ -26,11 +18,20 @@ namespace PersistentThrust
         public bool MaximizePersistentIsp = true;
         [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiActiveUnfocused = true, guiName = "#LOC_PT_MaximizePersistentPower"), UI_Toggle(disabledText = "#autoLOC_900890", enabledText = "#autoLOC_900889", affectSymCounterparts = UI_Scene.All)]
         public bool MaximizePersistentPower = false;
-
-        [KSPField(isPersistant = true)] 
+        [KSPField(isPersistant = true)]
         public VesselAutopilot.AutopilotMode persistentAutopilotMode;
         [KSPField(isPersistant = true)]
         public double vesselAlignmentWithAutopilotMode;
+        [KSPField(isPersistant = true, guiActiveEditor = false, guiActive = true, guiName = "#LOC_PT_ManeuverTolerance", guiUnits = " %"), UI_FloatRange(stepIncrement = 1, maxValue = 180, minValue = 0, requireFullControl = false, affectSymCounterparts = UI_Scene.All)]//Beamed Power Throttle
+        public float maneuverTolerance = 180;
+
+        // GUI
+        [KSPField(guiFormat = "F1", guiActive = true, guiName = "#autoLOC_6001378", guiUnits = "#autoLOC_7001400")]
+        public float realIsp;
+        [KSPField(guiFormat = "F6", guiActive = true, guiName = "#autoLOC_6001377")]
+        public string thrust_d;
+        [KSPField(guiFormat = "F2", guiActive = true, guiName = "#autoLOC_6001376", guiUnits = "%")]
+        public float propellantReqMet;
 
         // Config Settings
         [KSPField]
@@ -40,7 +41,7 @@ namespace PersistentThrust
         [KSPField]
         public bool useDynamicBuffer = false;
         [KSPField]
-        public bool processMasslessSeperately = true;
+        public bool processMasslessSeparately = true;
         [KSPField]
         public int queueLength = 2;
         [KSPField]
@@ -64,6 +65,10 @@ namespace PersistentThrust
         public string powerEffectName;
         [KSPField]
         public string runningEffectName;
+        [KSPField]
+        public double vesselHeadingVersusManeuver;
+        [KSPField]
+        public double vesselHeadingVersusManeuverInDegrees;
 
         public string[] powerEffectNameList = {"", ""};
         public string[] runningEffectNameList = { "", ""};
@@ -117,6 +122,8 @@ namespace PersistentThrust
         private static Assembly RealFuelsAssembly = null;
 
         private List<PersistentEngine> persistentEngines;
+
+        public const double Rad2Deg = 180 / Math.PI; // 57.295779513;
 
         public override void OnStart(StartState state)
         {
@@ -687,6 +694,9 @@ namespace PersistentThrust
             else
                 persistentAutopilotMode = vessel.Autopilot.Mode;
 
+            vesselHeadingVersusManeuver = engine.VesselHeadingVersusManeuverVector();
+            vesselHeadingVersusManeuverInDegrees = Math.Acos(Math.Max(-1, Math.Min(1, vesselHeadingVersusManeuver))) * Rad2Deg;
+
             kerbalismResourceChangeRequest.Clear();
 
             if (vesselChangedSOICountdown > 0)
@@ -700,14 +710,14 @@ namespace PersistentThrust
 
                 engineHasAnyMassLessPropellants = engine.propellants.Any(m => m.resourceDef.density == 0);
 
-                if (processMasslessSeperately && engineHasAnyMassLessPropellants)
+                if (processMasslessSeparately && engineHasAnyMassLessPropellants)
                     ReloadPropellantsWithoutMasslessPropellants(pplist);
 
                 // Update persistent thrust parameters if NOT transitioning from warp to realtime
                 if (!warpToReal)
                     UpdatePersistentParameters();
 
-                vesselAlignmentWithAutopilotMode = engine.CheckHeadingWithSAS();
+                vesselAlignmentWithAutopilotMode = engine.VesselHeadingVersusAutopilotVector();
 
                 if (!engineHasAnyMassLessPropellants && engine.propellantReqMet > 0)
                 {
@@ -746,9 +756,9 @@ namespace PersistentThrust
 
                 UpdateFX(finalThrust);
 
-                thrust_d = Utils.FormatThrust(finalThrust);
+                SetThrottleAnimation(finalThrust);
 
-                SetAnimationRatio(engine.maxThrust > 0 ? finalThrust / engine.maxThrust: 0, throttleAnimationState);
+                thrust_d = Utils.FormatThrust(finalThrust);
 
                 UpdateBuffers(fuelDemands);
             }
@@ -756,7 +766,6 @@ namespace PersistentThrust
             {
                 if (ThrottlePersistent > 0 && IspPersistent > 0 && IsPersistentEngine && HasPersistentThrust)
                 {
-                    SetAnimationRatio(ThrottlePersistent, throttleAnimationState);
                     if(TimeWarp.CurrentRateIndex == 0)
                         warpToReal = true; // Set to true for transition to realtime
 
@@ -769,8 +778,12 @@ namespace PersistentThrust
                             return;
                         }
                     }
+
                     // Calculated requested thrust
-                    var requestedThrust = engine.thrustPercentage * 0.01f * ThrottlePersistent * engine.maxThrust;
+                    var requestedThrust = vesselHeadingVersusManeuverInDegrees <= maneuverTolerance 
+                        ? engine.thrustPercentage * 0.01f * ThrottlePersistent * engine.maxThrust 
+                        : 0;
+
                     var UT = Planetarium.GetUniversalTime(); // Universal time
                     var thrustUV = part.transform.up; // Thrust direction unit vector
                     // Calculate deltaV vector & resource demand from propellants with mass
@@ -804,12 +817,13 @@ namespace PersistentThrust
                     else
                         finalThrust = 0;
 
+                    SetThrottleAnimation(0);
                     UpdateFX(finalThrust);
                     thrust_d = Utils.FormatThrust(finalThrust);
                 }
                 else
                 {
-                    SetAnimationRatio(0, throttleAnimationState);
+                    SetThrottleAnimation(0);
 
                     finalThrust = 0;
                     if (vessel.IsControllable && HasPersistentHeadingEnabled)
@@ -834,6 +848,11 @@ namespace PersistentThrust
                 states.Add(animationState);
             }
             return states.ToArray();
+        }
+
+        private void SetThrottleAnimation(float thrust)
+        {
+            SetAnimationRatio(engine.maxThrust > 0 ? thrust / engine.maxThrust : 0, throttleAnimationState);
         }
 
         public static void SetAnimationRatio(float ratio, AnimationState[] animationState)
