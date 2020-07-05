@@ -63,13 +63,13 @@ namespace PersistentThrust
             return Vector3d.Dot(engine.vessel.transform.up.normalized, requestedDirection);
         }
 
-        public static double VesselHeadingVersusManeuverVector(this ModuleEngines engine)
+        public static double VesselOrbitHeadingVersusManeuverVector(this ModuleEngines engine)
         {
             var vessel = engine.vessel;
 
             var maneuverDirection = vessel.patchedConicSolver.maneuverNodes.Count > 0 ? vessel.patchedConicSolver.maneuverNodes[0].GetBurnVector(vessel.orbit).normalized : vessel.obt_velocity.normalized;
 
-            return Vector3d.Dot(vessel.transform.up.normalized, maneuverDirection);
+            return Vector3d.Dot(vessel.obt_velocity.normalized, maneuverDirection);
         }
 
         public static Vector3d GetRequestedDirection(this ModuleEngines engine)

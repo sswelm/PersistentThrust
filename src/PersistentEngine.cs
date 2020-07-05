@@ -694,7 +694,7 @@ namespace PersistentThrust
             else
                 persistentAutopilotMode = vessel.Autopilot.Mode;
 
-            vesselHeadingVersusManeuver = engine.VesselHeadingVersusManeuverVector();
+            vesselHeadingVersusManeuver = engine.VesselOrbitHeadingVersusManeuverVector();
             vesselHeadingVersusManeuverInDegrees = Math.Acos(Math.Max(-1, Math.Min(1, vesselHeadingVersusManeuver))) * Rad2Deg;
 
             kerbalismResourceChangeRequest.Clear();
