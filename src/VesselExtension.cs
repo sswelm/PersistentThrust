@@ -75,11 +75,11 @@ namespace PersistentThrust
                 if (maneuverNode == null)
                     return -1;
 
-                //var forward = Vector3d.Dot(maneuverNode.patch.getOrbitalVelocityAtUT(Planetarium.GetUniversalTime()).normalized, vessel.orbit.getOrbitalVelocityAtUT(Planetarium.GetUniversalTime()).normalized) > 0;
-                //if (forward)
+                var forward = Vector3d.Dot(-maneuverNode.DeltaV.normalized, vessel.orbit.getOrbitalVelocityAtUT(maneuverNode.UT).normalized) > 0;
+                if (forward)
                     return Vector3d.Dot(vessel.obt_velocity.normalized,maneuverNode.GetBurnVector(vessel.orbit).normalized);
-                //else
-                //    return Vector3d.Dot(-vessel.obt_velocity.normalized,maneuverNode.GetBurnVector(vessel.orbit).normalized);
+                else
+                    return Vector3d.Dot(-vessel.obt_velocity.normalized,maneuverNode.GetBurnVector(vessel.orbit).normalized);
             }
             else
                 return 1;

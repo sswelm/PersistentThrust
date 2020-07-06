@@ -745,16 +745,16 @@ namespace PersistentThrust
                     var maxFuelFlow = ispPersistent > 0 ? moduleEngine.maxThrust / (ispPersistent * PhysicsGlobals.GravitationalAcceleration) : 0;
                     
                     // adjust fuel flow 
-                    if (maxFuelFlow > 0 && propellantReqMetFactor > 0)
-                        moduleEngine.maxFuelFlow = (float)(maxFuelFlow * propellantReqMetFactor);
-                    else
-                        moduleEngine.maxFuelFlow = 1e-10f;
+                    moduleEngine.maxFuelFlow = maxFuelFlow > 0 && propellantReqMetFactor > 0 ? (float)(maxFuelFlow * propellantReqMetFactor) : 1e-10f;
 
                     // update displayed thrust and fx
                     finalThrust = moduleEngine.currentThrottle * moduleEngine.maxThrust * Math.Min(propellantReqMetFactor, moduleEngine.propellantReqMet * 0.01f);
                 }
                 else
                 {
+                    // update maximum flow
+                    moduleEngine.maxFuelFlow = (float)(ispPersistent > 0 ? moduleEngine.maxThrust / (ispPersistent * PhysicsGlobals.GravitationalAcceleration) : 1e-10f);
+
                     propellantReqMetFactor = moduleEngine.propellantReqMet * 0.01f;
 
                     finalThrust = moduleEngine.GetCurrentThrust();
@@ -772,6 +772,9 @@ namespace PersistentThrust
             }
             else
             {
+                // update maximum flow
+                moduleEngine.maxFuelFlow = (float) (ispPersistent > 0 ? moduleEngine.maxThrust / (ispPersistent * PhysicsGlobals.GravitationalAcceleration) : 1e-10f);
+
                 if (throttlePersistent > 0 && ispPersistent > 0 && isPersistentEngine && HasPersistentThrust)
                 {
                     if(TimeWarp.CurrentRateIndex == 0)
