@@ -251,7 +251,7 @@ namespace PersistentThrust
             part.Effect(effect, ratio, -1);
         }
 
-        // Update is called durring refresh frame, which can be less frequent than FixedUpdate which is called every processing frame
+        // Update is called during refresh frame, which can be less frequent than FixedUpdate which is called every processing frame
         public override void OnUpdate()
         {
             if (moduleEngine == null) return;
@@ -285,13 +285,13 @@ namespace PersistentThrust
                 // stop engines when X pressed
                 if (Input.GetKeyDown(KeyCode.X))
                     SetThrottle(0, returnToRealtimeAfterKeyPressed);
-                // full throtle when Z pressed
+                // full throttle when Z pressed
                 else if (Input.GetKeyDown(KeyCode.Z))
                     SetThrottle(1, returnToRealtimeAfterKeyPressed);
-                // increase throtle when Shift pressed
+                // increase throttle when Shift pressed
                 else if (Input.GetKeyDown(KeyCode.LeftShift))
                     SetThrottle(Mathf.Min(1, throttlePersistent + 0.01f), returnToRealtimeAfterKeyPressed);
-                // decrease throtle when Ctrl pressed
+                // decrease throttle when Ctrl pressed
                 else if (Input.GetKeyDown(KeyCode.LeftControl))
                     SetThrottle(Mathf.Max(0, throttlePersistent - 0.01f), returnToRealtimeAfterKeyPressed);
             }
@@ -299,21 +299,20 @@ namespace PersistentThrust
                 TimeWarp.GThreshold = 12f;
         }
 
-        private void SetThrottle(float newsetting, bool returnToRealTime)
+        private void SetThrottle(float newSetting, bool returnToRealTime)
         {
-            vessel.ctrlState.mainThrottle = newsetting;
-            moduleEngine.requestedThrottle = newsetting;
-            moduleEngine.currentThrottle = newsetting;
+            vessel.ctrlState.mainThrottle = newSetting;
+            moduleEngine.requestedThrottle = newSetting;
+            moduleEngine.currentThrottle = newSetting;
 
             if (!returnToRealTime) return;
 
             // Return to realtime
             TimeWarp.SetRate(0, true);
 
-            if (RealFuelsAssembly == null || !(newsetting > 0)) return;
+            if (RealFuelsAssembly == null || !(newSetting > 0)) return;
 
-            FieldInfo ignitedInfo = moduleEngine.GetType().GetField("ignited",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+            FieldInfo ignitedInfo = moduleEngine.GetType().GetField("ignited", BindingFlags.NonPublic | BindingFlags.Instance);
 
             if (ignitedInfo == null)
                 return;
@@ -752,8 +751,8 @@ namespace PersistentThrust
                 }
                 else
                 {
-                    // update maximum flow
-                    moduleEngine.maxFuelFlow = (float)(ispPersistent > 0 ? moduleEngine.maxThrust / (ispPersistent * PhysicsGlobals.GravitationalAcceleration) : 1e-10f);
+                    // restore maximum flow
+                    RestoreMaxFuelFlow();
 
                     propellantReqMetFactor = moduleEngine.propellantReqMet * 0.01f;
 
@@ -772,8 +771,8 @@ namespace PersistentThrust
             }
             else
             {
-                // update maximum flow
-                moduleEngine.maxFuelFlow = (float) (ispPersistent > 0 ? moduleEngine.maxThrust / (ispPersistent * PhysicsGlobals.GravitationalAcceleration) : 1e-10f);
+                // restore maximum flow
+                RestoreMaxFuelFlow();
 
                 if (throttlePersistent > 0 && ispPersistent > 0 && isPersistentEngine && HasPersistentThrust)
                 {
@@ -827,7 +826,7 @@ namespace PersistentThrust
                     else
                         finalThrust = 0;
 
-                    SetThrottleAnimation(0);
+                    SetThrottleAnimation(finalThrust);
                     UpdateFX(finalThrust);
                     thrustTxt = Utils.FormatThrust(finalThrust);
                 }
@@ -843,6 +842,11 @@ namespace PersistentThrust
                     UpdateBuffers(fuelDemands);
                 }
             }
+        }
+
+        private void RestoreMaxFuelFlow()
+        {
+            moduleEngine.maxFuelFlow = (float) (ispPersistent > 0 ? moduleEngine.maxThrust / (ispPersistent * PhysicsGlobals.GravitationalAcceleration) : 1e-10f);
         }
 
         private static AnimationState[] SetUpAnimation(string animationName, Part part)
