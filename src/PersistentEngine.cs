@@ -22,8 +22,8 @@ namespace PersistentThrust
         public VesselAutopilot.AutopilotMode persistentAutopilotMode;
         [KSPField(isPersistant = true)]
         public double vesselAlignmentWithAutopilotMode;
-        [KSPField(isPersistant = true, guiActiveEditor = false, guiActive = true, guiName = "#LOC_PT_ManeuverTolerance", guiUnits = " %"), UI_FloatRange(stepIncrement = 1, maxValue = 180, minValue = 0, requireFullControl = false, affectSymCounterparts = UI_Scene.All)]//Beamed Power Throttle
-        public float maneuverTolerance = 180;
+        //[KSPField(isPersistant = true, guiActiveEditor = false, guiActive = true, guiName = "#LOC_PT_ManeuverTolerance", guiUnits = " %"), UI_FloatRange(stepIncrement = 1, maxValue = 180, minValue = 0, requireFullControl = false, affectSymCounterparts = UI_Scene.All)]//Beamed Power Throttle
+        //public float maneuverTolerance = 180;
 
         // GUI
         [KSPField(guiFormat = "F1", guiActive = true, guiName = "#autoLOC_6001378", guiUnits = "#autoLOC_7001400")]
@@ -65,10 +65,10 @@ namespace PersistentThrust
         public string powerEffectName;
         [KSPField]
         public string runningEffectName;
-        [KSPField]
-        public double vesselHeadingVersusManeuver;
-        [KSPField]
-        public double vesselHeadingVersusManeuverInDegrees;
+        //[KSPField]
+        //public double vesselHeadingVersusManeuver;
+        //[KSPField]
+        //public double vesselHeadingVersusManeuverInDegrees;
 
         public string[] powerEffectNameList = {"", ""};
         public string[] runningEffectNameList = { "", ""};
@@ -696,8 +696,8 @@ namespace PersistentThrust
             else
                 persistentAutopilotMode = vessel.Autopilot.Mode;
 
-            vesselHeadingVersusManeuver = vessel.VesselOrbitHeadingVersusManeuverVector();
-            vesselHeadingVersusManeuverInDegrees = Math.Acos(Math.Max(-1, Math.Min(1, vesselHeadingVersusManeuver))) * Rad2Deg;
+            //vesselHeadingVersusManeuver = vessel.VesselOrbitHeadingVersusManeuverVector();
+            //vesselHeadingVersusManeuverInDegrees = Math.Acos(Math.Max(-1, Math.Min(1, vesselHeadingVersusManeuver))) * Rad2Deg;
 
             kerbalismResourceChangeRequest.Clear();
 
@@ -721,12 +721,13 @@ namespace PersistentThrust
                 if (processMasslessSeparately && engineHasAnyMassLessPropellants)
                     ReloadPropellantsWithoutMasslessPropellants(currentPropellants);
 
-                if (vesselHeadingVersusManeuverInDegrees > maneuverTolerance)
-                {
-                    moduleEngine.maxFuelFlow = 1e-10f;
-                    finalThrust = 0;
-                }
-                else if (!engineHasAnyMassLessPropellants && moduleEngine.propellantReqMet > 0)
+                //if (vesselHeadingVersusManeuverInDegrees > maneuverTolerance)
+                //{
+                //    moduleEngine.maxFuelFlow = 1e-10f;
+                //    finalThrust = 0;
+                //}
+                //else 
+                if (!engineHasAnyMassLessPropellants && moduleEngine.propellantReqMet > 0)
                 {
                     // Mass flow rate
                     var massFlowRate = ispPersistent > 0 ?  moduleEngine.currentThrottle * moduleEngine.maxThrust / (ispPersistent * PhysicsGlobals.GravitationalAcceleration): 0;
@@ -790,9 +791,8 @@ namespace PersistentThrust
                     }
 
                     // Calculated requested thrust
-                    var requestedThrust = vesselHeadingVersusManeuverInDegrees <= maneuverTolerance 
-                        ? moduleEngine.thrustPercentage * 0.01f * throttlePersistent * moduleEngine.maxThrust 
-                        : 0;
+                    //var requestedThrust = vesselHeadingVersusManeuverInDegrees <= maneuverTolerance ? moduleEngine.thrustPercentage * 0.01f * throttlePersistent * moduleEngine.maxThrust : 0;
+                    var requestedThrust = moduleEngine.thrustPercentage * 0.01f * throttlePersistent * moduleEngine.maxThrust;
 
                     var thrustVector = part.transform.up; // Thrust direction unit vector
                     // Calculate deltaV vector & resource demand from propellants with mass
