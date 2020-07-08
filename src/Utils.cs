@@ -1,8 +1,4 @@
-﻿using System;
-using System.Linq;
-using UnityEngine;
-
-namespace PersistentThrust
+﻿namespace PersistentThrust
 {
     public class Utils
     {

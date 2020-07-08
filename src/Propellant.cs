@@ -2,7 +2,7 @@ using System.Collections.Generic;
 
 namespace PersistentThrust
 {
-    // Containter for propellant info used by PersistentEngine
+    // Container for propellant info used by PersistentEngine
     public class PersistentPropellant
     {
         // Fields
@@ -15,12 +15,12 @@ namespace PersistentThrust
         public double normalizedDemand;
         public double totalEnginesDemand;
 
-        public double maxamount;
+        public double maxAmount;
         public double amount;
         public double missionTime;
 
         // Constructor
-        PersistentPropellant(Propellant p)
+        private PersistentPropellant(Propellant p)
         {
             propellant = p;
             definition = PartResourceLibrary.Instance.GetDefinition(propellant.name);
@@ -49,7 +49,7 @@ namespace PersistentThrust
             {
                 var pp = new PersistentPropellant(p);
                 pplist.Add(pp);
-                if (pp.density > 0.0)
+                if (pp.density > 0)
                     ratioMassSum += pp.ratio;
             }
 
@@ -103,6 +103,9 @@ namespace PersistentThrust
         // Give current step size as argument
         public static string ResourceAmounts(this List<PersistentPropellant> pplist, double dT)
         {
+            if (dT == 0)
+                return "";
+
             var amounts = "";
             foreach (var pp in pplist)
             {

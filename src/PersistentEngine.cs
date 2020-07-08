@@ -312,7 +312,7 @@ namespace PersistentThrust
 
             if (RealFuelsAssembly == null || !(newSetting > 0)) return;
 
-            FieldInfo ignitedInfo = moduleEngine.GetType().GetField("ignited", BindingFlags.NonPublic | BindingFlags.Instance);
+            var ignitedInfo = moduleEngine.GetType().GetField("ignited", BindingFlags.NonPublic | BindingFlags.Instance);
 
             if (ignitedInfo == null)
                 return;
@@ -392,7 +392,7 @@ namespace PersistentThrust
             return propellantNode;
         }
 
-        void UpdatePersistentParameters()
+        private void UpdatePersistentParameters()
         {
             throttleQueue.Enqueue(vessel.ctrlState.mainThrottle);
             if (throttleQueue.Count > queueLength)
@@ -425,17 +425,16 @@ namespace PersistentThrust
             {
                 var pp = currentPropellants[i];
 
-                if (pp.density == 0 && i < demands.Count())
-                {
-                    // find initial resource amount for propellant
-                    var availablePropellant = LoadPropellantAvailability(pp);
+                if (pp.density != 0 || i >= demands.Count()) continue;
 
-                    // update power buffer
-                    bufferSize = UpdateBuffer(availablePropellant, demands[i]);
+                // find initial resource amount for propellant
+                var availablePropellant = LoadPropellantAvailability(pp);
 
-                    // update request
-                    RequestResource(pp, 0);
-                }
+                // update power buffer
+                bufferSize = UpdateBuffer(availablePropellant, demands[i]);
+
+                // update request
+                RequestResource(pp, 0);
             }
         }
 
@@ -447,8 +446,8 @@ namespace PersistentThrust
             {
                 // store mission time to prevent other engines doing unnesisary work
                 pp.missionTime = vessel.missionTime;
-                // determine amount and maxamount at start of PersistenEngine testing
-                part.GetConnectedResourceTotals(pp.definition.id, pp.propellant.GetFlowMode(), out pp.amount, out pp.maxamount, true);
+                // determine amount and maxAmount at start of PersistenEngine testing
+                part.GetConnectedResourceTotals(pp.definition.id, pp.propellant.GetFlowMode(), out pp.amount, out pp.maxAmount, true);
                 // calculate total demand on operational engines
                 pp.totalEnginesDemand = persistentEngines
                     .Where(e => e.moduleEngine.getIgnitionState)
@@ -496,10 +495,10 @@ namespace PersistentThrust
                     // update power buffer
                     bufferSize = UpdateBuffer(availablePropellant, demandIn);
 
-                    var bufferedTotalEnginesDemand = Math.Min(availablePropellant.maxamount, availablePropellant.totalEnginesDemand * bufferSizeMult);
+                    var bufferedTotalEnginesDemand = Math.Min(availablePropellant.maxAmount, availablePropellant.totalEnginesDemand * bufferSizeMult);
 
                     if (bufferedTotalEnginesDemand > currentPropellantAmount && availablePropellant.totalEnginesDemand > 0)
-                        storageModifier = Math.Min(1, (demandIn / availablePropellant.totalEnginesDemand) + ((currentPropellantAmount / bufferedTotalEnginesDemand) * (demandIn / availablePropellant.totalEnginesDemand)));
+                        storageModifier = Math.Min(1, (demandIn / availablePropellant.totalEnginesDemand) + currentPropellantAmount / bufferedTotalEnginesDemand * (demandIn / availablePropellant.totalEnginesDemand));
 
                     if (!MaximizePersistentPower && currentPropellantAmount < bufferSize)
                         storageModifier *= currentPropellantAmount / bufferSize;
@@ -507,7 +506,7 @@ namespace PersistentThrust
 
                 var demandOut = IsInfinite(pp.propellant) ? demandIn : RequestResource(pp, demandIn * storageModifier, true);
 
-                var propellantFoundRatio = demandOut >= demandIn ? 1 : demandIn > 0 ? demandOut / demandIn : 0;
+                var propellantFoundRatio = demandOut >= demandIn ? 1 : demandIn > 0 ? demandOut / demandIn : 1;
 
                 if (propellantFoundRatio < overallPropellantReqMet)
                     overallPropellantReqMet = propellantFoundRatio;
@@ -538,7 +537,7 @@ namespace PersistentThrust
             if (averagePropellantReqMetFactor < minimumPropellantReqMetFactor)
                 autoMaximizePersistentIsp = true;
 
-            finalPropellantReqMetFactor = (!vessel.packed || MaximizePersistentIsp || autoMaximizePersistentIsp) ? averagePropellantReqMetFactor : Mathf.Pow(averagePropellantReqMetFactor, fudgeExponent);
+            finalPropellantReqMetFactor = !vessel.packed || MaximizePersistentIsp || autoMaximizePersistentIsp ? averagePropellantReqMetFactor : Mathf.Pow(averagePropellantReqMetFactor, fudgeExponent);
 
             // secondly we can consume the resource based on propellant availability
             for (var i = 0; i < currentPropellants.Count; i++)
@@ -572,37 +571,35 @@ namespace PersistentThrust
             if (propellant.density > 0 && !vessel.packed)
                 return demand;
 
-            if (useKerbalismInFlight)
-            {
-                availablePartResources.TryGetValue(propellant.definition.name, out var currentAmount);
-
-                var available = Math.Min(currentAmount, demand);
-                var updateAmount = Math.Max(0, currentAmount - demand);
-
-                if (simulate)
-                    availablePartResources[propellant.definition.name] = updateAmount;
-                else
-                {
-                    var demandPerSecond = demand / TimeWarp.fixedDeltaTime;
-
-                    kerbalismResourceChangeRequest.TryGetValue(propellant.definition.name, out var currentDemand);
-                    kerbalismResourceChangeRequest[propellant.definition.name] = currentDemand - demandPerSecond;
-                }
-
-                return available;
-            }
-            else
+            if (!useKerbalismInFlight)
                 return part.RequestResource(propellant.definition.id, demand, propellant.propellant.GetFlowMode(), simulate);
+
+            availablePartResources.TryGetValue(propellant.definition.name, out var currentAmount);
+
+            var available = Math.Min(currentAmount, demand);
+            var updateAmount = Math.Max(0, currentAmount - demand);
+
+            if (simulate)
+                availablePartResources[propellant.definition.name] = updateAmount;
+            else
+            {
+                var demandPerSecond = demand / TimeWarp.fixedDeltaTime;
+
+                kerbalismResourceChangeRequest.TryGetValue(propellant.definition.name, out var currentDemand);
+                kerbalismResourceChangeRequest[propellant.definition.name] = currentDemand - demandPerSecond;
+            }
+
+            return available;
         }
 
         public double UpdateBuffer(PersistentPropellant propellant, double baseSize)
         {
-            var requiredBufferSize = useDynamicBuffer ? Math.Max(baseSize / TimeWarp.fixedDeltaTime * 10 * bufferSizeMult, baseSize * bufferSizeMult) : Math.Max(0, propellant.maxamount - baseSize);
+            var requiredBufferSize = useDynamicBuffer ? Math.Max(baseSize / TimeWarp.fixedDeltaTime * 10 * bufferSizeMult, baseSize * bufferSizeMult) : Math.Max(0, propellant.maxAmount - baseSize);
 
             if (previousFixedDeltaTime == TimeWarp.fixedDeltaTime)
                 return requiredBufferSize;
 
-            var amountRatio = propellant.maxamount > 0 ? Math.Min(1, propellant.amount / propellant.maxamount) : 0;
+            var amountRatio = propellant.maxAmount > 0 ? Math.Min(1, propellant.amount / propellant.maxAmount) : 0;
 
             dynamicBufferSize = useDynamicBuffer ? requiredBufferSize : 0;
             if (dynamicBufferSize > 0)
