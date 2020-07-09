@@ -150,21 +150,7 @@ namespace PersistentThrust
             {
                 if (partModule is MultiModeEngine multiMode)
                     multiModeEngine = multiMode;
-
-                if (partModule is ModuleEnginesFX moduleEngineFx)
-                {
-                    powerEffectName = moduleEngineFx.powerEffectName;
-                    ApplyEffect(powerEffectName, 0);
-                    powerEffectNameList.Add(powerEffectName);
-                    moduleEngineFx.powerEffectName = string.Empty;
-
-                    runningEffectName = moduleEngineFx.runningEffectName;
-                    ApplyEffect(runningEffectName, 0);
-                    runningEffectNameList.Add(runningEffectName);
-                    moduleEngineFx.runningEffectName = string.Empty;
-                }
-
-                if (partModule is ModuleEngines engine)
+                else if (partModule is ModuleEngines engine)
                 {
                     moduleEngine = engine;
                     engines.Add(moduleEngine);
@@ -182,9 +168,9 @@ namespace PersistentThrust
                 Debug.LogWarning("[PersistentThrust]: Insufficient engines found for MultiMode, using single engine mode PersistentThrust");
                 isPersistentEngine = false;
             }
-            else if (moduleEnginesCount > 1 && multiModeEngine != null)
+            else if (moduleEnginesCount > 1 && multiModeEngine == null)
             {
-                Debug.LogWarning("[PersistentThrust]: found multiple engines  but no MultiMode PartModule, disabling PersistentThrust");
+                Debug.LogWarning("[PersistentThrust]: found multiple engines but no MultiMode PartModule, disabling PersistentThrust");
                 isPersistentEngine = false;
             }
             else if (multiModeEngine != null && moduleEnginesCount == 2)
@@ -197,6 +183,22 @@ namespace PersistentThrust
             {
                 Debug.Log("[PersistentThrust]: enabled");
                 isPersistentEngine = true;
+            }
+
+            if (!isPersistentEngine) return;
+
+            var engineFxList = part.FindModulesImplementing<ModuleEnginesFX>();
+            foreach (var moduleEnginesFx in engineFxList)
+            {
+                powerEffectName = moduleEnginesFx.powerEffectName;
+                ApplyEffect(powerEffectName, 0);
+                powerEffectNameList.Add(powerEffectName);
+                moduleEnginesFx.powerEffectName = string.Empty;
+
+                runningEffectName = moduleEnginesFx.runningEffectName;
+                ApplyEffect(runningEffectName, 0);
+                runningEffectNameList.Add(runningEffectName);
+                moduleEnginesFx.runningEffectName = string.Empty;
             }
         }
 
