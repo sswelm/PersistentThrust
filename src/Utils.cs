@@ -13,7 +13,7 @@
             {
                 return $"{thrust * 1e6:F2} mN";
             }
-            else if (thrust < 1.0)
+            if (thrust < 1.0)
             {
                 return $"{thrust * 1e3:F2} N";
             }
