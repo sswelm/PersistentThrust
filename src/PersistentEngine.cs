@@ -158,14 +158,19 @@ namespace PersistentThrust
                 }
             }
 
-            if (moduleEnginesCount == 0)
+            if (moduleEnginesCount == 1 && multiModeEngine == null)
+            {
+                Debug.Log("[PersistentThrust]: enabled");
+                isPersistentEngine = true;
+            }
+            else if (moduleEnginesCount == 0)
             {
                 Debug.LogError("[PersistentThrust]: found no compatible engines, disabling PersistentThrust");
                 isPersistentEngine = false;
             }
             else if (moduleEnginesCount == 1 && multiModeEngine != null)
             {
-                Debug.LogWarning("[PersistentThrust]: Insufficient engines found for MultiMode, using single engine mode PersistentThrust");
+                Debug.LogWarning("[PersistentThrust]: found Insufficient engines for MultiMode, using single engine mode PersistentThrust");
                 isPersistentEngine = false;
             }
             else if (moduleEnginesCount > 1 && multiModeEngine == null)
@@ -181,8 +186,8 @@ namespace PersistentThrust
             }
             else
             {
-                Debug.Log("[PersistentThrust]: enabled");
-                isPersistentEngine = true;
+                Debug.LogError("[PersistentThrust]: failed to initialize");
+                isPersistentEngine = false;
             }
 
             if (!isPersistentEngine) return;
