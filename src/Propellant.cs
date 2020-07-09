@@ -72,10 +72,10 @@ namespace PersistentThrust
         // Calculate average density from a list of PersistentPropellant
         public static double AverageDensity(this List<PersistentPropellant> pplist)
         {
-            var avgDensity = 0.0;
+            double avgDensity = 0;
             foreach (var pp in pplist)
             {
-                if (pp.density > 0.0)
+                if (pp.density > 0)
                     avgDensity += pp.normalizedRatio * pp.density;
             }
             return avgDensity;

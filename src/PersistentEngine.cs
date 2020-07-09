@@ -70,28 +70,28 @@ namespace PersistentThrust
         //[KSPField]
         //public double vesselHeadingVersusManeuverInDegrees;
 
-        public string[] powerEffectNameList = {"", ""};
-        public string[] runningEffectNameList = { "", ""};
+        public List<string> powerEffectNameList = new List<string>() ;
+        public List<string> runningEffectNameList = new List<string>();
 
         public double demandMass;
         public double dynamicBufferSize;
 
         // Engine module on the same part
-        public ModuleEngines[] engines = new ModuleEngines[2];
+        public List<ModuleEngines> engines = new List<ModuleEngines>();
         public ModuleEngines moduleEngine;
-        public ModuleEnginesFX moduleEngineFx;
         public MultiModeEngine multiModeEngine;
         public AnimationState[] throttleAnimationState;
 
-        public float throttlePersistent;                // Persistent values to use during timewarp
+        public float throttlePersistent;                // Persistent values to use during TimeWarp
         public float ispPersistent;
 
         public float finalThrust;
+        [KSPField(guiActive = true)]
         public float propellantReqMetFactor;
         public float previousFixedDeltaTime;
 
         public bool isPersistentEngine;             // Flag if using PersistentEngine features        
-        public bool warpToReal;                     // Are we transitioning from timewarp to reatime?
+        public bool warpToReal;                     // Are we transitioning from TimeWarp to realtime?
         public bool engineHasAnyMassLessPropellants;
         public bool isMultiMode;
 
@@ -101,6 +101,7 @@ namespace PersistentThrust
         public int vesselChangedSoiCountdown = 10;
         public int missingPowerCountdown;
         public int fixedUpdateCount;
+        public int moduleEnginesCount;
 
         public double[] fuelDemands = new double[0];
 
@@ -123,16 +124,14 @@ namespace PersistentThrust
 
         private List<PersistentEngine> _persistentEngines;
 
-        public const double Rad2Deg = 180 / Math.PI; // 57.295779513;
+        //public const double Rad2Deg = 180 / Math.PI; // 57.295779513;
 
         public override void OnStart(StartState state)
         {
             if (state == StartState.Editor) return;
 
-            if (!string.IsNullOrEmpty(throttleAnimationName))
-            {
+            if (!string.IsNullOrWhiteSpace(throttleAnimationName))
                 throttleAnimationState = SetUpAnimation(throttleAnimationName, part);
-            }
 
             _persistentEngines = vessel.FindPartModulesImplementing<PersistentEngine>();
         }
@@ -143,51 +142,62 @@ namespace PersistentThrust
         }
 
         // Make "moduleEngine" and "moduleEngineFx" fields refer to the ModuleEngines and ModuleEnginesFX modules in part.Modules
-        void FindModuleEngines()
+        private void FindModuleEngines()
         {
-            var moduleEnginesCount = 0;
+            moduleEnginesCount = 0;
 
-            foreach (var pm in part.Modules)
+            foreach (var partModule in part.Modules)
             {
-                var multiMode = pm as MultiModeEngine;
-                if (multiMode != null)
+                if (partModule is MultiModeEngine multiMode)
                     multiModeEngine = multiMode;
 
-                moduleEngineFx = pm as ModuleEnginesFX;
-                if (moduleEngineFx != null)
+                if (partModule is ModuleEnginesFX moduleEngineFx)
                 {
-                    if (!string.IsNullOrEmpty(moduleEngineFx.powerEffectName))
-                    {
-                        powerEffectName = moduleEngineFx.powerEffectName;
-                        part.Effect(powerEffectName, 0);
-                        powerEffectNameList[moduleEnginesCount] = moduleEngineFx.powerEffectName;
-                        moduleEngineFx.powerEffectName = "";
-                    }
+                    powerEffectName = moduleEngineFx.powerEffectName;
+                    ApplyEffect(powerEffectName, 0);
+                    powerEffectNameList.Add(powerEffectName);
+                    moduleEngineFx.powerEffectName = string.Empty;
 
-                    if (!string.IsNullOrEmpty(moduleEngineFx.runningEffectName))
-                    {
-                        runningEffectName = moduleEngineFx.runningEffectName;
-                        part.Effect(runningEffectName, 0);
-                        runningEffectNameList[moduleEnginesCount] = moduleEngineFx.runningEffectName;
-                        moduleEngineFx.runningEffectName = "";
-                    }
+                    runningEffectName = moduleEngineFx.runningEffectName;
+                    ApplyEffect(runningEffectName, 0);
+                    runningEffectNameList.Add(runningEffectName);
+                    moduleEngineFx.runningEffectName = string.Empty;
                 }
 
-                moduleEngine = pm as ModuleEngines;
-                if (moduleEngine != null)
+                if (partModule is ModuleEngines engine)
                 {
-                    engines[moduleEnginesCount] = moduleEngine;
-                    isPersistentEngine = true;
+                    moduleEngine = engine;
+                    engines.Add(moduleEngine);
                     moduleEnginesCount++;
                 }
             }
 
-            // only enable multimode if multimode partmodule and multiple ModuleEngines were found
-            if (multiModeEngine != null && moduleEnginesCount > 1)
+            if (moduleEnginesCount == 0)
+            {
+                Debug.LogError("[PersistentThrust]: found no compatible engines, disabling PersistentThrust");
+                isPersistentEngine = false;
+            }
+            else if (moduleEnginesCount == 1 && multiModeEngine != null)
+            {
+                Debug.LogWarning("[PersistentThrust]: Insufficient engines found for MultiMode, using single engine mode PersistentThrust");
+                isPersistentEngine = false;
+            }
+            else if (moduleEnginesCount > 1 && multiModeEngine != null)
+            {
+                Debug.LogWarning("[PersistentThrust]: found multiple engines  but no MultiMode PartModule, disabling PersistentThrust");
+                isPersistentEngine = false;
+            }
+            else if (multiModeEngine != null && moduleEnginesCount == 2)
+            {
+                Debug.Log("[PersistentThrust]: enabled MultiMode");
+                isPersistentEngine = true;
                 isMultiMode = true;
-
-            if (!isPersistentEngine)
-                Debug.Log("[PersistentThrust] No ModuleEngine found.");
+            }
+            else
+            {
+                Debug.Log("[PersistentThrust]: enabled");
+                isPersistentEngine = true;
+            }
         }
 
         public void Update()
@@ -198,20 +208,19 @@ namespace PersistentThrust
             UpdateFX(0);
         }
 
-        // Finds the active moduleEngine module from the MultiModeEngine partmodule
+        // Finds the active moduleEngine module from the MultiModeEngine partModule
         private void FetchActiveMode()
         {
             if (!isMultiMode)
                 return;
 
             moduleEngine = multiModeEngine.runningPrimary ? multiModeEngine.PrimaryEngine : multiModeEngine.SecondaryEngine;
-            moduleEngineFx = multiModeEngine.runningPrimary ? multiModeEngine.PrimaryEngine : multiModeEngine.SecondaryEngine;
 
             if (!isMultiMode) return;
 
             var index = multiModeEngine.runningPrimary ? 0 : 1;
 
-            for (int i = 0 ; i < powerEffectNameList.Length ; i++)
+            for (var i = 0 ; i < powerEffectNameList.Count ; i++)
             {
                 var effect = powerEffectNameList[i];
 
@@ -221,7 +230,7 @@ namespace PersistentThrust
                     ApplyEffect(effect, 0);
             }
 
-            for (int i = 0; i < runningEffectNameList.Length; i++)
+            for (var i = 0; i < runningEffectNameList.Count; i++)
             {
                 var effect = runningEffectNameList[i];
 
@@ -240,7 +249,7 @@ namespace PersistentThrust
 
         private void ApplyEffect(string effect, float ratio)
         {
-            if (string.IsNullOrEmpty(name))
+            if (string.IsNullOrWhiteSpace(name))
                 return;
 
             part.Effect(effect, ratio, -1);
@@ -265,7 +274,7 @@ namespace PersistentThrust
 
             if (!isPersistentEngine || !HasPersistentThrust) return;
 
-            // When transitioning from timewarp to real update throttle
+            // When transitioning from TimeWarp to real update throttle
             if (warpToReal)
             {
                 SetThrottle(throttlePersistent, true);
@@ -274,7 +283,7 @@ namespace PersistentThrust
 
             if (vessel.packed)
             {
-                // maintain thrust setting durring timewarp
+                // maintain thrust setting during TimeWarp
                 vessel.ctrlState.mainThrottle = throttlePersistent;
 
                 // stop engines when X pressed
@@ -291,7 +300,7 @@ namespace PersistentThrust
                     SetThrottle(Mathf.Max(0, throttlePersistent - 0.01f), returnToRealtimeAfterKeyPressed);
             }
             else
-                TimeWarp.GThreshold = 12f;
+                TimeWarp.GThreshold = 12;
         }
 
         private void SetThrottle(float newSetting, bool returnToRealTime)
@@ -377,7 +386,7 @@ namespace PersistentThrust
 
         private ConfigNode LoadPropellant(string akName, float akRatio)
         {
-            Debug.Log("[PersistenThrust]: LoadPropellant: " + akName + " " + akRatio);
+            Debug.Log("[PersistentThrust]: LoadPropellant: " + akName + " " + akRatio);
 
             var propellantNode = new ConfigNode().AddNode("PROPELLANT");
             propellantNode.AddValue("name", akName);
@@ -401,15 +410,15 @@ namespace PersistentThrust
         }
 
         // Calculate demands of each resource
-        public virtual double[] CalculateDemands(double demandMass)
+        public virtual double[] CalculateDemands(double mass)
         {
             var demands = new double[currentPropellants.Count];
-            if (!(demandMass > 0)) return demands;
+            if (!(mass > 0)) return demands;
 
             // Per propellant demand
             for (var i = 0; i < currentPropellants.Count; i++)
             {
-                demands[i] = currentPropellants[i].CalculateDemand(demandMass);
+                demands[i] = currentPropellants[i].CalculateDemand(mass);
             }
             return demands;
         }
@@ -418,18 +427,18 @@ namespace PersistentThrust
         {
             for (var i = 0; i < currentPropellants.Count; i++)
             {
-                var pp = currentPropellants[i];
+                var currentPropellant = currentPropellants[i];
 
-                if (pp.density != 0 || i >= demands.Count()) continue;
+                if (currentPropellant.density != 0 || i >= demands.Count()) continue;
 
                 // find initial resource amount for propellant
-                var availablePropellant = LoadPropellantAvailability(pp);
+                var availablePropellant = LoadPropellantAvailability(currentPropellant);
 
                 // update power buffer
                 bufferSize = UpdateBuffer(availablePropellant, demands[i]);
 
                 // update request
-                RequestResource(pp, 0);
+                RequestResource(currentPropellant, 0);
             }
         }
 
@@ -439,9 +448,9 @@ namespace PersistentThrust
             var firstProcessedEngine = _persistentEngines.FirstOrDefault(m => m.currentPropellants.Any(l => l.missionTime == vessel.missionTime && l.definition.id == pp.definition.id));
             if (firstProcessedEngine == null)
             {
-                // store mission time to prevent other engines doing unnesisary work
+                // store mission time to prevent other engines doing unnecessary work
                 pp.missionTime = vessel.missionTime;
-                // determine amount and maxAmount at start of PersistenEngine testing
+                // determine amount and maxAmount at start of PersistentEngine testing
                 part.GetConnectedResourceTotals(pp.definition.id, pp.propellant.GetFlowMode(), out pp.amount, out pp.maxAmount, true);
                 // calculate total demand on operational engines
                 pp.totalEnginesDemand = _persistentEngines
@@ -589,7 +598,9 @@ namespace PersistentThrust
 
         public double UpdateBuffer(PersistentPropellant propellant, double baseSize)
         {
-            var requiredBufferSize = useDynamicBuffer ? Math.Max(baseSize / TimeWarp.fixedDeltaTime * 10 * bufferSizeMult, baseSize * bufferSizeMult) : Math.Max(0, propellant.maxAmount - baseSize);
+            var requiredBufferSize = useDynamicBuffer 
+                ? Math.Max(baseSize / TimeWarp.fixedDeltaTime * 10 * bufferSizeMult, baseSize * bufferSizeMult) 
+                : Math.Max(0, propellant.maxAmount - baseSize);
 
             if (previousFixedDeltaTime == TimeWarp.fixedDeltaTime)
                 return requiredBufferSize;
@@ -629,20 +640,20 @@ namespace PersistentThrust
         }
 
         // Calculate DeltaV vector
-        public virtual Vector3d CalculateDeltaVVector(double vesselMass, double deltaTime, double thrust, float isp, Vector3d thrustUV, out double demandMass)
+        public virtual Vector3d CalculateDeltaVVector(double vesselMass, double deltaTime, double thrust, float isp, Vector3d thrustVector, out double mass)
         {
             // Mass flow rate
             var massFlowRate = isp > 0 ? thrust / (isp * PhysicsGlobals.GravitationalAcceleration) : 0;
             // Change in mass over time interval dT
             var deltaMass = massFlowRate * deltaTime;
             // Resource demand from propellants with mass
-            demandMass = densityAverage > 0 ? deltaMass / densityAverage : 0;
+            mass = densityAverage > 0 ? deltaMass / densityAverage : 0;
             //// Resource demand from propellants with mass
             var remainingMass = vesselMass - deltaMass;
             // deltaV amount
             var deltaV = isp * PhysicsGlobals.GravitationalAcceleration * Math.Log(remainingMass > 0 ? vesselMass / remainingMass : 1);
             // Return deltaV vector
-            return deltaV * thrustUV;
+            return deltaV * thrustVector;
         }
 
         public virtual void UpdateFX(double currentThrust)
