@@ -263,9 +263,9 @@ namespace PersistentThrust
                 if (currentEngine.engine == null) continue;
 
                 // hide stock thrust
-                currentEngine.engine.Fields["finalThrust"].guiActive = false;
-                currentEngine.engine.Fields["realIsp"].guiActive = false;
-                currentEngine.engine.Fields["propellantReqMet"].guiActive = false;
+                currentEngine.engine.Fields[nameof(currentEngine.engine.finalThrust)].guiActive = false;
+                currentEngine.engine.Fields[nameof(currentEngine.engine.realIsp)].guiActive = false;
+                currentEngine.engine.Fields[nameof(currentEngine.engine.propellantReqMet)].guiActive = false;
             }
 
             var averagePropellantReqMetFactor = isMultiMode
@@ -709,17 +709,7 @@ namespace PersistentThrust
         {
             if (this.vessel is null || currentEngine.engine is null || !isEnabled) return;
 
-            fixedUpdateCount++;
-            var universalTime = Planetarium.GetUniversalTime();
-
-            // restore heading at load
-            if (HasPersistentHeadingEnabled && fixedUpdateCount <= 60 && vesselAlignmentWithAutopilotMode > 0.995)
-            {
-                vessel.Autopilot.SetMode(persistentAutopilotMode);
-                vessel.PersistHeading(TimeWarp.fixedDeltaTime, headingTolerance, vesselChangedSoiCountdown > 0);
-            }
-            else
-                persistentAutopilotMode = vessel.Autopilot.Mode;
+            RestoreHeadingAtLoad();
 
             //vesselHeadingVersusManeuver = vessel.VesselOrbitHeadingVersusManeuverVector();
             //vesselHeadingVersusManeuverInDegrees = Math.Acos(Math.Max(-1, Math.Min(1, vesselHeadingVersusManeuver))) * Rad2Deg;
@@ -737,7 +727,7 @@ namespace PersistentThrust
             // Realtime mode
             if (!vessel.packed)
             {
-                vesselAlignmentWithAutopilotMode = vessel.HeadingVersusAutopilotVector(universalTime);
+                vesselAlignmentWithAutopilotMode = vessel.HeadingVersusAutopilotVector(Planetarium.GetUniversalTime());
 
                 // Update persistent thrust throttle if NOT transitioning from warp to realtime
                 if (!warpToReal)
@@ -847,7 +837,7 @@ namespace PersistentThrust
                         if (currentEngine.propellantReqMetFactor > 0)
                         {
                             currentEngine.finalThrust = requestedThrust * currentEngine.propellantReqMetFactor;
-                            vessel.orbit.Perturb(deltaVVector * currentEngine.propellantReqMetFactor, universalTime);
+                            vessel.orbit.Perturb(deltaVVector * currentEngine.propellantReqMetFactor, Planetarium.GetUniversalTime());
                         }
 
                         // Otherwise log warning and drop out of TimeWarp if throttle on & depleted
@@ -892,6 +882,19 @@ namespace PersistentThrust
             previousFixedDeltaTime = TimeWarp.fixedDeltaTime;
 
             UpdateMasslessConsumption();
+        }
+
+        private void RestoreHeadingAtLoad()
+        {
+            fixedUpdateCount++;
+            // restore heading at load
+            if (HasPersistentHeadingEnabled && fixedUpdateCount <= 60 && vesselAlignmentWithAutopilotMode > 0.995)
+            {
+                vessel.Autopilot.SetMode(persistentAutopilotMode);
+                vessel.PersistHeading(TimeWarp.fixedDeltaTime, headingTolerance, vesselChangedSoiCountdown > 0);
+            }
+            else
+                persistentAutopilotMode = vessel.Autopilot.Mode;
         }
 
         private void ResetMonitoringVariables()
