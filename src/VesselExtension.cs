@@ -25,7 +25,7 @@ namespace PersistentThrust
             if (!sasIsActive)
                 return 0;
 
-            var requestedDirection = GetRequestedDirection(engine, Planetarium.GetUniversalTime());
+            var requestedDirection = GetRequestedDirection(engine.vessel, Planetarium.GetUniversalTime());
 
             if (requestedDirection == Vector3d.zero) 
                 return 1;
@@ -56,11 +56,11 @@ namespace PersistentThrust
             }
         }
 
-        public static double VesselHeadingVersusAutopilotVector(this ModuleEngines engine, double universalTime)
+        public static double HeadingVersusAutopilotVector(this Vessel vessel, double universalTime)
         {
-            var requestedDirection = GetRequestedDirection(engine, universalTime);
+            var requestedDirection = GetRequestedDirection(vessel, universalTime);
 
-            return Vector3d.Dot(engine.vessel.transform.up.normalized, requestedDirection);
+            return Vector3d.Dot(vessel.transform.up.normalized, requestedDirection);
         }
 
         public static double VesselOrbitHeadingVersusManeuverVector(this Vessel vessel)
@@ -85,9 +85,8 @@ namespace PersistentThrust
                 return 1;
         }
 
-        public static Vector3d GetRequestedDirection(this ModuleEngines engine, double universalTime)
+        public static Vector3d GetRequestedDirection(this Vessel vessel, double universalTime)
         {
-            var vessel = engine.vessel;
             var requestedDirection = Vector3d.zero;
             var vesselPosition = vessel.orbit.getPositionAtUT(universalTime);
 

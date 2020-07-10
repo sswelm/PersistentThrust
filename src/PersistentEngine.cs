@@ -12,10 +12,14 @@ namespace PersistentThrust
         public string powerEffectName;
         public string runningEffectName;
 
+        public bool engineHasAnyMassLessPropellants;
+
         public float persistentIsp;
         public double averageDensity;
         public ModuleEngines engine;
         public List<PersistentPropellant> propellants;
+
+        public double[] fuelDemands = new double[0];
 
         public readonly Queue<float> propellantReqMetFactorQueue = new Queue<float>();
         public readonly Queue<float> ispQueue = new Queue<float>();
@@ -75,13 +79,6 @@ namespace PersistentThrust
         [KSPField]
         public bool requestPropMass = true;                 // Flag whether to request resources with mass
 
-        //[KSPField(guiActive = true)]
-        //public string powerEffectName;
-        //[KSPField(guiActive = true)]
-        //public string runningEffectName;
-        //[KSPField(guiActive = true)] 
-        //public float exhaustRatio;
-
         public List<string> powerEffectNameList = new List<string>() ;
         public List<string> runningEffectNameList = new List<string>();
 
@@ -100,7 +97,7 @@ namespace PersistentThrust
 
         public bool isPersistentEngine;             // Flag if using PersistentEngine features        
         public bool warpToReal;                     // Are we transitioning from TimeWarp to realtime?
-        public bool engineHasAnyMassLessPropellants;
+        
         public bool isMultiMode;
         public bool autoMaximizePersistentIsp;
         public bool useKerbalismInFlight;
@@ -109,8 +106,6 @@ namespace PersistentThrust
         public int missingPowerCountdown;
         public int fixedUpdateCount;
         public int moduleEnginesCount;
-
-        public double[] fuelDemands = new double[0];
 
         public double bufferSize;
         public double consumedPower;
@@ -683,7 +678,7 @@ namespace PersistentThrust
         {
             if (propellantReqMetFactor > 0 && persistentThrottle > 0)
             {
-                currentEngine.propellantReqMetFactorQueue.Enqueue(engineHasAnyMassLessPropellants
+                currentEngine.propellantReqMetFactorQueue.Enqueue(currentEngine.engineHasAnyMassLessPropellants
                     ? Mathf.Pow(propellantReqMetFactor, 1 / fudgeExponent)
                     : propellantReqMetFactor);
 
@@ -722,6 +717,8 @@ namespace PersistentThrust
             // Realtime mode
             if (!vessel.packed)
             {
+                vesselAlignmentWithAutopilotMode = vessel.HeadingVersusAutopilotVector(universalTime);
+
                 // Checks if moduleEngine mode wasn't switched
                 FetchActiveMode();
 
@@ -735,13 +732,9 @@ namespace PersistentThrust
                     if (!warpToReal)
                         UpdatePersistentParameters();
 
-                    vesselAlignmentWithAutopilotMode =
-                        currentEngine.engine.VesselHeadingVersusAutopilotVector(universalTime);
+                    currentEngine.engineHasAnyMassLessPropellants = currentEngine.engine.propellants.Any(m => m.resourceDef.density == 0);
 
-                    engineHasAnyMassLessPropellants =
-                        currentEngine.engine.propellants.Any(m => m.resourceDef.density == 0);
-
-                    if (processMasslessSeparately && engineHasAnyMassLessPropellants)
+                    if (processMasslessSeparately && currentEngine.engineHasAnyMassLessPropellants)
                         ReloadPropellantsWithoutMasslessPropellants(currentEngine.engine, currentEngine.propellants);
 
                     //if (vesselHeadingVersusManeuverInDegrees > maneuverTolerance)
@@ -750,7 +743,7 @@ namespace PersistentThrust
                     //    finalThrust = 0;
                     //}
                     //else 
-                    if (!engineHasAnyMassLessPropellants && currentEngine.engine.propellantReqMet > 0)
+                    if (!currentEngine.engineHasAnyMassLessPropellants && currentEngine.engine.propellantReqMet > 0)
                     {
                         // Mass flow rate
                         var massFlowRate = currentEngine.persistentIsp > 0
@@ -762,9 +755,9 @@ namespace PersistentThrust
                         demandMass = currentEngine.averageDensity > 0 ? deltaMass / currentEngine.averageDensity : 0;
 
                         // Calculate resource demands
-                        fuelDemands = CalculateDemands(demandMass);
+                        currentEngine.fuelDemands = CalculateDemands(demandMass);
                         // Apply resource demands & test for resource depletion
-                        ApplyDemands(fuelDemands, ref propellantReqMetFactor);
+                        ApplyDemands(currentEngine.fuelDemands, ref propellantReqMetFactor);
 
                         // calculate maximum flow
                         var maxFuelFlow = currentEngine.persistentIsp > 0 ? currentEngine.engine.maxThrust / (currentEngine.persistentIsp * PhysicsGlobals.GravitationalAcceleration) : 0;
@@ -791,7 +784,7 @@ namespace PersistentThrust
 
                     SetThrottleAnimation(currentEngine.engine, finalThrust);
 
-                    UpdateBuffers(fuelDemands);
+                    UpdateBuffers(currentEngine.fuelDemands);
                 }
             }
             else
@@ -829,9 +822,9 @@ namespace PersistentThrust
                         // Calculate deltaV vector & resource demand from propellants with mass
                         var deltaVVector = CalculateDeltaVVector(currentEngine.averageDensity, vessel.totalMass, TimeWarp.fixedDeltaTime, requestedThrust, currentEngine.persistentIsp, thrustVector, out demandMass);
                         // Calculate resource demands
-                        fuelDemands = CalculateDemands(demandMass);
+                        currentEngine.fuelDemands = CalculateDemands(demandMass);
                         // Apply resource demands & test for resource depletion
-                        ApplyDemands(fuelDemands, ref propellantReqMetFactor);
+                        ApplyDemands(currentEngine.fuelDemands, ref propellantReqMetFactor);
 
                         // Apply deltaV vector at UT & dT to orbit if resources not depleted
                         if (propellantReqMetFactor > 0)
@@ -870,7 +863,7 @@ namespace PersistentThrust
                                 currentEngine.engine.PersistHeading(TimeWarp.fixedDeltaTime, headingTolerance,
                                     vesselChangedSoiCountdown > 0);
                         UpdateFX(0);
-                        UpdateBuffers(fuelDemands);
+                        UpdateBuffers(currentEngine.fuelDemands);
                     }
                 }
             }
