@@ -118,7 +118,7 @@ namespace PersistentThrust
         {
             if (state == StartState.Editor) return;
 
-            if (!string.IsNullOrWhiteSpace(throttleAnimationName))
+            if (!string.IsNullOrEmpty(throttleAnimationName))
                 throttleAnimationState = SetUpAnimation(throttleAnimationName, part);
 
             _persistentEngines = vessel.FindPartModulesImplementing<PersistentEngine>();
@@ -245,7 +245,7 @@ namespace PersistentThrust
 
         private void ApplyEffect(string effect, float ratio)
         {
-            if (string.IsNullOrWhiteSpace(name))
+            if (string.IsNullOrEmpty(name))
                 return;
 
             part.Effect(effect, ratio, -1);
