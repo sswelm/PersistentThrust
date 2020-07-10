@@ -18,6 +18,8 @@ namespace PersistentThrust
         public double maxAmount;
         public double amount;
         public double missionTime;
+        public double demandIn;
+        public double demandOut;
 
         // Constructor
         private PersistentPropellant(Propellant p)

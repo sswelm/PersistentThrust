@@ -5,13 +5,8 @@ namespace PersistentThrust
 {
     public static class VesselExtension
     {
-        public static double PersistHeading(this ModuleEngines engine, float fixedDeltaTime, float headingTolerance = 0.001f, bool forceRotation = false, bool canDropOutOfTimeWarp = true)
+        public static double PersistHeading(this Vessel vessel, float fixedDeltaTime, float headingTolerance = 0.001f, bool forceRotation = false, bool canDropOutOfTimeWarp = true)
         {
-            if (engine.getIgnitionState == false)
-                return 0;
-
-            var vessel = engine.vessel;
-
             if (!vessel.packed && !forceRotation)
                 return 0;
 
@@ -25,7 +20,7 @@ namespace PersistentThrust
             if (!sasIsActive)
                 return 0;
 
-            var requestedDirection = GetRequestedDirection(engine.vessel, Planetarium.GetUniversalTime());
+            var requestedDirection = GetRequestedDirection(vessel, Planetarium.GetUniversalTime());
 
             if (requestedDirection == Vector3d.zero) 
                 return 1;
@@ -40,7 +35,7 @@ namespace PersistentThrust
                 vessel.SetRotation(vessel.transform.rotation);
                 return 1;
             }
-            else if (engine.currentThrottle == 0 || canDropOutOfTimeWarp == false)
+            else if (vessel.ctrlState.mainThrottle == 0 || canDropOutOfTimeWarp == false)
             {
                 return ratioHeadingVersusRequest;
             }

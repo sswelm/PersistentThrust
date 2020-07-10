@@ -18,6 +18,7 @@ namespace PersistentThrust
         public float propellantReqMetFactor;
         public float persistentIsp;
         public double averageDensity;
+        public double demandMass;
         public ModuleEngines engine;
         public List<PersistentPropellant> propellants;
         public double[] fuelDemands = new double[0];
@@ -50,6 +51,8 @@ namespace PersistentThrust
         public string thrustTxt;
         [KSPField(guiFormat = "F2", guiActive = true, guiName = "#autoLOC_6001376", guiUnits = "%")]
         public float propellantReqMet;
+        [KSPField(guiFormat = "F3")]
+        public double masslessUsage;
 
         // Config Settings
         [KSPField]
@@ -82,13 +85,14 @@ namespace PersistentThrust
         public List<string> powerEffectNameList = new List<string>() ;
         public List<string> runningEffectNameList = new List<string>();
 
-        public double demandMass;
-        public double dynamicBufferSize;
+        //public double demandMass;
+        public double bufferSize;
 
         public PersistentEngineModule currentEngine;
         public PersistentEngineModule[] moduleEngines = new PersistentEngineModule[0];
         public MultiModeEngine multiModeEngine;
         public AnimationState[] throttleAnimationState;
+        public BaseField masslessUsageField;
 
         public float persistentThrottle;                // Persistent values to use during TimeWarp
         public float previousFixedDeltaTime;
@@ -100,9 +104,6 @@ namespace PersistentThrust
 
         public int vesselChangedSoiCountdown = 10;
         public int fixedUpdateCount;
-        public int moduleEnginesCount;
-
-        public double bufferSize;
 
         private Dictionary<string, double> _availablePartResources = new Dictionary<string, double>();
         private readonly Dictionary<string, double> _kerbalismResourceChangeRequest = new Dictionary<string, double>();
@@ -121,6 +122,8 @@ namespace PersistentThrust
                 throttleAnimationState = SetUpAnimation(throttleAnimationName, part);
 
             _persistentEngines = vessel.FindPartModulesImplementing<PersistentEngine>();
+
+            masslessUsageField = Fields[nameof(this.masslessUsage)];
         }
 
         public void VesselChangedSOI()
@@ -131,7 +134,7 @@ namespace PersistentThrust
         // Make "moduleEngine" and "moduleEngineFx" fields refer to the ModuleEngines and ModuleEnginesFX modules in part.Modules
         private void FindModuleEngines()
         {
-            moduleEnginesCount = 0;
+            var moduleEnginesCount = 0;
 
             var moduleEnginesList = new List<PersistentEngineModule>();
 
@@ -209,7 +212,13 @@ namespace PersistentThrust
             if (!HighLogic.LoadedSceneIsEditor) return;
 
             SetAnimationRatio(0, throttleAnimationState);
-            UpdateFX(0);
+
+            foreach (var engine in moduleEngines)
+            {
+                currentEngine = engine;
+
+                UpdateFX();
+            }
         }
 
         // Finds the active moduleEngine module from the MultiModeEngine partModule
@@ -257,27 +266,27 @@ namespace PersistentThrust
                 currentEngine.engine.Fields["finalThrust"].guiActive = false;
                 currentEngine.engine.Fields["realIsp"].guiActive = false;
                 currentEngine.engine.Fields["propellantReqMet"].guiActive = false;
-
-                var averagePropellantReqMetFactor = isMultiMode 
-                    ? currentEngine.propellantReqMetFactor 
-                    : moduleEngines.Average(m => m.propellantReqMetFactor);
-
-                propellantReqMet = averagePropellantReqMetFactor * 100;
-
-                var anyMasslessPropellants = isMultiMode 
-                    ? currentEngine.engine.propellants.Any(m => m.resourceDef.density == 0) 
-                    : moduleEngines.SelectMany(m => m.propellants.Where(p => p.propellant.resourceDef.density == 0)).Any();
-
-                var anyAutoMaximizePersistentIsp = isMultiMode 
-                    ? currentEngine.autoMaximizePersistentIsp 
-                    :  moduleEngines.Any(m => m.autoMaximizePersistentIsp);
-
-                realIsp = !vessel.packed && !anyMasslessPropellants
-                    ? currentEngine.engine.realIsp
-                    : vessel.packed && (MaximizePersistentIsp || anyAutoMaximizePersistentIsp) || persistentThrottle == 0
-                        ? currentEngine.persistentIsp
-                        : currentEngine.persistentIsp * averagePropellantReqMetFactor;
             }
+
+            var averagePropellantReqMetFactor = isMultiMode
+                ? currentEngine.propellantReqMetFactor
+                : moduleEngines.Average(m => m.propellantReqMetFactor);
+
+            propellantReqMet = averagePropellantReqMetFactor * 100;
+
+            var anyMasslessPropellants = isMultiMode
+                ? currentEngine.engine.propellants.Any(m => m.resourceDef.density == 0)
+                : moduleEngines.SelectMany(m => m.engine.propellants.Where(p => p.resourceDef.density == 0)).Any();
+
+            var anyAutoMaximizePersistentIsp = isMultiMode
+                ? currentEngine.autoMaximizePersistentIsp
+                : moduleEngines.Any(m => m.autoMaximizePersistentIsp);
+
+            realIsp = !vessel.packed && !anyMasslessPropellants
+                ? currentEngine.engine.realIsp
+                : vessel.packed && (MaximizePersistentIsp || anyAutoMaximizePersistentIsp) ||  persistentThrottle == 0
+                    ? currentEngine.persistentIsp
+                    : currentEngine.persistentIsp * averagePropellantReqMetFactor;
 
             if (!isPersistentEngine || !HasPersistentThrust) return;
 
@@ -435,19 +444,19 @@ namespace PersistentThrust
             return demands;
         }
 
-        public void UpdateBuffers(double[] demands)
+        public void UpdateBuffers()
         {
             for (var i = 0; i < currentEngine.propellants.Count; i++)
             {
                 var currentPropellant = currentEngine.propellants[i];
 
-                if (currentPropellant.density != 0 || i >= demands.Count()) continue;
+                if (currentPropellant.density != 0 || i >= currentEngine.fuelDemands.Count()) continue;
 
                 // find initial resource amount for propellant
                 var availablePropellant = LoadPropellantAvailability(currentPropellant);
 
                 // update power buffer
-                bufferSize = UpdateBuffer(availablePropellant, demands[i]);
+                bufferSize = UpdateBuffer(availablePropellant, currentEngine.fuelDemands[i]);
 
                 // update request
                 RequestResource(currentPropellant, 0);
@@ -495,45 +504,48 @@ namespace PersistentThrust
             {
                 currentEngine.autoMaximizePersistentIsp = false;
 
-                var pp = currentEngine.propellants[i];
+                PersistentPropellant persistentPropellant = currentEngine.propellants[i];
                 // Request resources if:
                 // - resource has mass & request mass flag true
                 // - resource massless & request massless flag true
-                if ((!(pp.density > 0) || !requestPropMass) && (pp.density != 0 || !requestPropMassless)) continue;
+                if ((!(persistentPropellant.density > 0) || !requestPropMass) && (persistentPropellant.density != 0 || !requestPropMassless)) continue;
 
-                var demandIn = demands[i];
+                persistentPropellant.demandIn = demands[i];
                 var storageModifier = 1.0;
 
                 // Process massless propellants like ElectricCharge separately
-                if (pp.density == 0)
+                if (persistentPropellant.density == 0)
                 {
                     // find initial resource amount for propellant
-                    var availablePropellant = LoadPropellantAvailability(pp);
+                    var availablePropellant = LoadPropellantAvailability(persistentPropellant);
 
-                    _availablePartResources.TryGetValue(pp.definition.name, out var kerbalismAmount);
+                    _availablePartResources.TryGetValue(persistentPropellant.definition.name, out var kerbalismAmount);
 
                     var currentPropellantAmount = useKerbalismInFlight ? kerbalismAmount : availablePropellant.amount;
 
                     // update power buffer
-                    bufferSize = UpdateBuffer(availablePropellant, demandIn);
+                    bufferSize = UpdateBuffer(availablePropellant, persistentPropellant.demandIn);
 
                     var bufferedTotalEnginesDemand = Math.Min(availablePropellant.maxAmount, availablePropellant.totalEnginesDemand * bufferSizeMult);
 
                     if (bufferedTotalEnginesDemand > currentPropellantAmount && availablePropellant.totalEnginesDemand > 0)
-                        storageModifier = Math.Min(1, (demandIn / availablePropellant.totalEnginesDemand) + currentPropellantAmount / bufferedTotalEnginesDemand * (demandIn / availablePropellant.totalEnginesDemand));
+                        storageModifier = Math.Min(1, (persistentPropellant.demandIn / availablePropellant.totalEnginesDemand) + currentPropellantAmount / bufferedTotalEnginesDemand * (persistentPropellant.demandIn / availablePropellant.totalEnginesDemand));
 
                     if (!MaximizePersistentPower && currentPropellantAmount < bufferSize)
                         storageModifier *= currentPropellantAmount / bufferSize;
                 }
 
-                var demandOut = IsInfinite(pp.propellant) ? demandIn : RequestResource(pp, demandIn * storageModifier, true);
+                persistentPropellant.demandOut = IsInfinite(persistentPropellant.propellant) 
+                    ? persistentPropellant.demandIn 
+                    : RequestResource(persistentPropellant, persistentPropellant.demandIn * storageModifier, true);
 
-                var propellantFoundRatio = demandOut >= demandIn ? 1 : demandIn > 0 ? demandOut / demandIn : 1;
+                var propellantFoundRatio = persistentPropellant.demandOut >= persistentPropellant.demandIn 
+                    ? 1 : persistentPropellant.demandIn > 0 ? persistentPropellant.demandOut / persistentPropellant.demandIn : 1;
 
                 if (propellantFoundRatio < overallPropellantReqMet)
                     overallPropellantReqMet = propellantFoundRatio;
 
-                if (pp.propellant.resourceDef.density > 0)
+                if (persistentPropellant.propellant.resourceDef.density > 0)
                 {
                     // reset stabilize Queue when out of mass propellant
                     if (propellantFoundRatio < 1)
@@ -596,10 +608,9 @@ namespace PersistentThrust
             _availablePartResources.TryGetValue(propellant.definition.name, out var currentAmount);
 
             var available = Math.Min(currentAmount, demand);
-            var updateAmount = Math.Max(0, currentAmount - demand);
 
             if (simulate)
-                _availablePartResources[propellant.definition.name] = updateAmount;
+                _availablePartResources[propellant.definition.name] = Math.Max(0, currentAmount - demand);
             else
             {
                 var demandPerSecond = demand / TimeWarp.fixedDeltaTime;
@@ -622,7 +633,7 @@ namespace PersistentThrust
 
             var amountRatio = propellant.maxAmount > 0 ? Math.Min(1, propellant.amount / propellant.maxAmount) : 0;
 
-            dynamicBufferSize = useDynamicBuffer ? requiredBufferSize : 0;
+            var dynamicBufferSize = useDynamicBuffer ? requiredBufferSize : 0;
 
             if (!(dynamicBufferSize > 0)) 
                 return requiredBufferSize;
@@ -670,12 +681,9 @@ namespace PersistentThrust
             return deltaV * thrustVector;
         }
 
-        public virtual void UpdateFX(double currentThrust)
+        public virtual void UpdateFX()
         {
-            if (!currentEngine.engine.getIgnitionState)
-                currentThrust = 0;
-
-            var exhaustRatio = (float)(currentEngine.engine.maxThrust > 0 ? currentThrust / currentEngine.engine.maxThrust : 0);
+            var exhaustRatio = (float)(currentEngine.engine.maxThrust > 0 ? currentEngine.finalThrust / currentEngine.engine.maxThrust : 0);
 
             ApplyEffect(currentEngine.powerEffectName, exhaustRatio);
             ApplyEffect(currentEngine.runningEffectName, exhaustRatio);
@@ -708,7 +716,7 @@ namespace PersistentThrust
             if (HasPersistentHeadingEnabled && fixedUpdateCount <= 60 && vesselAlignmentWithAutopilotMode > 0.995)
             {
                 vessel.Autopilot.SetMode(persistentAutopilotMode);
-                currentEngine.engine.PersistHeading(TimeWarp.fixedDeltaTime, headingTolerance, vesselChangedSoiCountdown > 0);
+                vessel.PersistHeading(TimeWarp.fixedDeltaTime, headingTolerance, vesselChangedSoiCountdown > 0);
             }
             else
                 persistentAutopilotMode = vessel.Autopilot.Mode;
@@ -721,23 +729,25 @@ namespace PersistentThrust
             if (vesselChangedSoiCountdown > 0)
                 vesselChangedSoiCountdown--;
 
+            // Checks if moduleEngine mode wasn't switched
+            FetchActiveMode();
+
+            var processedEngines = isMultiMode ? new[] { currentEngine } : moduleEngines;
+
             // Realtime mode
             if (!vessel.packed)
             {
                 vesselAlignmentWithAutopilotMode = vessel.HeadingVersusAutopilotVector(universalTime);
 
-                // Checks if moduleEngine mode wasn't switched
-                FetchActiveMode();
-
                 // Update persistent thrust throttle if NOT transitioning from warp to realtime
                 if (!warpToReal)
                     UpdatePersistentThrottle();
 
-                var processedEngines = isMultiMode ? new[] { currentEngine } : moduleEngines;
-
                 for (var i = 0; i < processedEngines.Length; i++)
                 {
                     currentEngine = processedEngines[i];
+
+                    ResetMonitoringVariables();
 
                     // Update persistent thrust isp if NOT transitioning from warp to realtime
                     if (!warpToReal)
@@ -754,7 +764,15 @@ namespace PersistentThrust
                     //    finalThrust = 0;
                     //}
                     //else 
-                    if (!currentEngine.engineHasAnyMassLessPropellants && currentEngine.engine.propellantReqMet > 0)
+
+                    if (!currentEngine.engine.getIgnitionState)
+                    {
+                        currentEngine.finalThrust = 0;
+
+                        // restore maximum flow
+                        RestoreMaxFuelFlow();
+                    }
+                    else if (!currentEngine.engineHasAnyMassLessPropellants && currentEngine.engine.propellantReqMet > 0)
                     {
                         // Mass flow rate
                         var massFlowRate = currentEngine.persistentIsp > 0
@@ -763,10 +781,9 @@ namespace PersistentThrust
                         // Change in mass over time interval dT
                         var deltaMass = massFlowRate * TimeWarp.fixedDeltaTime;
                         // Resource demand from propellants with mass
-                        demandMass = currentEngine.averageDensity > 0 ? deltaMass / currentEngine.averageDensity : 0;
-
+                        currentEngine.demandMass = currentEngine.averageDensity > 0 ? deltaMass / currentEngine.averageDensity : 0;
                         // Calculate resource demands
-                        currentEngine.fuelDemands = CalculateDemands(demandMass);
+                        currentEngine.fuelDemands = CalculateDemands(currentEngine.demandMass);
                         // Apply resource demands & test for resource depletion
                         ApplyDemands(currentEngine.fuelDemands, ref currentEngine.propellantReqMetFactor);
 
@@ -791,20 +808,20 @@ namespace PersistentThrust
 
                     UpdatePropellantReqMetFactorQueue();
 
-                    UpdateFX(currentEngine.finalThrust);
+                    UpdateFX();
 
-                    SetThrottleAnimation(currentEngine.engine, currentEngine.finalThrust);
+                    SetThrottleAnimation();
 
-                    UpdateBuffers(currentEngine.fuelDemands);
+                    UpdateBuffers();
                 }
             }
             else
             {
-                var processedEngines = isMultiMode ? new[] {currentEngine} : moduleEngines;
-
                 for (var i = 0; i < processedEngines.Length; i++)
                 {
                     currentEngine = processedEngines[i];
+
+                    ResetMonitoringVariables();
 
                     // restore maximum flow
                     RestoreMaxFuelFlow();
@@ -814,27 +831,15 @@ namespace PersistentThrust
                         if (TimeWarp.CurrentRateIndex == 0)
                             warpToReal = true; // Set to true for transition to realtime
 
-                        if (vessel.IsControllable && HasPersistentHeadingEnabled)
-                        {
-                            vesselAlignmentWithAutopilotMode = currentEngine.engine.PersistHeading
-                                (TimeWarp.fixedDeltaTime, headingTolerance, vesselChangedSoiCountdown > 0, vesselAlignmentWithAutopilotMode == 1);
-
-                            if (vesselAlignmentWithAutopilotMode != 1)
-                            {
-                                currentEngine.finalThrust = 0;
-                                break;
-                            }
-                        }
-
                         // Calculated requested thrust
                         //var requestedThrust = vesselHeadingVersusManeuverInDegrees <= maneuverTolerance ? moduleEngine.thrustPercentage * 0.01f * persistentThrottle * moduleEngine.maxThrust : 0;
                         var requestedThrust = currentEngine.engine.thrustPercentage * 0.01f * persistentThrottle * currentEngine.engine.maxThrust;
 
                         var thrustVector = part.transform.up; // Thrust direction unit vector
                         // Calculate deltaV vector & resource demand from propellants with mass
-                        var deltaVVector = CalculateDeltaVVector(currentEngine.averageDensity, vessel.totalMass, TimeWarp.fixedDeltaTime, requestedThrust, currentEngine.persistentIsp, thrustVector, out demandMass);
+                        var deltaVVector = CalculateDeltaVVector(currentEngine.averageDensity, vessel.totalMass, TimeWarp.fixedDeltaTime, requestedThrust, currentEngine.persistentIsp, thrustVector, out currentEngine.demandMass);
                         // Calculate resource demands
-                        currentEngine.fuelDemands = CalculateDemands(demandMass);
+                        currentEngine.fuelDemands = CalculateDemands(currentEngine.demandMass);
                         // Apply resource demands & test for resource depletion
                         ApplyDemands(currentEngine.fuelDemands, ref currentEngine.propellantReqMetFactor);
 
@@ -862,26 +867,60 @@ namespace PersistentThrust
                         else
                             currentEngine.finalThrust = 0;
 
-                        SetThrottleAnimation(currentEngine.engine, currentEngine.finalThrust);
-                        UpdateFX(currentEngine.finalThrust);
+                        SetThrottleAnimation();
+
+                        UpdateFX();
                     }
                     else
                     {
-                        SetThrottleAnimation(currentEngine.engine, 0);
-
                         currentEngine.finalThrust = 0;
-                        if (vessel.IsControllable && HasPersistentHeadingEnabled)
-                            vesselAlignmentWithAutopilotMode =
-                                currentEngine.engine.PersistHeading(TimeWarp.fixedDeltaTime, headingTolerance,
-                                    vesselChangedSoiCountdown > 0);
-                        UpdateFX(0);
-                        UpdateBuffers(currentEngine.fuelDemands);
+
+                        SetThrottleAnimation();
+
+                        UpdateFX();
+
+                        UpdateBuffers();
                     }
                 }
+
+                if (vessel.IsControllable && HasPersistentHeadingEnabled)
+                    vesselAlignmentWithAutopilotMode = vessel.PersistHeading(TimeWarp.fixedDeltaTime, headingTolerance, vesselChangedSoiCountdown > 0, vesselAlignmentWithAutopilotMode == 1);
             }
+            // display final thrust in a user friendly way
             thrustTxt = Utils.FormatThrust(moduleEngines.Sum(m => m.finalThrust));
 
             previousFixedDeltaTime = TimeWarp.fixedDeltaTime;
+
+            UpdateMasslessConsumption();
+        }
+
+        private void ResetMonitoringVariables()
+        {
+            // reset monitoring variables
+            currentEngine.propellants.ForEach(m =>
+            {
+                m.demandIn = 0;
+                m.demandOut = 0;
+            });
+        }
+
+        private void UpdateMasslessConsumption()
+        {
+            var masslessPropellant = isMultiMode
+                ? currentEngine.propellants.Where(m => m.density == 0).FirstOrDefault()
+                : moduleEngines.SelectMany(m => m.propellants.Where(p => p.density == 0)).FirstOrDefault();
+
+            if (masslessPropellant != null)
+            {
+                masslessUsageField.guiActive = true;
+                masslessUsageField.guiName = masslessPropellant.definition.displayName;
+
+                masslessUsage = (isMultiMode
+                    ? currentEngine.propellants.Sum(m => m.demandOut)
+                    : moduleEngines.Sum(m => m.propellants.Sum(l => l.demandOut))) / TimeWarp.fixedDeltaTime; ;
+            }
+            else
+                masslessUsageField.guiActive = false;
         }
 
         private void RestoreMaxFuelFlow()
@@ -904,9 +943,9 @@ namespace PersistentThrust
             return states.ToArray();
         }
 
-        private void SetThrottleAnimation(ModuleEngines engine,  float thrust)
+        private void SetThrottleAnimation()
         {
-            SetAnimationRatio(engine.maxThrust > 0 ? thrust / engine.maxThrust : 0, throttleAnimationState);
+            SetAnimationRatio(currentEngine.engine.maxThrust > 0 ? currentEngine.finalThrust / currentEngine.engine.maxThrust : 0, throttleAnimationState);
         }
 
         private static void SetAnimationRatio(float ratio, AnimationState[] animationState)
