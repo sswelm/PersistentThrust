@@ -51,7 +51,7 @@ namespace PersistentThrust
         public string thrustTxt;
         [KSPField(guiFormat = "F2", guiActive = true, guiName = "#autoLOC_6001376", guiUnits = "%")]
         public float propellantReqMet;
-        [KSPField(guiFormat = "F3")]
+        [KSPField(guiFormat = "F3", guiUnits = " U/s")]
         public double masslessUsage;
 
         // Config Settings
@@ -91,8 +91,10 @@ namespace PersistentThrust
         public PersistentEngineModule currentEngine;
         public PersistentEngineModule[] moduleEngines = new PersistentEngineModule[0];
         public MultiModeEngine multiModeEngine;
+        public PartModule GTI_MultiModeEngineFX;
         public AnimationState[] throttleAnimationState;
         public BaseField masslessUsageField;
+        public FieldInfo currentModuleEngineFieldInfo;
 
         public float persistentThrottle;                // Persistent values to use during TimeWarp
         public float previousFixedDeltaTime;
@@ -161,6 +163,17 @@ namespace PersistentThrust
 
                     moduleEnginesCount++;
                 }
+                else if (partModule.name == "GTI_MultiModeEngineFX")
+                {
+                    Debug.Log("[PersistentThrust]: found GTI_MultiModeEngineFX on " + part.partInfo.title + " " + part.persistentId);
+                    GTI_MultiModeEngineFX = partModule;
+                    currentModuleEngineFieldInfo = GTI_MultiModeEngineFX.GetType().GetField("currentModuleEngine", BindingFlags.NonPublic | BindingFlags.Instance);
+
+                    if (currentModuleEngineFieldInfo == null)
+                        Debug.LogError("[PersistentThrust]: failed to find currentModuleEngine on GTI_MultiModeEngineFX");
+                    else
+                        Debug.Log("[PersistentThrust]: found currentModuleEngine on GTI_MultiModeEngineFX");
+                }
             }
 
             moduleEngines = moduleEnginesList.ToArray();
@@ -184,6 +197,12 @@ namespace PersistentThrust
             {
                 Debug.LogWarning("[PersistentThrust]: found multiple engines but no MultiMode PartModule, enabled multi engine PersistentThrust for " + part.partInfo.title + " " + part.persistentId);
                 isPersistentEngine = true;
+            }
+            else if (GTI_MultiModeEngineFX != null)
+            {
+                Debug.Log("[PersistentThrust]: enabled GTI MultiMode for " + part.partInfo.title + " " + part.persistentId);
+                isPersistentEngine = true;
+                isMultiMode = true;
             }
             else if (multiModeEngine != null && moduleEnginesCount == 2)
             {
@@ -237,10 +256,15 @@ namespace PersistentThrust
             if (!isMultiMode)
                 return;
 
-            currentEngine = moduleEngines.FirstOrDefault(m =>
-                m.engine == (multiModeEngine.runningPrimary
-                    ? multiModeEngine.PrimaryEngine
-                    : multiModeEngine.SecondaryEngine));
+            ModuleEnginesFX currentModuleEngineFx = null;
+
+            if (multiModeEngine != null)
+                currentModuleEngineFx = multiModeEngine.runningPrimary ? multiModeEngine.PrimaryEngine : multiModeEngine.SecondaryEngine;
+            else if (GTI_MultiModeEngineFX != null)
+                currentModuleEngineFx = (ModuleEnginesFX)currentModuleEngineFieldInfo?.GetValue(GTI_MultiModeEngineFX);
+
+            if (currentModuleEngineFx != null)
+                currentEngine = moduleEngines.FirstOrDefault(m => m.engine.engineID == currentModuleEngineFx.engineID);
         }
 
         private void ApplyEffect(string effect, float ratio)
@@ -360,7 +384,7 @@ namespace PersistentThrust
             FindModuleEngines();
 
             // Initialize PersistentPropellant list
-            if (isMultiMode)
+            if (isMultiMode && multiModeEngine != null)
             {
                 moduleEngines[0].propellants = PersistentPropellant.MakeList(moduleEngines[0].engine.propellants);
                 moduleEngines[1].propellants = PersistentPropellant.MakeList(moduleEngines[1].engine.propellants);
