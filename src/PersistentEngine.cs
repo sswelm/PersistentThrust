@@ -163,7 +163,7 @@ namespace PersistentThrust
 
                     moduleEnginesCount++;
                 }
-                else if (partModule.name == "GTI_MultiModeEngineFX")
+                else if (partModule.ClassName == "GTI_MultiModeEngineFX")
                 {
                     Debug.Log("[PersistentThrust]: found GTI_MultiModeEngineFX on " + part.partInfo.title + " " + part.persistentId);
                     GTI_MultiModeEngineFX = partModule;
@@ -178,41 +178,43 @@ namespace PersistentThrust
 
             moduleEngines = moduleEnginesList.ToArray();
 
+
+            var partIdentity = part.partInfo.title + " " + part.persistentId;
             if (moduleEnginesCount == 1 && multiModeEngine == null)
             {
-                Debug.Log("[PersistentThrust]: enabled for " + part.partInfo.title + " " + part.persistentId);
+                Debug.Log("[PersistentThrust]: enabled for " + partIdentity);
                 isPersistentEngine = true;
+            }
+            else if (GTI_MultiModeEngineFX != null && moduleEnginesCount > 1)
+            {
+                Debug.Log("[PersistentThrust]: enabled GTI MultiMode for " + partIdentity);
+                isPersistentEngine = true;
+                isMultiMode = true;
             }
             else if (moduleEnginesCount == 0)
             {
-                Debug.LogError("[PersistentThrust]: found no compatible engines, disabling PersistentThrust for " + part.partInfo.title + " " + part.persistentId);
+                Debug.LogError("[PersistentThrust]: found no compatible engines, disabling PersistentThrust for " + partIdentity);
                 isPersistentEngine = false;
             }
             else if (moduleEnginesCount == 1 && multiModeEngine != null)
             {
-                Debug.LogWarning("[PersistentThrust]: found Insufficient engines for MultiMode, using single engine mode PersistentThrust for " + part.partInfo.title + " " + part.persistentId);
+                Debug.LogWarning("[PersistentThrust]: found Insufficient engines for MultiMode, using single engine mode PersistentThrust for " + partIdentity);
                 isPersistentEngine = false;
             }
             else if (moduleEnginesCount > 1 && multiModeEngine == null)
             {
-                Debug.LogWarning("[PersistentThrust]: found multiple engines but no MultiMode PartModule, enabled multi engine PersistentThrust for " + part.partInfo.title + " " + part.persistentId);
+                Debug.LogWarning("[PersistentThrust]: found multiple engines but no MultiMode PartModule, enabled multi engine PersistentThrust for " + partIdentity);
                 isPersistentEngine = true;
-            }
-            else if (GTI_MultiModeEngineFX != null)
-            {
-                Debug.Log("[PersistentThrust]: enabled GTI MultiMode for " + part.partInfo.title + " " + part.persistentId);
-                isPersistentEngine = true;
-                isMultiMode = true;
             }
             else if (multiModeEngine != null && moduleEnginesCount == 2)
             {
-                Debug.Log("[PersistentThrust]: enabled MultiMode for " + part.partInfo.title + " " + part.persistentId);
+                Debug.Log("[PersistentThrust]: enabled MultiMode for " + partIdentity);
                 isPersistentEngine = true;
                 isMultiMode = true;
             }
             else
             {
-                Debug.LogError("[PersistentThrust]: failed to initialize for " + part.partInfo.title + " " + part.persistentId);
+                Debug.LogError("[PersistentThrust]: failed to initialize for " + partIdentity);
                 isPersistentEngine = false;
             }
 
@@ -375,8 +377,25 @@ namespace PersistentThrust
         // Initialization
         public override void OnLoad(ConfigNode node)
         {
+            if (part.partInfo == null)
+            {
+                Debug.LogError("[PersistentThrust]: OnLoad node == null");
+                return;
+            }
+
             // Run base OnLoad method
             base.OnLoad(node);
+
+            if (part == null)
+            {
+                Debug.LogError("[PersistentThrust]: OnLoad part == null");
+                return;
+            }
+            if (part.partInfo == null)
+            {
+                Debug.LogError("[PersistentThrust]: OnLoad part.partInfo == null");
+                return;
+            }
 
             Debug.Log("[PersistentThrust]: OnLoad called for " + part.partInfo.title + " " + part.persistentId);
 
@@ -731,7 +750,7 @@ namespace PersistentThrust
         // Physics update
         public void FixedUpdate() // FixedUpdate is also called while not staged
         {
-            if (this.vessel is null || currentEngine.engine is null || !isEnabled) return;
+            if (this.vessel is null || currentEngine?.engine is null || !isEnabled) return;
 
             RestoreHeadingAtLoad();
 
@@ -745,6 +764,8 @@ namespace PersistentThrust
 
             // Checks if moduleEngine mode wasn't switched
             FetchActiveMode();
+
+            ResetMonitoringVariables();
 
             var processedEngines = isMultiMode ? new[] { currentEngine } : moduleEngines;
 
@@ -760,8 +781,6 @@ namespace PersistentThrust
                 for (var i = 0; i < processedEngines.Length; i++)
                 {
                     currentEngine = processedEngines[i];
-
-                    ResetMonitoringVariables();
 
                     // Update persistent thrust isp if NOT transitioning from warp to realtime
                     if (!warpToReal)
@@ -834,8 +853,6 @@ namespace PersistentThrust
                 for (var i = 0; i < processedEngines.Length; i++)
                 {
                     currentEngine = processedEngines[i];
-
-                    ResetMonitoringVariables();
 
                     // restore maximum flow
                     RestoreMaxFuelFlow();
@@ -924,11 +941,15 @@ namespace PersistentThrust
         private void ResetMonitoringVariables()
         {
             // reset monitoring variables
-            currentEngine.propellants.ForEach(m =>
+            foreach (var persistentEngineModule in moduleEngines)
             {
-                m.demandIn = 0;
-                m.demandOut = 0;
-            });
+                persistentEngineModule.propellants.ForEach(m =>
+                {
+                    m.demandIn = 0;
+                    m.demandOut = 0;
+                });
+                persistentEngineModule.finalThrust = 0;
+            }
         }
 
         private void UpdateMasslessConsumption()
