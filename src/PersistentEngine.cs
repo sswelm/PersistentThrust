@@ -101,6 +101,7 @@ namespace PersistentThrust
 
         public bool isPersistentEngine;             // Flag if using PersistentEngine features        
         public bool warpToReal;                     // Are we transitioning from TimeWarp to realtime?
+        public int warpToRealCountDown;
         public bool isMultiMode;
         public bool useKerbalismInFlight;
 
@@ -320,7 +321,9 @@ namespace PersistentThrust
             if (warpToReal)
             {
                 SetThrottle(persistentThrottle, true);
-                warpToReal = false;
+
+                if (warpToRealCountDown-- <= 0)
+                    warpToReal = false;
             }
 
             if (vessel.packed)
@@ -860,7 +863,12 @@ namespace PersistentThrust
                     if (persistentThrottle > 0 && currentEngine.persistentIsp > 0 && isPersistentEngine && HasPersistentThrust)
                     {
                         if (TimeWarp.CurrentRateIndex == 0)
+                        {
+                            if (!warpToReal)
+                                warpToRealCountDown = 10;
+
                             warpToReal = true; // Set to true for transition to realtime
+                        }
 
                         // Calculated requested thrust
                         //var requestedThrust = vesselHeadingVersusManeuverInDegrees <= maneuverTolerance ? moduleEngine.thrustPercentage * 0.01f * persistentThrottle * moduleEngine.maxThrust : 0;
