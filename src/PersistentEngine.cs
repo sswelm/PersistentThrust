@@ -293,7 +293,7 @@ namespace PersistentThrust
 
                 if (currentEngine.engine == null) continue;
 
-                // hide stock thrust
+                // hide stock fields
                 currentEngine.engine.Fields[nameof(currentEngine.engine.finalThrust)].guiActive = false;
                 currentEngine.engine.Fields[nameof(currentEngine.engine.realIsp)].guiActive = false;
                 currentEngine.engine.Fields[nameof(currentEngine.engine.propellantReqMet)].guiActive = false;
@@ -369,22 +369,32 @@ namespace PersistentThrust
         private void SetThrottle(float newSetting, bool returnToRealTime)
         {
             vessel.ctrlState.mainThrottle = newSetting;
-            currentEngine.engine.requestedThrottle = newSetting;
-            currentEngine.engine.currentThrottle = newSetting;
 
-            if (!returnToRealTime) return;
+            var processedEngines = isMultiMode ? new[] { currentEngine } : moduleEngines;
+            for (var i = 0; i < processedEngines.Length; i++)
+            {
+                currentEngine = processedEngines[i];
 
-            // Return to realtime
-            TimeWarp.SetRate(0, true);
+                currentEngine.engine.requestedThrottle = newSetting;
+                currentEngine.engine.currentThrottle = newSetting;
 
-            if (_realFuelsAssembly == null || !(newSetting > 0)) return;
+                if (!returnToRealTime) continue;
 
-            var ignitedInfo = currentEngine.engine.GetType().GetField("ignited", BindingFlags.NonPublic | BindingFlags.Instance);
+                if (i == 0)
+                {
+                    // Return to realtime
+                    TimeWarp.SetRate(0, true);
+                }
 
-            if (ignitedInfo == null)
-                return;
+                if (_realFuelsAssembly == null || !(newSetting > 0)) continue;
 
-            ignitedInfo.SetValue(currentEngine.engine, true);
+                var ignitedInfo = currentEngine.engine.GetType().GetField("ignited", BindingFlags.NonPublic | BindingFlags.Instance);
+
+                if (ignitedInfo == null)
+                    return;
+
+                ignitedInfo.SetValue(currentEngine.engine, true);
+            }
         }
 
         /// <summary>
@@ -900,6 +910,14 @@ namespace PersistentThrust
             }
             else
             {
+                if (TimeWarp.CurrentRateIndex == 0)
+                {
+                    if (!warpToReal)
+                        warpToRealCountDown = 2;
+
+                    warpToReal = true; // Set to true for transition to realtime
+                }
+
                 for (var i = 0; i < processedEngines.Length; i++)
                 {
                     currentEngine = processedEngines[i];
@@ -909,14 +927,6 @@ namespace PersistentThrust
 
                     if (persistentThrottle > 0 && currentEngine.persistentIsp > 0 && isPersistentEngine && HasPersistentThrust)
                     {
-                        if (TimeWarp.CurrentRateIndex == 0)
-                        {
-                            if (!warpToReal)
-                                warpToRealCountDown = 2;
-
-                            warpToReal = true; // Set to true for transition to realtime
-                        }
-
                         // Calculated requested thrust
                         //var requestedThrust = vesselHeadingVersusManeuverInDegrees <= maneuverTolerance ? moduleEngine.thrustPercentage * 0.01f * persistentThrottle * moduleEngine.maxThrust : 0;
                         var requestedThrust = currentEngine.engine.thrustPercentage * 0.01f * persistentThrottle * currentEngine.engine.maxThrust;
