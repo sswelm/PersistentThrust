@@ -337,19 +337,30 @@ namespace PersistentThrust
 
                 // stop engines when X pressed
                 if (Input.GetKeyDown(KeyCode.X))
-                    SetThrottle(0, returnToRealtimeAfterKeyPressed);
+                    SetThrottleAfterKey(0, returnToRealtimeAfterKeyPressed);
                 // full throttle when Z pressed
                 else if (Input.GetKeyDown(KeyCode.Z))
-                    SetThrottle(1, returnToRealtimeAfterKeyPressed);
+                    SetThrottleAfterKey(1, returnToRealtimeAfterKeyPressed);
                 // increase throttle when Shift pressed
                 else if (Input.GetKeyDown(KeyCode.LeftShift))
-                    SetThrottle(Mathf.Min(1, persistentThrottle + 0.01f), returnToRealtimeAfterKeyPressed);
+                    SetThrottleAfterKey(Mathf.Min(1, persistentThrottle + 0.01f), returnToRealtimeAfterKeyPressed);
                 // decrease throttle when Ctrl pressed
                 else if (Input.GetKeyDown(KeyCode.LeftControl))
-                    SetThrottle(Mathf.Max(0, persistentThrottle - 0.01f), returnToRealtimeAfterKeyPressed);
+                    SetThrottleAfterKey(Mathf.Max(0, persistentThrottle - 0.01f), returnToRealtimeAfterKeyPressed);
             }
             else
                 TimeWarp.GThreshold = 12;
+        }
+
+        private void SetThrottleAfterKey(float newSetting, bool returnToRealTime)
+        {
+            SetThrottle(newSetting, returnToRealTime);
+
+            if (returnToRealTime)
+            {
+                warpToRealCountDown = 2;
+                warpToReal = true;
+            }
         }
 
         /// <summary>
@@ -901,7 +912,7 @@ namespace PersistentThrust
                         if (TimeWarp.CurrentRateIndex == 0)
                         {
                             if (!warpToReal)
-                                warpToRealCountDown = 10;
+                                warpToRealCountDown = 2;
 
                             warpToReal = true; // Set to true for transition to realtime
                         }
