@@ -39,6 +39,9 @@ namespace PersistentThrust
         public bool MaximizePersistentPower = false;
         [KSPField(isPersistant = true)]
         public VesselAutopilot.AutopilotMode persistentAutopilotMode;
+
+        [KSPField(isPersistant = true)]
+        public double persistentThrust;
         [KSPField(isPersistant = true)]
         public double vesselAlignmentWithAutopilotMode;
         //[KSPField(isPersistant = true, guiActiveEditor = false, guiActive = true, guiName = "#LOC_PT_ManeuverTolerance", guiUnits = " %"), UI_FloatRange(stepIncrement = 1, maxValue = 180, minValue = 0, requireFullControl = false, affectSymCounterparts = UI_Scene.All)]//Beamed Power Throttle
@@ -980,7 +983,8 @@ namespace PersistentThrust
                     vesselAlignmentWithAutopilotMode = vessel.PersistHeading(TimeWarp.fixedDeltaTime, headingTolerance, vesselChangedSoiCountdown > 0, vesselAlignmentWithAutopilotMode == 1);
             }
             // display final thrust in a user friendly way
-            thrustTxt = Utils.FormatThrust(moduleEngines.Sum(m => m.finalThrust));
+            persistentThrust = moduleEngines.Sum(m => m.finalThrust);
+            thrustTxt = Utils.FormatThrust(persistentThrust);
 
             previousFixedDeltaTime = TimeWarp.fixedDeltaTime;
 
@@ -1069,6 +1073,38 @@ namespace PersistentThrust
         }
 
         #region Kerbalism
+
+
+        public static string BackgroundUpdate(
+            Vessel v,
+            ProtoPartSnapshot part_snapshot, 
+            ProtoPartModuleSnapshot module_snapshot,
+            PartModule proto_part_module, 
+            Part proto_part,
+            Dictionary<string, double> availableResources, 
+            List<KeyValuePair<string, double>> resourceChangeRequest,
+            double elapsed_s)
+        {
+            //if (availableResources.ContainsKey(ecName))
+            //{
+            //    float cw = 0;
+            //    if (module_snapshot.moduleValues.TryGetValue("currentWatts", ref cw))
+            //        resourceChangeRequest.Add(new KeyValuePair<string, double>(ecName, -cw / 1000));
+            //}
+            //return "avionics";
+
+            var persistentEngineInstance = new PersistentEngine();
+
+            double persistentThrust = 0;
+            if (!module_snapshot.moduleValues.TryGetValue(nameof(persistentEngineInstance.persistentThrust), ref persistentThrust))
+            {
+                //Debug.LogError("[PersistentThrust]: failed to read " + nameof(persistentEngineInstance.persistentThrust));
+            }
+
+            //Debug.Log("[PersistentThrust]: BackgroundUpdate called on " + proto_part_module.ClassName + " to do " + persistentThrust.ToString("F3") + " kN");
+
+            return proto_part.partInfo.title;
+        }
 
         /// <summary>
         /// Called by Kerbalism every frame. Uses their resource system when Kerbalism is installed.
