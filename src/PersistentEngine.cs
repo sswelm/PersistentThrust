@@ -1087,7 +1087,11 @@ namespace PersistentThrust
         {
             var persistentEngineInstance = new PersistentEngine();
 
-            double persistentThrust = double.Parse(module_snapshot.moduleValues.GetValue(nameof(persistentEngineInstance.persistentThrust)));
+            var persistentThrustTxt = module_snapshot.moduleValues.GetValue(nameof(persistentEngineInstance.persistentThrust));
+            if (persistentThrustTxt == null)
+                return proto_part.partInfo.title;
+
+            double persistentThrust = double.Parse(persistentThrustTxt);
             double vesselAlignmentWithAutopilotMode = double.Parse(module_snapshot.moduleValues.GetValue(nameof(persistentEngineInstance.vesselAlignmentWithAutopilotMode)));
 
             VesselAutopilot.AutopilotMode autopilotMode = (VesselAutopilot.AutopilotMode) Enum.Parse(
@@ -1097,10 +1101,19 @@ namespace PersistentThrust
             var normalizedFwdVector = vessel.GetFwdVector(); 
             var orbitalVelocityAtUt = orbit.getOrbitalVelocityAtUT(Planetarium.GetUniversalTime());
 
+            var thrustVector = orbitalVelocityAtUt.normalized;
+
+            var averageDensity = 0.1;
+            var persistentIsp = 3000;
+            var vesselMass = vessel.GetTotalMass();
+
             if (autopilotMode == VesselAutopilot.AutopilotMode.Prograde && vesselAlignmentWithAutopilotMode >= 0.995)
             {
-                orbit.Perturb(orbitalVelocityAtUt.normalized * TimeWarp.fixedDeltaTime * persistentThrust, Planetarium.GetUniversalTime());
-                Debug.Log("[PersistentThrust]: Applied Perturb for " + (TimeWarp.fixedDeltaTime * persistentThrust).ToString("F3") + " kN to vector resulting speed " + orbitalVelocityAtUt.magnitude);
+                double demandMass;
+                var deltaVVector = CalculateDeltaVVector(averageDensity, vesselMass, TimeWarp.fixedDeltaTime, persistentThrust, persistentIsp, thrustVector, out demandMass);
+
+                orbit.Perturb(deltaVVector, Planetarium.GetUniversalTime());
+                Debug.Log("[PersistentThrust]: Applied Perturb for " + deltaVVector.magnitude.ToString("F3") + " m/s to vessel mass " + vesselMass + " resulting speed " + orbitalVelocityAtUt.magnitude);
             }
 
             return proto_part.partInfo.title;
