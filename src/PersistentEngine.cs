@@ -414,10 +414,7 @@ namespace PersistentThrust
         public override void OnLoad(ConfigNode node)
         {
             if (part.partInfo == null)
-            {
-                Debug.LogError("[PersistentThrust]: OnLoad node == null");
-                return;
-            }
+                Debug.LogWarning("[PersistentThrust]: Loaded without saved config node");
 
             // Run base OnLoad method
             base.OnLoad(node);
