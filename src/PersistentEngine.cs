@@ -1076,7 +1076,7 @@ namespace PersistentThrust
 
 
         public static string BackgroundUpdate(
-            Vessel v,
+            Vessel vessel,
             ProtoPartSnapshot part_snapshot, 
             ProtoPartModuleSnapshot module_snapshot,
             PartModule proto_part_module, 
@@ -1085,23 +1085,17 @@ namespace PersistentThrust
             List<KeyValuePair<string, double>> resourceChangeRequest,
             double elapsed_s)
         {
-            //if (availableResources.ContainsKey(ecName))
-            //{
-            //    float cw = 0;
-            //    if (module_snapshot.moduleValues.TryGetValue("currentWatts", ref cw))
-            //        resourceChangeRequest.Add(new KeyValuePair<string, double>(ecName, -cw / 1000));
-            //}
-            //return "avionics";
-
             var persistentEngineInstance = new PersistentEngine();
 
             double persistentThrust = 0;
             if (!module_snapshot.moduleValues.TryGetValue(nameof(persistentEngineInstance.persistentThrust), ref persistentThrust))
-            {
-                //Debug.LogError("[PersistentThrust]: failed to read " + nameof(persistentEngineInstance.persistentThrust));
-            }
+                return proto_part.partInfo.title;
 
-            //Debug.Log("[PersistentThrust]: BackgroundUpdate called on " + proto_part_module.ClassName + " to do " + persistentThrust.ToString("F3") + " kN");
+            var orbit = vessel.GetOrbit();
+            var normalizedFwdVector = vessel.GetFwdVector();
+            var velocityVector = orbit.getOrbitalVelocityAtUT(Planetarium.GetUniversalTime());
+
+            //Debug.Log("[PersistentThrust]: BackgroundUpdate called on " + proto_part_module.ClassName + " to do " + (TimeWarp.fixedDeltaTime * persistentThrust).ToString("F3") + " kN to vector " + normalizedFwdVector.x + " " + normalizedFwdVector.y + " " + normalizedFwdVector.z + " and speed " + velocityVector.magnitude);
 
             return proto_part.partInfo.title;
         }
