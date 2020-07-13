@@ -1087,15 +1087,21 @@ namespace PersistentThrust
         {
             var persistentEngineInstance = new PersistentEngine();
 
-            double persistentThrust = 0;
-            if (!module_snapshot.moduleValues.TryGetValue(nameof(persistentEngineInstance.persistentThrust), ref persistentThrust))
-                return proto_part.partInfo.title;
+            double persistentThrust = double.Parse(module_snapshot.moduleValues.GetValue(nameof(persistentEngineInstance.persistentThrust)));
+            double vesselAlignmentWithAutopilotMode = double.Parse(module_snapshot.moduleValues.GetValue(nameof(persistentEngineInstance.vesselAlignmentWithAutopilotMode)));
+
+            VesselAutopilot.AutopilotMode autopilotMode = (VesselAutopilot.AutopilotMode) Enum.Parse(
+                typeof(VesselAutopilot.AutopilotMode), module_snapshot.moduleValues.GetValue(nameof(persistentEngineInstance.persistentAutopilotMode)));
 
             var orbit = vessel.GetOrbit();
-            var normalizedFwdVector = vessel.GetFwdVector();
-            var velocityVector = orbit.getOrbitalVelocityAtUT(Planetarium.GetUniversalTime());
+            var normalizedFwdVector = vessel.GetFwdVector(); 
+            var orbitalVelocityAtUt = orbit.getOrbitalVelocityAtUT(Planetarium.GetUniversalTime());
 
-            //Debug.Log("[PersistentThrust]: BackgroundUpdate called on " + proto_part_module.ClassName + " to do " + (TimeWarp.fixedDeltaTime * persistentThrust).ToString("F3") + " kN to vector " + normalizedFwdVector.x + " " + normalizedFwdVector.y + " " + normalizedFwdVector.z + " and speed " + velocityVector.magnitude);
+            if (autopilotMode == VesselAutopilot.AutopilotMode.Prograde && vesselAlignmentWithAutopilotMode >= 0.995)
+            {
+                orbit.Perturb(orbitalVelocityAtUt.normalized * TimeWarp.fixedDeltaTime * persistentThrust, Planetarium.GetUniversalTime());
+                Debug.Log("[PersistentThrust]: Applied Perturb for " + (TimeWarp.fixedDeltaTime * persistentThrust).ToString("F3") + " kN to vector resulting speed " + orbitalVelocityAtUt.magnitude);
+            }
 
             return proto_part.partInfo.title;
         }
