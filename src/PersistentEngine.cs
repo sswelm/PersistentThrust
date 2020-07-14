@@ -272,9 +272,6 @@ namespace PersistentThrust
                 masslessUsageField.guiActive = false;
         }
 
-        private void SetThrottleAfterKey(float newSetting, bool returnToRealTime)
-
-
         /// <summary>
         /// [Unity] Update is called every frame, if the MonoBehaviour is enabled.
         /// </summary>
@@ -1036,24 +1033,7 @@ namespace PersistentThrust
 
 
 
-        private void UpdateMasslessPropellant()
-        {
-            var masslessPropellant = isMultiMode
-                ? currentEngine.propellants.FirstOrDefault(m => m.density == 0)
-                : moduleEngines.SelectMany(m => m.propellants.Where(p => p.density == 0)).FirstOrDefault();
 
-            if (masslessPropellant != null)
-            {
-                masslessUsageField.guiActive = true;
-                masslessUsageField.guiName = masslessPropellant.definition.displayName;
-
-                masslessUsage = (isMultiMode
-                    ? currentEngine.propellants.Sum(m => m.demandOut)
-                    : moduleEngines.Sum(m => m.propellants.Sum(l => l.demandOut))) / TimeWarp.fixedDeltaTime;
-            }
-            else
-                masslessUsageField.guiActive = false;
-        }
 
 
 
@@ -1222,7 +1202,7 @@ namespace PersistentThrust
             if (persistentAutopilotMode == VesselAutopilot.AutopilotMode.Prograde && vesselAlignmentWithAutopilotMode >= 0.995)
             {
                 double demandMass;
-                Vector3d deltaVVector = CalculateDeltaVVector(persistentAverageDensity, vesselMass, TimeWarp.fixedDeltaTime, persistentThrust, persistentIsp, thrustVector, out demandMass);
+                Vector3d deltaVVector = Utils.CalculateDeltaVVector(persistentAverageDensity, vesselMass, TimeWarp.fixedDeltaTime, persistentThrust, persistentIsp, thrustVector, out demandMass);
 
                 orbit.Perturb(deltaVVector, Planetarium.GetUniversalTime());
                 Debug.Log("[PersistentThrust]: Applied Perturb for " + deltaVVector.magnitude.ToString("F3") + " m/s resulting in speed " + orbitalVelocityAtUt.magnitude);
