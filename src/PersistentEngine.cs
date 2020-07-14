@@ -1223,7 +1223,7 @@ namespace PersistentThrust
                     elapsed_s, persistentThrust * fuelRequirementMet, persistentIsp, thrustVector,
                     out double demandMass);
 
-                orbit.Perturb(deltaVVector, Planetarium.GetUniversalTime());
+                orbit.Perturb(deltaVVector, Planetarium.GetUniversalTime(), false);
                 Debug.Log("[PersistentThrust]: Applied Perturb for " + deltaVVector.magnitude.ToString("F3") +
                           " m/s resulting in speed " + orbitalVelocityAtUt.magnitude);
             }
