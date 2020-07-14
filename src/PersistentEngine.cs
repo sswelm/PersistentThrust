@@ -1073,8 +1073,6 @@ namespace PersistentThrust
             currentEngine.engine.maxFuelFlow = (float)(currentEngine.persistentIsp > 0 ? currentEngine.engine.maxThrust / (currentEngine.persistentIsp * PhysicsGlobals.GravitationalAcceleration) : 1e-10f);
         }
 
-
-
         private void RestoreHeadingAtLoad()
         {
             fixedUpdateCount++;
@@ -1087,8 +1085,6 @@ namespace PersistentThrust
             else
                 persistentAutopilotMode = vessel.Autopilot.Mode;
         }
-
-
 
         private void ResetMonitoringVariables()
         {
@@ -1103,8 +1099,6 @@ namespace PersistentThrust
                 persistentEngineModule.finalThrust = 0;
             }
         }
-
-
 
         private void CollectStatistics()
         {
@@ -1185,27 +1179,65 @@ namespace PersistentThrust
             if (string.IsNullOrEmpty(persistentResourceChange))
                 return proto_part.partInfo.title;
 
-            Dictionary<string, string> resourceChange = persistentResourceChange
-                .Split(',').Select(s => s.Trim().Split('='))
-                .ToDictionary(a => a[0], a => a[1]);
+            //Debug.Log("[PersistentThrust]: " + persistentResourceChange);
+
+            Dictionary<string, double> resourceChanges = persistentResourceChange
+                .Split(';').Select(s => s.Trim().Split('='))
+                .ToDictionary(a => a[0], a => double.Parse(a[1]));
 
             VesselAutopilot.AutopilotMode persistentAutopilotMode = (VesselAutopilot.AutopilotMode) Enum.Parse(
                 typeof(VesselAutopilot.AutopilotMode), module_snapshot.moduleValues.GetValue(nameof(persistentAutopilotMode)));
 
-            Orbit orbit = vessel.GetOrbit();
-            Vector3 normalizedFwdVector = vessel.GetFwdVector(); 
+            Orbit orbit = vessel.GetOrbitDriver().orbit;
             Vector3d orbitalVelocityAtUt = orbit.getOrbitalVelocityAtUT(Planetarium.GetUniversalTime());
 
-            Vector3d thrustVector = orbitalVelocityAtUt.normalized;
-            float vesselMass = vessel.GetTotalMass();
+            Vector3d thrustVector = vessel.GetFwdVector(); 
+            //= persistentAutopilotMode == VesselAutopilot.AutopilotMode.Prograde ? orbitalVelocityAtUt.normalized : (Vector3d)vessel.GetFwdVector();
+            //Vector3d thrustVector = vessel.GetRequestedDirection(Planetarium.GetUniversalTime(), persistentAutopilotMode);
 
-            if (persistentAutopilotMode == VesselAutopilot.AutopilotMode.Prograde && vesselAlignmentWithAutopilotMode >= 0.995)
+            switch (persistentAutopilotMode)
             {
-                double demandMass;
-                Vector3d deltaVVector = Utils.CalculateDeltaVVector(persistentAverageDensity, vesselMass, TimeWarp.fixedDeltaTime, persistentThrust, persistentIsp, thrustVector, out demandMass);
+                case VesselAutopilot.AutopilotMode.Prograde:
+                    thrustVector = orbitalVelocityAtUt.normalized;
+                    break;
+                case VesselAutopilot.AutopilotMode.Retrograde:
+                    thrustVector = -orbitalVelocityAtUt.normalized;
+                    break;
+            }
+
+            //if (thrustVector == Vector3d.zero)
+            //    return proto_part.partInfo.title;
+
+            double fuelRequirementMet = 1;
+            foreach (var resourceChange in resourceChanges)
+            {
+                var fixedRequirement = -resourceChange.Value * elapsed_s;
+
+                if (availableResources.TryGetValue(resourceChange.Key, out double availableAmount))
+                {
+                    Debug.Log("[PersistentThrust]: available " + resourceChange.Key  + " "+ availableAmount );
+                    fuelRequirementMet = availableAmount > 0 && fixedRequirement > 0
+                        ? Math.Min(fuelRequirementMet, availableAmount / fixedRequirement)
+                        : 0;
+                }
+                else
+                    fuelRequirementMet = 0;
+            }
+
+            if (fuelRequirementMet > 0)
+            {
+                foreach (var resourceChange in resourceChanges)
+                {
+                    resourceChangeRequest.Add(new KeyValuePair<string, double>(resourceChange.Key, resourceChange.Value * fuelRequirementMet));
+                }
+
+                Vector3d deltaVVector = Utils.CalculateDeltaVVector(persistentAverageDensity, vessel.GetTotalMass(),
+                    elapsed_s, persistentThrust * fuelRequirementMet, persistentIsp, thrustVector,
+                    out double demandMass);
 
                 orbit.Perturb(deltaVVector, Planetarium.GetUniversalTime());
-                Debug.Log("[PersistentThrust]: Applied Perturb for " + deltaVVector.magnitude.ToString("F3") + " m/s resulting in speed " + orbitalVelocityAtUt.magnitude);
+                Debug.Log("[PersistentThrust]: Applied Perturb for " + deltaVVector.magnitude.ToString("F3") +
+                          " m/s resulting in speed " + orbitalVelocityAtUt.magnitude);
             }
 
             return proto_part.partInfo.title;
