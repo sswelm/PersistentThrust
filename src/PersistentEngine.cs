@@ -253,25 +253,6 @@ namespace PersistentThrust
                 TimeWarp.GThreshold = 12;
         }
 
-        private void UpdateMasslessPropellant()
-        {
-            var masslessPropellant = isMultiMode
-                ? currentEngine.propellants.FirstOrDefault(m => m.density == 0)
-                : moduleEngines.SelectMany(m => m.propellants.Where(p => p.density == 0)).FirstOrDefault();
-
-            if (masslessPropellant != null)
-            {
-                masslessUsageField.guiActive = true;
-                masslessUsageField.guiName = masslessPropellant.definition.displayName;
-
-                masslessUsage = (isMultiMode
-                    ? currentEngine.propellants.Sum(m => m.demandOut)
-                    : moduleEngines.Sum(m => m.propellants.Sum(l => l.demandOut))) / TimeWarp.fixedDeltaTime;
-            }
-            else
-                masslessUsageField.guiActive = false;
-        }
-
         /// <summary>
         /// [Unity] Update is called every frame, if the MonoBehaviour is enabled.
         /// </summary>
@@ -1032,8 +1013,24 @@ namespace PersistentThrust
         }
 
 
+        private void UpdateMasslessPropellant()
+        {
+            var masslessPropellant = isMultiMode
+                ? currentEngine.propellants.FirstOrDefault(m => m.density == 0)
+                : moduleEngines.SelectMany(m => m.propellants.Where(p => p.density == 0)).FirstOrDefault();
 
+            if (masslessPropellant != null)
+            {
+                masslessUsageField.guiActive = true;
+                masslessUsageField.guiName = masslessPropellant.definition.displayName;
 
+                masslessUsage = (isMultiMode
+                    ? currentEngine.propellants.Sum(m => m.demandOut)
+                    : moduleEngines.Sum(m => m.propellants.Sum(l => l.demandOut))) / TimeWarp.fixedDeltaTime;
+            }
+            else
+                masslessUsageField.guiActive = false;
+        }
 
 
 
@@ -1193,7 +1190,7 @@ namespace PersistentThrust
                 typeof(VesselAutopilot.AutopilotMode), module_snapshot.moduleValues.GetValue(nameof(persistentAutopilotMode)));
 
             Orbit orbit = vessel.GetOrbit();
-            Vector3 normalizedFwdVector = vessel.GetFwdVector(); 
+            Vector3 normalizedFwdVector = vessel.GetFwdVector();
             Vector3d orbitalVelocityAtUt = orbit.getOrbitalVelocityAtUT(Planetarium.GetUniversalTime());
 
             Vector3d thrustVector = orbitalVelocityAtUt.normalized;
