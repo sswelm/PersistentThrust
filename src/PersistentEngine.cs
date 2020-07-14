@@ -1013,6 +1013,7 @@ namespace PersistentThrust
         }
 
 
+
         private void UpdateMasslessPropellant()
         {
             var masslessPropellant = isMultiMode
@@ -1186,7 +1187,7 @@ namespace PersistentThrust
                 .Split(',').Select(s => s.Trim().Split('='))
                 .ToDictionary(a => a[0], a => a[1]);
 
-            VesselAutopilot.AutopilotMode persistentAutopilotMode = (VesselAutopilot.AutopilotMode) Enum.Parse(
+            VesselAutopilot.AutopilotMode persistentAutopilotMode = (VesselAutopilot.AutopilotMode)Enum.Parse(
                 typeof(VesselAutopilot.AutopilotMode), module_snapshot.moduleValues.GetValue(nameof(persistentAutopilotMode)));
 
             Orbit orbit = vessel.GetOrbit();
