@@ -1,10 +1,24 @@
 ﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace PersistentThrust
 {
     public static class VesselExtension
     {
+
+        public static float GetDryMass(this Vessel vessel)
+        {
+            float dryMass = 0f;
+
+            foreach (var part in vessel.parts)
+            {
+                dryMass += part.mass;
+            }
+
+            return dryMass;
+        }
+
         public static double PersistHeading(this Vessel vessel, float fixedDeltaTime, float headingTolerance = 0.001f, bool forceRotation = false, bool canDropOutOfTimeWarp = true)
         {
             if (!vessel.packed && !forceRotation)
@@ -22,7 +36,7 @@ namespace PersistentThrust
 
             var requestedDirection = GetRequestedDirection(vessel, Planetarium.GetUniversalTime());
 
-            if (requestedDirection == Vector3d.zero) 
+            if (requestedDirection == Vector3d.zero)
                 return 1;
 
             var ratioHeadingVersusRequest = Vector3d.Dot(vessel.transform.up.normalized, requestedDirection);
