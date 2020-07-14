@@ -1,4 +1,3 @@
-using Expansions.Missions;
 using KSP.Localization;
 using System;
 using System.Collections.Generic;
@@ -390,9 +389,8 @@ namespace PersistentThrust
                         //var requestedThrust = vesselHeadingVersusManeuverInDegrees <= maneuverTolerance ? moduleEngine.thrustPercentage * 0.01f * persistentThrottle * moduleEngine.maxThrust : 0;
                         float requestedThrust = currentEngine.engine.thrustPercentage * 0.01f * persistentThrottle * currentEngine.engine.maxThrust;
 
-                        Vector3 thrustVector = part.transform.up; // Thrust direction unit vector
                         // Calculate deltaV vector & resource demand from propellants with mass
-                        Vector3d deltaVVector = Utils.CalculateDeltaVVector(currentEngine.averageDensity, vessel.GetTotalMass(), TimeWarp.fixedDeltaTime, requestedThrust, currentEngine.persistentIsp, thrustVector, out currentEngine.demandMass);
+                        Vector3d deltaVVector = Utils.CalculateDeltaVVector(currentEngine.averageDensity, vessel.GetTotalMass(), TimeWarp.fixedDeltaTime, requestedThrust, currentEngine.persistentIsp, part.transform.up, out currentEngine.demandMass);
 
                         //Debug.Log("[PersistentThrust]: For vessel with mass " + vessel.totalMass + " applied Perturb for " + deltaVVector.magnitude.ToString("F5") +
                         //          " m/s resulting in speed " + vessel.obt_velocity.magnitude);
@@ -1209,9 +1207,6 @@ namespace PersistentThrust
                     break;
             }
 
-            //if (thrustVector == Vector3d.zero)
-            //    return proto_part.partInfo.title;
-
             double fuelRequirementMet = 1;
             foreach (var resourceChange in resourceChanges)
             {
@@ -1219,7 +1214,6 @@ namespace PersistentThrust
 
                 if (availableResources.TryGetValue(resourceChange.Key, out double availableAmount))
                 {
-                    Debug.Log("[PersistentThrust]: available " + resourceChange.Key  + " "+ availableAmount );
                     fuelRequirementMet = availableAmount > 0 && fixedRequirement > 0
                         ? Math.Min(fuelRequirementMet, availableAmount / fixedRequirement)
                         : 0;
@@ -1242,8 +1236,6 @@ namespace PersistentThrust
                     out double demandMass);
 
                 orbit.Perturb(deltaVVector, Planetarium.GetUniversalTime(), false);
-                //Debug.Log("[PersistentThrust]: For vessel with mass " + vesselMass + " applied Perturb for " + deltaVVector.magnitude.ToString("F5") +
-                //          " m/s resulting in speed " + orbitalVelocityAtUt.magnitude);
             }
 
             return proto_part.partInfo.title;
@@ -1265,7 +1257,7 @@ namespace PersistentThrust
                 if (resourceRequest.Key.resourceDef.density > 0 && !vessel.packed)
                     continue;
 
-               resourceChangeRequest.Add(new KeyValuePair<string, double>(resourceRequest.Key.name, resourceRequest.Value));
+                resourceChangeRequest.Add(new KeyValuePair<string, double>(resourceRequest.Key.name, resourceRequest.Value));
             }
 
             return part.partInfo.title;
