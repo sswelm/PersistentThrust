@@ -416,22 +416,11 @@ namespace PersistentThrust
         /// <param name="node"></param>
         public override void OnLoad(ConfigNode node)
         {
-            if (part.partInfo == null)
-                Debug.LogWarning("[PersistentThrust]: Loaded without saved config node");
-
             // Run base OnLoad method
             base.OnLoad(node);
 
-            if (part == null)
-            {
-                Debug.LogError("[PersistentThrust]: OnLoad part == null");
+            if (part == null || part.partInfo == null)
                 return;
-            }
-            if (part.partInfo == null)
-            {
-                Debug.LogError("[PersistentThrust]: OnLoad part.partInfo == null");
-                return;
-            }
 
             Debug.Log("[PersistentThrust]: OnLoad called for " + part.partInfo.title + " " + part.persistentId);
 
@@ -439,21 +428,10 @@ namespace PersistentThrust
             FindModuleEngines();
 
             // Initialize PersistentPropellant list
-            if (isMultiMode && multiModeEngine != null)
+            foreach (var engine in moduleEngines)
             {
-                moduleEngines[0].propellants = PersistentPropellant.MakeList(moduleEngines[0].engine.propellants);
-                moduleEngines[1].propellants = PersistentPropellant.MakeList(moduleEngines[1].engine.propellants);
-
-                moduleEngines[0].averageDensity = moduleEngines[0].propellants.AverageDensity();
-                moduleEngines[1].averageDensity = moduleEngines[1].propellants.AverageDensity();
-            }
-            else
-            {
-                foreach (var engine in moduleEngines)
-                {
-                    engine.propellants = PersistentPropellant.MakeList(engine.engine.propellants);
-                    engine.averageDensity = engine.propellants.AverageDensity();
-                }
+                engine.propellants = PersistentPropellant.MakeList(engine.engine.propellants);
+                engine.averageDensity = engine.propellants.AverageDensity();
             }
         }
 
