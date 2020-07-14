@@ -2,13 +2,17 @@ namespace PersistentThrust
 {
     public static class OrbitExtensions
     {
-        // Duplicate an orbit
+        /// <summary>
+        /// Duplicates an orbit.
+        /// </summary>
         public static Orbit Clone(this Orbit orbit0)
         {
             return new Orbit(orbit0.inclination, orbit0.eccentricity, orbit0.semiMajorAxis, orbit0.LAN, orbit0.argumentOfPeriapsis, orbit0.meanAnomalyAtEpoch, orbit0.epoch, orbit0.referenceBody);
         }
 
-        // Perturb an orbit by a deltaV vector
+        /// <summary>
+        /// Perturbs an orbit by a deltaV vector.
+        /// </summary>
         public static void Perturb(this Orbit orbit, Vector3d deltaVV, double UT)
         {
             if (deltaVV.magnitude == 0)

@@ -1,8 +1,13 @@
-﻿namespace PersistentThrust
+﻿using System;
+
+namespace PersistentThrust
 {
     public class Utils
     {
-        // Format thrust into mN, N, kN
+
+        /// <summary>
+        /// Formats thrust into μN, mN, N, kN.
+        /// </summary>
         public static string FormatThrust(double thrust)
         {
             if (thrust < 1e-6)
@@ -22,5 +27,27 @@
                 return $"{thrust:F2} kN";
             }
         }
+
+
+
+        /// <summary>
+        /// Calculates DeltaV vector.
+        /// </summary>
+        public static Vector3d CalculateDeltaVVector(double densityPropellantAverage, double vesselMass, double deltaTime, double thrust, float isp, Vector3d thrustVector, out double mass)
+        {
+            // Mass flow rate
+            var massFlowRate = isp > 0 ? thrust / (isp * PhysicsGlobals.GravitationalAcceleration) : 0;
+            // Change in mass over time interval dT
+            var deltaMass = massFlowRate * deltaTime;
+            // Resource demand from propellants with mass
+            mass = densityPropellantAverage > 0 ? deltaMass / densityPropellantAverage : 0;
+            //// Resource demand from propellants with mass
+            var remainingMass = vesselMass - deltaMass;
+            // deltaV amount
+            var deltaV = isp * PhysicsGlobals.GravitationalAcceleration * Math.Log(remainingMass > 0 ? vesselMass / remainingMass : 1);
+            // Return deltaV vector
+            return deltaV * thrustVector;
+        }
+
     }
 }
