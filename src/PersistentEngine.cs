@@ -42,7 +42,10 @@ namespace PersistentThrust
         public bool MaximizePersistentIsp = true;
         [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiActiveUnfocused = true, guiName = "#LOC_PT_MaximizePersistentPower"), UI_Toggle(disabledText = "#autoLOC_900890", enabledText = "#autoLOC_900889", affectSymCounterparts = UI_Scene.All)]
         public bool MaximizePersistentPower = false;
+        //[KSPField(isPersistant = true, guiActiveEditor = false, guiActive = true, guiName = "#LOC_PT_ManeuverTolerance", guiUnits = " %"), UI_FloatRange(stepIncrement = 1, maxValue = 180, minValue = 0, requireFullControl = false, affectSymCounterparts = UI_Scene.All)]//Beamed Power Throttle
+        //public float maneuverTolerance = 180;
 
+        // Persistent values to use during TimeWarp and offline processing
         [KSPField(isPersistant = true)]
         public VesselAutopilot.AutopilotMode persistentAutopilotMode;
         [KSPField(isPersistant = true)]
@@ -50,11 +53,13 @@ namespace PersistentThrust
         [KSPField(isPersistant = true)]
         public float persistentIsp;
         [KSPField(isPersistant = true)]
+        public float persistentThrottle;
+        [KSPField(isPersistant = true)]
         public double persistentAverageDensity;
         [KSPField(isPersistant = true)]
         public double vesselAlignmentWithAutopilotMode;
-        //[KSPField(isPersistant = true, guiActiveEditor = false, guiActive = true, guiName = "#LOC_PT_ManeuverTolerance", guiUnits = " %"), UI_FloatRange(stepIncrement = 1, maxValue = 180, minValue = 0, requireFullControl = false, affectSymCounterparts = UI_Scene.All)]//Beamed Power Throttle
-        //public float maneuverTolerance = 180;
+        [KSPField(isPersistant = true)]
+        public string persistentResourceChange;
 
         // GUI
         [KSPField(guiFormat = "F1", guiActive = true, guiName = "#autoLOC_6001378", guiUnits = "#autoLOC_7001400")]
@@ -108,7 +113,6 @@ namespace PersistentThrust
         public BaseField masslessUsageField;
         public FieldInfo currentModuleEngineFieldInfo;
 
-        public float persistentThrottle;                // Persistent values to use during TimeWarp
         public float previousFixedDeltaTime;
 
         public bool isPersistentEngine;             // Flag if using PersistentEngine features
@@ -213,6 +217,8 @@ namespace PersistentThrust
                 : vessel.packed && (MaximizePersistentIsp || anyAutoMaximizePersistentIsp) || persistentThrottle == 0
                     ? persistentIsp
                     : persistentIsp * averagePropellantReqMetFactor;
+
+            UpdateMasslessPropellant();
 
             if (!isPersistentEngine || !HasPersistentThrust) return;
 
@@ -1010,6 +1016,27 @@ namespace PersistentThrust
 
 
 
+        private void UpdateMasslessPropellant()
+        {
+            var masslessPropellant = isMultiMode
+                ? currentEngine.propellants.FirstOrDefault(m => m.density == 0)
+                : moduleEngines.SelectMany(m => m.propellants.Where(p => p.density == 0)).FirstOrDefault();
+
+            if (masslessPropellant != null)
+            {
+                masslessUsageField.guiActive = true;
+                masslessUsageField.guiName = masslessPropellant.definition.displayName;
+
+                masslessUsage = (isMultiMode
+                    ? currentEngine.propellants.Sum(m => m.demandOut)
+                    : moduleEngines.Sum(m => m.propellants.Sum(l => l.demandOut))) / TimeWarp.fixedDeltaTime;
+            }
+            else
+                masslessUsageField.guiActive = false;
+        }
+
+
+
         /// <summary>
         /// Consumes (or simulates consuming) an amount of propellant resource based on calculated demand.
         /// </summary>
@@ -1096,22 +1123,10 @@ namespace PersistentThrust
                     : moduleEngines.Sum(m => m.finalThrust * m.averageDensity) / persistentThrust;
             }
 
-            var masslessPropellant = isMultiMode
-                ? currentEngine.propellants.FirstOrDefault(m => m.density == 0)
-                : moduleEngines.SelectMany(m => m.propellants.Where(p => p.density == 0)).FirstOrDefault();
+            // serialize resource request
+            persistentResourceChange = string.Join(";", _kerbalismResourceChangeRequest.Select(x => x.Key + "=" + x.Value).ToArray());
 
-            if (masslessPropellant != null)
-            {
-                masslessUsageField.guiActive = true;
-                masslessUsageField.guiName = masslessPropellant.definition.displayName;
-
-                masslessUsage = (isMultiMode
-                    ? currentEngine.propellants.Sum(m => m.demandOut)
-                    : moduleEngines.Sum(m => m.propellants.Sum(l => l.demandOut))) / TimeWarp.fixedDeltaTime; ;
-            }
-            else
-                masslessUsageField.guiActive = false;
-
+            // store current fixedDeltaTime for comparison
             previousFixedDeltaTime = TimeWarp.fixedDeltaTime;
         }
 
@@ -1146,6 +1161,18 @@ namespace PersistentThrust
             if (!module_snapshot.moduleValues.TryGetValue(nameof(persistentThrust), ref persistentThrust))
                 return proto_part.partInfo.title;
 
+            // ignore background update when no thrust generated
+            if (persistentThrust <= 0)
+                return proto_part.partInfo.title;
+
+            double vesselAlignmentWithAutopilotMode = 0;
+            if (!module_snapshot.moduleValues.TryGetValue(nameof(vesselAlignmentWithAutopilotMode), ref vesselAlignmentWithAutopilotMode))
+                return proto_part.partInfo.title;
+
+            // ignore background update when not aligned with autopilot mode
+            if (vesselAlignmentWithAutopilotMode < 0.995)
+                return proto_part.partInfo.title;
+
             double persistentAverageDensity = 0;
             if (!module_snapshot.moduleValues.TryGetValue(nameof(persistentAverageDensity), ref persistentAverageDensity))
                 return proto_part.partInfo.title;
@@ -1154,27 +1181,31 @@ namespace PersistentThrust
             if (!module_snapshot.moduleValues.TryGetValue(nameof(persistentIsp), ref persistentIsp))
                 return proto_part.partInfo.title;
 
-            double vesselAlignmentWithAutopilotMode = 0;
-            if (!module_snapshot.moduleValues.TryGetValue(nameof(vesselAlignmentWithAutopilotMode), ref vesselAlignmentWithAutopilotMode))
+            string persistentResourceChange = module_snapshot.moduleValues.GetValue(nameof(persistentResourceChange));
+            if (string.IsNullOrEmpty(persistentResourceChange))
                 return proto_part.partInfo.title;
+
+            Dictionary<string, string> resourceChange = persistentResourceChange
+                .Split(',').Select(s => s.Trim().Split('='))
+                .ToDictionary(a => a[0], a => a[1]);
 
             VesselAutopilot.AutopilotMode persistentAutopilotMode = (VesselAutopilot.AutopilotMode)Enum.Parse(
                 typeof(VesselAutopilot.AutopilotMode), module_snapshot.moduleValues.GetValue(nameof(persistentAutopilotMode)));
 
-            var orbit = vessel.GetOrbit();
-            //var normalizedFwdVector = vessel.GetFwdVector();
-            var orbitalVelocityAtUt = orbit.getOrbitalVelocityAtUT(Planetarium.GetUniversalTime());
+            Orbit orbit = vessel.GetOrbit();
+            Vector3 normalizedFwdVector = vessel.GetFwdVector();
+            Vector3d orbitalVelocityAtUt = orbit.getOrbitalVelocityAtUT(Planetarium.GetUniversalTime());
 
-            var thrustVector = orbitalVelocityAtUt.normalized;
-            var vesselMass = vessel.GetTotalMass();
+            Vector3d thrustVector = orbitalVelocityAtUt.normalized;
+            float vesselMass = vessel.GetTotalMass();
 
             if (persistentAutopilotMode == VesselAutopilot.AutopilotMode.Prograde && vesselAlignmentWithAutopilotMode >= 0.995)
             {
                 double demandMass;
-                var deltaVVector = Utils.CalculateDeltaVVector(persistentAverageDensity, vesselMass, TimeWarp.fixedDeltaTime, persistentThrust, persistentIsp, thrustVector, out demandMass);
+                Vector3d deltaVVector = Utils.CalculateDeltaVVector(persistentAverageDensity, vesselMass, TimeWarp.fixedDeltaTime, persistentThrust, persistentIsp, thrustVector, out demandMass);
 
                 orbit.Perturb(deltaVVector, Planetarium.GetUniversalTime());
-                Debug.Log("[PersistentThrust]: Applied Perturb for " + deltaVVector.magnitude.ToString("F3") + " m/s to vessel mass " + vesselMass + " resulting speed " + orbitalVelocityAtUt.magnitude);
+                Debug.Log("[PersistentThrust]: Applied Perturb for " + deltaVVector.magnitude.ToString("F3") + " m/s resulting in speed " + orbitalVelocityAtUt.magnitude);
             }
 
             return proto_part.partInfo.title;
