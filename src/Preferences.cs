@@ -7,7 +7,7 @@ namespace PersistentThrust
 {
 	public class PTSettings : GameParameters.CustomParameterNode
 	{
-        public override string Title { get { return "Settings"; } }
+        public override string Title { get { return "#LOC_PT_Settings"; } }
         public override GameParameters.GameMode GameMode { get { return GameParameters.GameMode.ANY; } }
         public override string Section { get { return "PersistentThrust"; } }
         public override string DisplaySection { get { return "Persistent Thrust"; } }
@@ -16,15 +16,14 @@ namespace PersistentThrust
 
 
         // Config Settings
-        [GameParameters.CustomParameterUI("Return to real time after key pressed",
-            toolTip = "Return to real time after any throttle adjust (ctrl, shift or z) key is pressed?")]
+        [GameParameters.CustomParameterUI("#LOC_PT_Settings_ReturnToRealTime", toolTip = "#LOC_PT_Settings_ReturnToRealTimeToolTip")]
         public bool returnToRealtimeAfterKeyPressed = false;
 
     }
 
     public class PTDevSettings : GameParameters.CustomParameterNode
     {
-        public override string Title { get { return "Development Settings"; } }
+        public override string Title { get { return "#LOC_PT_SettingsDev"; } }
         public override GameParameters.GameMode GameMode { get { return GameParameters.GameMode.ANY; } }
         public override string Section { get { return "PersistentThrust"; } }
         public override string DisplaySection { get { return "Persistent Thrust"; } }
@@ -32,8 +31,7 @@ namespace PersistentThrust
         public override bool HasPresets { get { return false; } }
 
         // Config settings
-        [GameParameters.CustomFloatParameterUI("Queue length", minValue = 2, maxValue = 10, displayFormat = "N1",
-            toolTip = "Throttle and Isp queue length (in frames). Try raising it if you have issues with thrust not being persisted when dropping from timewarp.")]
+        [GameParameters.CustomIntParameterUI("#LOT_PT_SettingsDev_QueueLength", minValue = 2, maxValue = 10, toolTip = "#LOT_PT_SettingsDev_QueueLengthToolTip")]
         public int queueLength = 2;
 
         // Other Settings
