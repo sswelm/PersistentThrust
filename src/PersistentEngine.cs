@@ -105,9 +105,6 @@ namespace PersistentThrust
         public FieldInfo currentModuleEngineFieldInfo;
 
         public float previousFixedDeltaTime;
-        //public double vesselMass;
-
-
         public bool isPersistentEngine;             // Flag if using PersistentEngine features
         public bool warpToReal;                     // Are we transitioning from TimeWarp to realtime?
         public int warpToRealCountDown;
@@ -116,7 +113,7 @@ namespace PersistentThrust
         public int vesselChangedSoiCountdown = 10;
         public int fixedUpdateCount;
 
-        private readonly Dictionary<string, double> _kerbalismResourceChangeRequest = new Dictionary<string, double>();
+        private readonly Dictionary<Propellant, double> _kerbalismResourceChangeRequest = new Dictionary<Propellant, double>();
         private readonly Queue<float> _mainThrottleQueue = new Queue<float>();
         private Dictionary<string, double> _availablePartResources = new Dictionary<string, double>();
 
@@ -396,6 +393,10 @@ namespace PersistentThrust
                         Vector3 thrustVector = part.transform.up; // Thrust direction unit vector
                         // Calculate deltaV vector & resource demand from propellants with mass
                         Vector3d deltaVVector = Utils.CalculateDeltaVVector(currentEngine.averageDensity, vessel.GetTotalMass(), TimeWarp.fixedDeltaTime, requestedThrust, currentEngine.persistentIsp, thrustVector, out currentEngine.demandMass);
+
+                        //Debug.Log("[PersistentThrust]: For vessel with mass " + vessel.totalMass + " applied Perturb for " + deltaVVector.magnitude.ToString("F5") +
+                        //          " m/s resulting in speed " + vessel.obt_velocity.magnitude);
+
                         // Calculate resource demands
                         currentEngine.fuelDemands = CalculateDemands(currentEngine.demandMass);
                         // Apply resource demands & test for resource depletion
@@ -616,7 +617,9 @@ namespace PersistentThrust
             if (averagePropellantReqMetFactor < HighLogic.CurrentGame.Parameters.CustomParams<PTDevSettings>().minimumPropellantReqMetFactor)
                 currentEngine.autoMaximizePersistentIsp = true;
 
-            finalPropellantReqMetFactor = !vessel.packed || MaximizePersistentIsp || currentEngine.autoMaximizePersistentIsp ? averagePropellantReqMetFactor : Mathf.Pow(averagePropellantReqMetFactor, fudgeExponent);
+            finalPropellantReqMetFactor = !vessel.packed || MaximizePersistentIsp || currentEngine.autoMaximizePersistentIsp 
+                ? averagePropellantReqMetFactor 
+                : Mathf.Pow(averagePropellantReqMetFactor, fudgeExponent);
 
             // secondly we can consume the resource based on propellant availability
             for (var i = 0; i < currentEngine.propellants.Count; i++)
@@ -628,10 +631,15 @@ namespace PersistentThrust
                 if ((pp.density > 0 && requestPropMass) || (pp.density == 0 && requestPropMassless))
                 {
                     double demandIn = pp.density > 0
-                        ? MaximizePersistentIsp || currentEngine.autoMaximizePersistentIsp ? averagePropellantReqMetFactor * demands[i] : demands[i]
+                        ? MaximizePersistentIsp || currentEngine.autoMaximizePersistentIsp 
+                            ? averagePropellantReqMetFactor * demands[i] 
+                            : demands[i]
                         : overallPropellantReqMet * demands[i];
 
-                    double demandOut = PersistentPropellant.IsInfinite(pp.propellant) ? demandIn : RequestResource(pp, demandIn, false);
+                    double demandOut = PersistentPropellant.IsInfinite(pp.propellant) 
+                        ? demandIn 
+                        : RequestResource(pp, demandIn, false);
+
                     demandsOut[i] = demandOut;
                 }
                 // Otherwise demand is 0
@@ -1050,8 +1058,8 @@ namespace PersistentThrust
             {
                 double demandPerSecond = demand / TimeWarp.fixedDeltaTime;
 
-                _kerbalismResourceChangeRequest.TryGetValue(propellant.definition.name, out double currentDemand);
-                _kerbalismResourceChangeRequest[propellant.definition.name] = currentDemand - demandPerSecond;
+                _kerbalismResourceChangeRequest.TryGetValue(propellant.propellant, out double currentDemand);
+                _kerbalismResourceChangeRequest[propellant.propellant] = currentDemand - demandPerSecond;
             }
 
             return available;
@@ -1114,7 +1122,7 @@ namespace PersistentThrust
             // store current fixedDeltaTime for comparison
             previousFixedDeltaTime = TimeWarp.fixedDeltaTime;
 
-            vesselDryMass = VesselExtension.GetDryMass(vessel);
+            vesselDryMass = vessel.GetDryMass();
         }
 
         #endregion
@@ -1160,6 +1168,18 @@ namespace PersistentThrust
             if (vesselAlignmentWithAutopilotMode < 0.995)
                 return proto_part.partInfo.title;
 
+            string persistentResourceChange = module_snapshot.moduleValues.GetValue(nameof(persistentResourceChange));
+
+            if (string.IsNullOrEmpty(persistentResourceChange))
+                return proto_part.partInfo.title;
+
+            Dictionary<string, double> resourceChanges = persistentResourceChange
+                .Split(';').Select(s => s.Trim().Split('='))
+                .ToDictionary(a => a[0], a => double.Parse(a[1]));
+
+            if (resourceChanges.Any(m => m.Value == 0))
+                return proto_part.partInfo.title;
+
             double persistentAverageDensity = 0;
             if (!module_snapshot.moduleValues.TryGetValue(nameof(persistentAverageDensity), ref persistentAverageDensity))
                 return proto_part.partInfo.title;
@@ -1172,16 +1192,6 @@ namespace PersistentThrust
             if (!module_snapshot.moduleValues.TryGetValue(nameof(persistentIsp), ref persistentIsp))
                 return proto_part.partInfo.title;
 
-            string persistentResourceChange = module_snapshot.moduleValues.GetValue(nameof(persistentResourceChange));
-            if (string.IsNullOrEmpty(persistentResourceChange))
-                return proto_part.partInfo.title;
-
-            //Debug.Log("[PersistentThrust]: " + persistentResourceChange);
-
-            Dictionary<string, double> resourceChanges = persistentResourceChange
-                .Split(';').Select(s => s.Trim().Split('='))
-                .ToDictionary(a => a[0], a => double.Parse(a[1]));
-
             VesselAutopilot.AutopilotMode persistentAutopilotMode = (VesselAutopilot.AutopilotMode) Enum.Parse(
                 typeof(VesselAutopilot.AutopilotMode), module_snapshot.moduleValues.GetValue(nameof(persistentAutopilotMode)));
 
@@ -1189,9 +1199,6 @@ namespace PersistentThrust
             Vector3d orbitalVelocityAtUt = orbit.getOrbitalVelocityAtUT(Planetarium.GetUniversalTime());
 
             Vector3d thrustVector = vessel.GetFwdVector();
-            //= persistentAutopilotMode == VesselAutopilot.AutopilotMode.Prograde ? orbitalVelocityAtUt.normalized : (Vector3d)vessel.GetFwdVector();
-            //Vector3d thrustVector = vessel.GetRequestedDirection(Planetarium.GetUniversalTime(), persistentAutopilotMode);
-
             switch (persistentAutopilotMode)
             {
                 case VesselAutopilot.AutopilotMode.Prograde:
@@ -1235,8 +1242,8 @@ namespace PersistentThrust
                     out double demandMass);
 
                 orbit.Perturb(deltaVVector, Planetarium.GetUniversalTime(), false);
-                Debug.Log("[PersistentThrust]: Applied Perturb for " + deltaVVector.magnitude.ToString("F3") +
-                          " m/s resulting in speed " + orbitalVelocityAtUt.magnitude);
+                //Debug.Log("[PersistentThrust]: For vessel with mass " + vesselMass + " applied Perturb for " + deltaVVector.magnitude.ToString("F5") +
+                //          " m/s resulting in speed " + orbitalVelocityAtUt.magnitude);
             }
 
             return proto_part.partInfo.title;
@@ -1255,7 +1262,10 @@ namespace PersistentThrust
 
             foreach (var resourceRequest in _kerbalismResourceChangeRequest)
             {
-                resourceChangeRequest.Add(new KeyValuePair<string, double>(resourceRequest.Key, resourceRequest.Value));
+                if (resourceRequest.Key.resourceDef.density > 0 && !vessel.packed)
+                    continue;
+
+               resourceChangeRequest.Add(new KeyValuePair<string, double>(resourceRequest.Key.name, resourceRequest.Value));
             }
 
             return part.partInfo.title;
