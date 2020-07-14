@@ -1,3 +1,4 @@
+using Expansions.Missions;
 using KSP.Localization;
 using System;
 using System.Collections.Generic;
@@ -60,6 +61,8 @@ namespace PersistentThrust
         public double vesselAlignmentWithAutopilotMode;
         [KSPField(isPersistant = true)]
         public string persistentResourceChange;
+        [KSPField(isPersistant = true)]
+        public float vesselDryMass;
 
         // GUI
         [KSPField(guiFormat = "F1", guiActive = true, guiName = "#autoLOC_6001378", guiUnits = "#autoLOC_7001400")]
@@ -102,6 +105,8 @@ namespace PersistentThrust
         public FieldInfo currentModuleEngineFieldInfo;
 
         public float previousFixedDeltaTime;
+        //public double vesselMass;
+
 
         public bool isPersistentEngine;             // Flag if using PersistentEngine features
         public bool warpToReal;                     // Are we transitioning from TimeWarp to realtime?
@@ -390,7 +395,7 @@ namespace PersistentThrust
 
                         Vector3 thrustVector = part.transform.up; // Thrust direction unit vector
                         // Calculate deltaV vector & resource demand from propellants with mass
-                        Vector3d deltaVVector = Utils.CalculateDeltaVVector(currentEngine.averageDensity, vessel.totalMass, TimeWarp.fixedDeltaTime, requestedThrust, currentEngine.persistentIsp, thrustVector, out currentEngine.demandMass);
+                        Vector3d deltaVVector = Utils.CalculateDeltaVVector(currentEngine.averageDensity, vessel.GetTotalMass(), TimeWarp.fixedDeltaTime, requestedThrust, currentEngine.persistentIsp, thrustVector, out currentEngine.demandMass);
                         // Calculate resource demands
                         currentEngine.fuelDemands = CalculateDemands(currentEngine.demandMass);
                         // Apply resource demands & test for resource depletion
@@ -1031,8 +1036,6 @@ namespace PersistentThrust
         /// <returns> The amount of resource that was consumed. </returns>
         private double RequestResource(PersistentPropellant propellant, double demand, bool simulate = false)
         {
-            if (propellant.density > 0 && !vessel.packed)
-                return demand;
 
             if (!DetectKerbalism.Found())
                 return part.RequestResource(propellant.definition.id, demand, propellant.propellant.GetFlowMode(), simulate);
@@ -1110,6 +1113,8 @@ namespace PersistentThrust
 
             // store current fixedDeltaTime for comparison
             previousFixedDeltaTime = TimeWarp.fixedDeltaTime;
+
+            vesselDryMass = VesselExtension.GetDryMass(vessel);
         }
 
         #endregion
@@ -1159,6 +1164,10 @@ namespace PersistentThrust
             if (!module_snapshot.moduleValues.TryGetValue(nameof(persistentAverageDensity), ref persistentAverageDensity))
                 return proto_part.partInfo.title;
 
+            double vesselDryMass = 0;
+            if (!module_snapshot.moduleValues.TryGetValue(nameof(vesselDryMass), ref vesselDryMass))
+                return proto_part.partInfo.title;
+
             float persistentIsp = 0;
             if (!module_snapshot.moduleValues.TryGetValue(nameof(persistentIsp), ref persistentIsp))
                 return proto_part.partInfo.title;
@@ -1179,7 +1188,7 @@ namespace PersistentThrust
             Orbit orbit = vessel.GetOrbitDriver().orbit;
             Vector3d orbitalVelocityAtUt = orbit.getOrbitalVelocityAtUT(Planetarium.GetUniversalTime());
 
-            Vector3d thrustVector = vessel.GetFwdVector(); 
+            Vector3d thrustVector = vessel.GetFwdVector();
             //= persistentAutopilotMode == VesselAutopilot.AutopilotMode.Prograde ? orbitalVelocityAtUt.normalized : (Vector3d)vessel.GetFwdVector();
             //Vector3d thrustVector = vessel.GetRequestedDirection(Planetarium.GetUniversalTime(), persistentAutopilotMode);
 
@@ -1219,7 +1228,9 @@ namespace PersistentThrust
                     resourceChangeRequest.Add(new KeyValuePair<string, double>(resourceChange.Key, resourceChange.Value * fuelRequirementMet));
                 }
 
-                Vector3d deltaVVector = Utils.CalculateDeltaVVector(persistentAverageDensity, vessel.GetTotalMass(),
+                var vesselMass = vesselDryMass += Utils.GetResourceMass(availableResources);
+
+                Vector3d deltaVVector = Utils.CalculateDeltaVVector(persistentAverageDensity, vesselMass,
                     elapsed_s, persistentThrust * fuelRequirementMet, persistentIsp, thrustVector,
                     out double demandMass);
 

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace PersistentThrust
 {
@@ -26,6 +27,19 @@ namespace PersistentThrust
             {
                 return $"{thrust:F2} kN";
             }
+        }
+
+
+        public static double GetResourceMass(Dictionary<string, double> availableResources)
+        {
+            double mass = 0.0;
+
+            foreach (var resource in availableResources)
+            {
+                mass += resource.Value * PartResourceLibrary.Instance.GetDefinition(resource.Key).density;
+            }
+
+            return mass;
         }
 
 
