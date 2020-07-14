@@ -964,7 +964,7 @@ namespace PersistentThrust
         {
             var activePropellant = currentPersistentPropellant;
 
-            PersistentPropellant activePropellants = _persistentEngines.SelectMany(pe => pe.moduleEngines.SelectMany(pl =>
+            List<PersistentPropellant> activePropellants = _persistentEngines.SelectMany(pe => pe.moduleEngines.SelectMany(pl =>
                 pl.propellants.Where(pp =>
                     pp.missionTime == vessel.missionTime &&
                     pp.definition.id == currentPersistentPropellant.definition.id))).ToList();
