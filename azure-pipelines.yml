@@ -18,6 +18,7 @@ steps:
 - task: NuGetToolInstaller@1
 
 - task: NuGetCommand@2
+  displayName: 'Restore project dependencies'
   inputs:
     restoreSolution: '$(solution)'
 
@@ -26,6 +27,7 @@ steps:
   workingDirectory: GameData\PersistentThrust
 
 - task: VSBuild@1
+  displayName: 'Build the project - Release'
   inputs:
     solution: '$(solution)'
     msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:PackageLocation="$(build.artifactStagingDirectory)"'
