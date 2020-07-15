@@ -1194,7 +1194,8 @@ namespace PersistentThrust
                 typeof(VesselAutopilot.AutopilotMode), module_snapshot.moduleValues.GetValue(nameof(persistentAutopilotMode)));
 
             Orbit orbit = vessel.GetOrbitDriver().orbit;
-            Vector3d orbitalVelocityAtUt = orbit.getOrbitalVelocityAtUT(Planetarium.GetUniversalTime()).xzy;
+            double UT = Planetarium.GetUniversalTime();
+            Vector3d orbitalVelocityAtUt = orbit.getOrbitalVelocityAtUT(UT).xzy;
 
             Vector3d thrustVector = vessel.GetFwdVector();
             switch (persistentAutopilotMode)
@@ -1206,16 +1207,16 @@ namespace PersistentThrust
                     thrustVector = -orbitalVelocityAtUt.normalized;
                     break;
                 case VesselAutopilot.AutopilotMode.Normal:
-                    thrustVector = Vector3.Cross(orbitalVelocityAtUt, (orbit.getPositionAtUT(Planetarium.GetUniversalTime()) - vessel.mainBody.getPositionAtUT(Planetarium.GetUniversalTime()) )).normalized;
+                    thrustVector = Vector3.Cross(orbitalVelocityAtUt, (orbit.getPositionAtUT(UT) - vessel.mainBody.getPositionAtUT(UT) )).normalized;
                     break;
                 case VesselAutopilot.AutopilotMode.Antinormal:
-                    thrustVector = -Vector3.Cross(orbitalVelocityAtUt, (orbit.getPositionAtUT(Planetarium.GetUniversalTime()) - vessel.mainBody.getPositionAtUT(Planetarium.GetUniversalTime()))).normalized;
+                    thrustVector = -Vector3.Cross(orbitalVelocityAtUt, (orbit.getPositionAtUT(UT) - vessel.mainBody.getPositionAtUT(UT))).normalized;
                     break;
                 case VesselAutopilot.AutopilotMode.RadialIn:
-                    thrustVector = -Vector3.Cross(orbitalVelocityAtUt, Vector3.Cross(orbitalVelocityAtUt, vessel.orbit.getPositionAtUT(Planetarium.GetUniversalTime()) - orbit.referenceBody.position)).normalized;
+                    thrustVector = -Vector3.Cross(orbitalVelocityAtUt, Vector3.Cross(orbitalVelocityAtUt, vessel.orbit.getPositionAtUT(UT) - orbit.referenceBody.position)).normalized;
                     break;
                 case VesselAutopilot.AutopilotMode.RadialOut:
-                    thrustVector = Vector3.Cross(orbitalVelocityAtUt, Vector3.Cross(orbitalVelocityAtUt, vessel.orbit.getPositionAtUT(Planetarium.GetUniversalTime()) - orbit.referenceBody.position)).normalized;
+                    thrustVector = Vector3.Cross(orbitalVelocityAtUt, Vector3.Cross(orbitalVelocityAtUt, vessel.orbit.getPositionAtUT(UT) - orbit.referenceBody.position)).normalized;
                     break;
             }
 
@@ -1250,7 +1251,7 @@ namespace PersistentThrust
                     elapsed_s, persistentThrust * fuelRequirementMet, persistentIsp, thrustVector,
                     out double demandMass);
 
-                orbit.Perturb(deltaVVector, Planetarium.GetUniversalTime());
+                orbit.Perturb(deltaVVector, UT);
             }
 
             return proto_part.partInfo.title;
