@@ -1200,14 +1200,23 @@ namespace PersistentThrust
             switch (persistentAutopilotMode)
             {
                 case VesselAutopilot.AutopilotMode.Prograde:
-                    thrustVector = orbitalVelocityAtUt.normalized;
+                    thrustVector = orbitalVelocityAtUt.xzy.normalized;
                     break;
                 case VesselAutopilot.AutopilotMode.Retrograde:
-                    thrustVector = -orbitalVelocityAtUt.normalized;
+                    thrustVector = -orbitalVelocityAtUt.xzy.normalized;
                     break;
-                //case VesselAutopilot.AutopilotMode.Maneuver:
-                //    thrustVector = vessel.patchedConicSolver.maneuverNodes.Count > 0 ? vessel.patchedConicSolver.maneuverNodes[0].GetBurnVector(vessel.orbit).normalized : Vector3d.zero;
-                //    break;
+                case VesselAutopilot.AutopilotMode.Normal:
+                    thrustVector = Vector3.Cross(orbitalVelocityAtUt.xzy, (orbit.getPositionAtUT(Planetarium.GetUniversalTime()) - vessel.mainBody.getPositionAtUT(Planetarium.GetUniversalTime()) )).normalized;
+                    break;
+                case VesselAutopilot.AutopilotMode.Antinormal:
+                    thrustVector = -Vector3.Cross(orbitalVelocityAtUt.xzy, (orbit.getPositionAtUT(Planetarium.GetUniversalTime()) - vessel.mainBody.getPositionAtUT(Planetarium.GetUniversalTime()))).normalized;
+                    break;
+                case VesselAutopilot.AutopilotMode.RadialIn:
+                    thrustVector = -Vector3.Cross(orbitalVelocityAtUt.xzy, Vector3.Cross(orbitalVelocityAtUt, vessel.orbit.getPositionAtUT(Planetarium.GetUniversalTime()) - orbit.referenceBody.position)).normalized;
+                    break;
+                case VesselAutopilot.AutopilotMode.RadialOut:
+                    thrustVector = Vector3.Cross(orbitalVelocityAtUt.xzy, Vector3.Cross(orbitalVelocityAtUt, vessel.orbit.getPositionAtUT(Planetarium.GetUniversalTime()) - orbit.referenceBody.position)).normalized;
+                    break;
             }
 
             if (thrustVector == Vector3d.zero)
@@ -1241,7 +1250,7 @@ namespace PersistentThrust
                     elapsed_s, persistentThrust * fuelRequirementMet, persistentIsp, thrustVector,
                     out double demandMass);
 
-                orbit.Perturb(deltaVVector, Planetarium.GetUniversalTime(), false);
+                orbit.Perturb(deltaVVector, Planetarium.GetUniversalTime());
             }
 
             return proto_part.partInfo.title;

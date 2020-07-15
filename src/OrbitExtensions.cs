@@ -13,13 +13,13 @@ namespace PersistentThrust
         /// <summary>
         /// Perturbs an orbit by a deltaV vector.
         /// </summary>
-        public static void Perturb(this Orbit orbit, Vector3d deltaVV, double UT, bool transpose = true)
+        public static void Perturb(this Orbit orbit, Vector3d deltaVV, double UT)
         {
             if (deltaVV.magnitude == 0)
                 return;
 
             // Transpose deltaVV Y and Z to match orbit frame
-            Vector3d deltaVVector_orbit = transpose ? deltaVV.xzy : deltaVV;
+            Vector3d deltaVVector_orbit = deltaVV.xzy;
 
             // Position vector
             Vector3d position = orbit.getRelativePositionAtUT(UT);
