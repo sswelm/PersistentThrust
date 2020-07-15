@@ -112,7 +112,7 @@ namespace PersistentThrust
         public int vesselChangedSoiCountdown = 10;
         public int fixedUpdateCount;
 
-        private readonly Dictionary<Propellant, double> _kerbalismResourceChangeRequest = new Dictionary<Propellant, double>();
+        private readonly Dictionary<string, double> _kerbalismResourceChangeRequest = new Dictionary<string, double>();
         private readonly Queue<float> _mainThrottleQueue = new Queue<float>();
         private Dictionary<string, double> _availablePartResources = new Dictionary<string, double>();
 
@@ -1056,8 +1056,8 @@ namespace PersistentThrust
             {
                 double demandPerSecond = demand / TimeWarp.fixedDeltaTime;
 
-                _kerbalismResourceChangeRequest.TryGetValue(propellant.propellant, out double currentDemand);
-                _kerbalismResourceChangeRequest[propellant.propellant] = currentDemand - demandPerSecond;
+                _kerbalismResourceChangeRequest.TryGetValue(propellant.definition.name, out double currentDemand);
+                _kerbalismResourceChangeRequest[propellant.definition.name] = currentDemand - demandPerSecond;
             }
 
             return available;
@@ -1205,7 +1205,13 @@ namespace PersistentThrust
                 case VesselAutopilot.AutopilotMode.Retrograde:
                     thrustVector = -orbitalVelocityAtUt.normalized;
                     break;
+                //case VesselAutopilot.AutopilotMode.Maneuver:
+                //    thrustVector = vessel.patchedConicSolver.maneuverNodes.Count > 0 ? vessel.patchedConicSolver.maneuverNodes[0].GetBurnVector(vessel.orbit).normalized : Vector3d.zero;
+                //    break;
             }
+
+            if (thrustVector == Vector3d.zero)
+                return proto_part.partInfo.title;
 
             double fuelRequirementMet = 1;
             foreach (var resourceChange in resourceChanges)
@@ -1254,10 +1260,11 @@ namespace PersistentThrust
 
             foreach (var resourceRequest in _kerbalismResourceChangeRequest)
             {
-                if (resourceRequest.Key.resourceDef.density > 0 && !vessel.packed)
+                var definition = PartResourceLibrary.Instance.GetDefinition(resourceRequest.Key);
+                if (definition == null || definition.density > 0 && !vessel.packed)
                     continue;
 
-                resourceChangeRequest.Add(new KeyValuePair<string, double>(resourceRequest.Key.name, resourceRequest.Value));
+                resourceChangeRequest.Add(new KeyValuePair<string, double>(resourceRequest.Key, resourceRequest.Value));
             }
 
             return part.partInfo.title;
