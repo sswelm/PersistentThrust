@@ -2,6 +2,7 @@ using KSP.Localization;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using EdyCommonTools;
 using UniLinq;
 using UnityEngine;
 
@@ -31,7 +32,7 @@ namespace PersistentThrust
 
         #region Fields
 
-        //public const double Rad2Deg = 180 / Math.PI; // 57.295779513;
+        public const double Rad2Deg = 180 / Math.PI; // 57.295779513;
 
         // Persistant
         [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiActiveUnfocused = true, guiName = "#LOC_PT_PersistentThrust"), UI_Toggle(disabledText = "#autoLOC_900890", enabledText = "#autoLOC_900889", affectSymCounterparts = UI_Scene.All)]
@@ -42,8 +43,8 @@ namespace PersistentThrust
         public bool MaximizePersistentIsp = true;
         [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiActiveUnfocused = true, guiName = "#LOC_PT_MaximizePersistentPower"), UI_Toggle(disabledText = "#autoLOC_900890", enabledText = "#autoLOC_900889", affectSymCounterparts = UI_Scene.All)]
         public bool MaximizePersistentPower = false;
-        //[KSPField(isPersistant = true, guiActiveEditor = false, guiActive = true, guiName = "#LOC_PT_ManeuverTolerance", guiUnits = " %"), UI_FloatRange(stepIncrement = 1, maxValue = 180, minValue = 0, requireFullControl = false, affectSymCounterparts = UI_Scene.All)]//Beamed Power Throttle
-        //public float maneuverTolerance = 180;
+        [KSPField(isPersistant = true, guiActiveEditor = false, guiActive = true, guiName = "#LOC_PT_ManeuverTolerance", guiUnits = " %"), UI_FloatRange(stepIncrement = 1, maxValue = 180, minValue = 0, requireFullControl = false, affectSymCounterparts = UI_Scene.All)]//Beamed Power Throttle
+        public float maneuverTolerance = 180;
 
         // Persistent values to use during TimeWarp and offline processing
         [KSPField(isPersistant = true)]
@@ -66,6 +67,8 @@ namespace PersistentThrust
         public Guid persistentVesselTargetId;
         [KSPField(isPersistant = true)]
         public string persistentVesselTargetBodyName;
+        [KSPField(isPersistant = true)]
+        public string persistentManeuverOrbit;
 
         // GUI
         [KSPField(guiFormat = "F1", guiActive = true, guiName = "#autoLOC_6001378", guiUnits = "#autoLOC_7001400")]
@@ -76,6 +79,9 @@ namespace PersistentThrust
         public float propellantReqMet;
         [KSPField(guiFormat = "F3", guiUnits = " U/s")]
         public double masslessUsage;
+
+        [KSPField(guiFormat = "F3", guiActive = true, guiUnits = " deg")]
+        public double vesselHeadingVersusManeuverInDegrees;
 
         // Config Settings
         [KSPField]
@@ -276,8 +282,8 @@ namespace PersistentThrust
 
             RestoreHeadingAtLoad();
 
-            //vesselHeadingVersusManeuver = vessel.VesselOrbitHeadingVersusManeuverVector();
-            //vesselHeadingVersusManeuverInDegrees = Math.Acos(Math.Max(-1, Math.Min(1, vesselHeadingVersusManeuver))) * Rad2Deg;
+            var vesselHeadingVersusManeuver = vessel.VesselOrbitHeadingVersusManeuverVector();
+            vesselHeadingVersusManeuverInDegrees = Math.Acos(Math.Max(-1, Math.Min(1, vesselHeadingVersusManeuver))) * Rad2Deg;
 
             _kerbalismResourceChangeRequest.Clear();
 
@@ -313,14 +319,14 @@ namespace PersistentThrust
                     if (processMasslessSeparately && currentEngine.engineHasAnyMassLessPropellants)
                         ReloadPropellantsWithoutMasslessPropellants();
 
-                    //if (vesselHeadingVersusManeuverInDegrees > maneuverTolerance)
-                    //{
-                    //    moduleEngine.maxFuelFlow = 1e-10f;
-                    //    finalThrust = 0;
-                    //}
-                    //else
+                    if (vesselHeadingVersusManeuverInDegrees > maneuverTolerance)
+                    {
+                        currentEngine.engine.maxFuelFlow = 1e-10f;
+                        currentEngine.finalThrust = 0;
 
-                    if (!currentEngine.engine.getIgnitionState)
+                        UpdateBuffers();
+                    }
+                    else if (!currentEngine.engine.getIgnitionState)
                     {
                         currentEngine.finalThrust = 0;
 
@@ -392,8 +398,8 @@ namespace PersistentThrust
                     if (persistentThrottle > 0 && currentEngine.persistentIsp > 0 && isPersistentEngine && HasPersistentThrust)
                     {
                         // Calculated requested thrust
-                        //var requestedThrust = vesselHeadingVersusManeuverInDegrees <= maneuverTolerance ? moduleEngine.thrustPercentage * 0.01f * persistentThrottle * moduleEngine.maxThrust : 0;
-                        float requestedThrust = currentEngine.engine.thrustPercentage * 0.01f * persistentThrottle * currentEngine.engine.maxThrust;
+                        var requestedThrust = vesselHeadingVersusManeuverInDegrees <= maneuverTolerance ? currentEngine.engine.thrustPercentage * 0.01f * persistentThrottle * currentEngine.engine.maxThrust : 0;
+                        //float requestedThrust = currentEngine.engine.thrustPercentage * 0.01f * persistentThrottle * currentEngine.engine.maxThrust;
 
                         // Calculate deltaV vector & resource demand from propellants with mass
                         Vector3d deltaVVector = Utils.CalculateDeltaVVector(currentEngine.averageDensity, vessel.GetTotalMass(), TimeWarp.fixedDeltaTime, requestedThrust, currentEngine.persistentIsp, part.transform.up, out currentEngine.demandMass);
@@ -1146,6 +1152,26 @@ namespace PersistentThrust
                     persistentVesselTargetBodyName = orbitDriver.celestialBody.bodyName;
                 }
             }
+            else if (vessel.Autopilot.Mode == VesselAutopilot.AutopilotMode.Maneuver)
+            {
+                if (vessel.patchedConicSolver.maneuverNodes.Count > 0)
+                {
+                    Orbit nextPatch = vessel.patchedConicSolver.maneuverNodes[0].nextPatch;
+
+                    var orbit = new Dictionary<string, double>
+                    {
+                        {nameof(nextPatch.inclination), nextPatch.inclination},
+                        {nameof(nextPatch.eccentricity), nextPatch.eccentricity},
+                        {nameof(nextPatch.semiMajorAxis), nextPatch.semiMajorAxis},
+                        {nameof(nextPatch.LAN), nextPatch.LAN},
+                        {nameof(nextPatch.argumentOfPeriapsis), nextPatch.argumentOfPeriapsis},
+                        {nameof(nextPatch.meanAnomalyAtEpoch), nextPatch.meanAnomalyAtEpoch},
+                        {nameof(nextPatch.referenceBody.flightGlobalsIndex), nextPatch.referenceBody.flightGlobalsIndex},
+                    };
+
+                    persistentManeuverOrbit = string.Join(";", orbit.Select(x => x.Key + "=" + x.Value).ToArray());
+                }
+            }
         }
 
         #endregion
@@ -1215,49 +1241,42 @@ namespace PersistentThrust
             if (!module_snapshot.moduleValues.TryGetValue(nameof(persistentIsp), ref persistentIsp))
                 return proto_part.partInfo.title;
 
-            string persistentVesselTargetBodyName = string.Empty;
-            if (!module_snapshot.moduleValues.TryGetValue(nameof(persistentVesselTargetBodyName), ref persistentVesselTargetBodyName))
-                return proto_part.partInfo.title;
-
-            string persistentVesselTargetId = Guid.Empty.ToString();
-            if (!module_snapshot.moduleValues.TryGetValue(nameof(persistentVesselTargetId), ref persistentVesselTargetId))
-                return proto_part.partInfo.title;
-
-            Guid persistentVesselTargetGuid = new Guid(persistentVesselTargetId);
-
             VesselAutopilot.AutopilotMode persistentAutopilotMode = (VesselAutopilot.AutopilotMode) Enum.Parse(
                 typeof(VesselAutopilot.AutopilotMode), module_snapshot.moduleValues.GetValue(nameof(persistentAutopilotMode)));
 
             Orbit orbit = vessel.GetOrbitDriver().orbit;
             double UT = Planetarium.GetUniversalTime();
-            Vector3d orbitalVelocityAtUt = orbit.getOrbitalVelocityAtUT(UT).xzy;
+            Vector3d orbitalVelocityAtUt = orbit.getOrbitalVelocityAtUT(UT);
 
             Vector3d thrustVector = vessel.GetFwdVector();
             switch (persistentAutopilotMode)
             {
                 case VesselAutopilot.AutopilotMode.Prograde:
-                    thrustVector = orbitalVelocityAtUt.normalized;
+                    thrustVector = orbitalVelocityAtUt.xzy;
                     break;
                 case VesselAutopilot.AutopilotMode.Retrograde:
-                    thrustVector = -orbitalVelocityAtUt.normalized;
+                    thrustVector = -orbitalVelocityAtUt.xzy;
                     break;
                 case VesselAutopilot.AutopilotMode.Normal:
-                    thrustVector = Vector3.Cross(orbitalVelocityAtUt, (orbit.getPositionAtUT(UT) - vessel.mainBody.getPositionAtUT(UT) )).normalized;
+                    thrustVector = Vector3.Cross(orbitalVelocityAtUt.xzy, (orbit.getPositionAtUT(UT) - vessel.mainBody.getPositionAtUT(UT) ));
                     break;
                 case VesselAutopilot.AutopilotMode.Antinormal:
-                    thrustVector = -Vector3.Cross(orbitalVelocityAtUt, (orbit.getPositionAtUT(UT) - vessel.mainBody.getPositionAtUT(UT))).normalized;
+                    thrustVector = -Vector3.Cross(orbitalVelocityAtUt.xzy, (orbit.getPositionAtUT(UT) - vessel.mainBody.getPositionAtUT(UT)));
                     break;
                 case VesselAutopilot.AutopilotMode.RadialIn:
-                    thrustVector = -Vector3.Cross(orbitalVelocityAtUt, Vector3.Cross(orbitalVelocityAtUt, vessel.orbit.getPositionAtUT(UT) - orbit.referenceBody.position)).normalized;
+                    thrustVector = -Vector3.Cross(orbitalVelocityAtUt.xzy, Vector3.Cross(orbitalVelocityAtUt.xzy, vessel.orbit.getPositionAtUT(UT) - orbit.referenceBody.position));
                     break;
                 case VesselAutopilot.AutopilotMode.RadialOut:
-                    thrustVector = Vector3.Cross(orbitalVelocityAtUt, Vector3.Cross(orbitalVelocityAtUt, vessel.orbit.getPositionAtUT(UT) - orbit.referenceBody.position)).normalized;
+                    thrustVector = Vector3.Cross(orbitalVelocityAtUt.xzy, Vector3.Cross(orbitalVelocityAtUt.xzy, vessel.orbit.getPositionAtUT(UT) - orbit.referenceBody.position));
                     break;
                 case VesselAutopilot.AutopilotMode.Target:
-                    thrustVector = GetThrustVectorToTarget(vessel, persistentVesselTargetGuid, persistentVesselTargetBodyName, thrustVector, UT);
+                    thrustVector = GetThrustVectorToTarget(vessel, module_snapshot, thrustVector, UT);
                     break;
                 case VesselAutopilot.AutopilotMode.AntiTarget:
-                    thrustVector = -GetThrustVectorToTarget(vessel, persistentVesselTargetGuid, persistentVesselTargetBodyName, thrustVector, UT);
+                    thrustVector = -GetThrustVectorToTarget(vessel, module_snapshot, thrustVector, UT);
+                    break;
+                case VesselAutopilot.AutopilotMode.Maneuver:
+                    thrustVector = GetThrustVectorToManeuver(vessel, module_snapshot, orbitalVelocityAtUt, thrustVector, UT);
                     break;
             }
 
@@ -1289,7 +1308,7 @@ namespace PersistentThrust
                 var vesselMass = vesselDryMass += Utils.GetResourceMass(availableResources);
 
                 Vector3d deltaVVector = Utils.CalculateDeltaVVector(persistentAverageDensity, vesselMass,
-                    elapsed_s, persistentThrust * fuelRequirementMet, persistentIsp, thrustVector,
+                    elapsed_s, persistentThrust * fuelRequirementMet, persistentIsp, thrustVector.normalized,
                     out double demandMass);
 
                 orbit.Perturb(deltaVVector, UT);
@@ -1298,9 +1317,16 @@ namespace PersistentThrust
             return proto_part.partInfo.title;
         }
 
-        private static Vector3d GetThrustVectorToTarget(Vessel vessel, Guid persistentVesselTargetGuid,
-            string persistentVesselTargetBodyName, Vector3d thrustVector, double UT)
+        private static Vector3d GetThrustVectorToTarget(Vessel vessel, ProtoPartModuleSnapshot module_snapshot, Vector3d thrustVector, double UT)
         {
+            string persistentVesselTargetBodyName = string.Empty;
+            module_snapshot.moduleValues.TryGetValue(nameof(persistentVesselTargetBodyName), ref persistentVesselTargetBodyName);
+
+            string persistentVesselTargetId = Guid.Empty.ToString();
+            module_snapshot.moduleValues.TryGetValue(nameof(persistentVesselTargetId), ref persistentVesselTargetId);
+
+            Guid persistentVesselTargetGuid = new Guid(persistentVesselTargetId);
+
             Orbit targetOrbit = null;
             if (persistentVesselTargetGuid != Guid.Empty)
             {
@@ -1316,8 +1342,37 @@ namespace PersistentThrust
             }
 
             if (targetOrbit != null)
-                thrustVector = (targetOrbit.getPositionAtUT(UT) - vessel.orbit.getPositionAtUT(UT)).normalized;
+                thrustVector = (targetOrbit.getPositionAtUT(UT) - vessel.orbit.getPositionAtUT(UT));
             return thrustVector;
+        }
+
+        private static Vector3d GetThrustVectorToManeuver(Vessel vessel, ProtoPartModuleSnapshot module_snapshot, Vector3d orbitalVelocityAtUt,  Vector3d thrustVector, double UT)
+        {
+            string persistentManeuverOrbit = string.Empty;
+            module_snapshot.moduleValues.TryGetValue(nameof(persistentManeuverOrbit), ref persistentManeuverOrbit);
+
+            if (string.IsNullOrEmpty(persistentManeuverOrbit))
+                return thrustVector;
+
+            Dictionary<string, double> orbitDict = persistentManeuverOrbit
+                .Split(';').Select(s => s.Trim().Split('='))
+                .ToDictionary(a => a[0], a => double.Parse(a[1]));
+
+            Orbit nextPatch;
+
+            orbitDict.TryGetValue(nameof(nextPatch.inclination), out double inclination);
+            orbitDict.TryGetValue(nameof(nextPatch.eccentricity), out double eccentricity);
+            orbitDict.TryGetValue(nameof(nextPatch.semiMajorAxis), out double semiMajorAxis);
+            orbitDict.TryGetValue(nameof(nextPatch.LAN), out double LAN);
+            orbitDict.TryGetValue(nameof(nextPatch.argumentOfPeriapsis), out double argumentOfPeriapsis);
+            orbitDict.TryGetValue(nameof(nextPatch.meanAnomalyAtEpoch), out double meanAnomalyAtEpoch);
+            orbitDict.TryGetValue(nameof(nextPatch.referenceBody), out double referenceBody);
+
+            CelestialBody celestialBody = FlightGlobals.Bodies.SingleOrDefault(m => m.flightGlobalsIndex == (int) referenceBody);
+
+            nextPatch = new Orbit(inclination, eccentricity, semiMajorAxis, LAN, argumentOfPeriapsis, meanAnomalyAtEpoch, referenceBody, celestialBody);
+
+            return -(nextPatch.getOrbitalVelocityAtUT(UT) - orbitalVelocityAtUt).xzy;
         }
 
 
