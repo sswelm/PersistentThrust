@@ -43,8 +43,8 @@ namespace PersistentThrust
         public bool MaximizePersistentIsp = true;
         [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiActiveUnfocused = true, guiName = "#LOC_PT_MaximizePersistentPower"), UI_Toggle(disabledText = "#autoLOC_900890", enabledText = "#autoLOC_900889", affectSymCounterparts = UI_Scene.All)]
         public bool MaximizePersistentPower = false;
-        [KSPField(isPersistant = true, guiActiveEditor = false, guiActive = true, guiName = "#LOC_PT_ManeuverTolerance", guiUnits = " %"), UI_FloatRange(stepIncrement = 1, maxValue = 180, minValue = 0, requireFullControl = false, affectSymCounterparts = UI_Scene.All)]//Beamed Power Throttle
-        public float maneuverTolerance = 180;
+        [KSPField(isPersistant = true, guiActiveEditor = false, guiActive = true, guiName = "#LOC_PT_ManeuverTolerance", guiUnits = " %"), UI_FloatRange(stepIncrement = 1, maxValue = 90, minValue = 0, requireFullControl = false, affectSymCounterparts = UI_Scene.All)]//Beamed Power Throttle
+        public float maneuverTolerance = 90;
 
         // Persistent values to use during TimeWarp and offline processing
         [KSPField(isPersistant = true)]
@@ -435,21 +435,17 @@ namespace PersistentThrust
                         }
                         else
                             currentEngine.finalThrust = 0;
-
-                        SetThrottleAnimation();
-
-                        UpdateFX();
                     }
                     else
                     {
                         currentEngine.finalThrust = 0;
 
-                        SetThrottleAnimation();
-
-                        UpdateFX();
-
                         UpdateBuffers();
                     }
+
+                    SetThrottleAnimation();
+
+                    UpdateFX();
                 }
 
                 if (vessel.IsControllable && HasPersistentHeadingEnabled)
