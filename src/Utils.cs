@@ -63,5 +63,20 @@ namespace PersistentThrust
             return deltaV * thrustVector;
         }
 
+
+        public static Vector3d CalculateDeltaVVector(double densityPropellantAverage, double vesselMass, double deltaTime, double thrust, float isp, Vector3d thrustVector)
+        {
+            // Mass flow rate
+            var massFlowRate = isp > 0 ? thrust / (isp * PhysicsGlobals.GravitationalAcceleration) : 0;
+            // Change in mass over time interval dT
+            var deltaMass = massFlowRate * deltaTime;
+            //// Resource demand from propellants with mass
+            var remainingMass = vesselMass - deltaMass;
+            // deltaV amount
+            var deltaV = isp * PhysicsGlobals.GravitationalAcceleration * Math.Log(remainingMass > 0 ? vesselMass / remainingMass : 1);
+            // Return deltaV vector
+            return deltaV * thrustVector;
+        }
+
     }
 }

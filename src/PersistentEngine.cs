@@ -1222,18 +1222,6 @@ namespace PersistentThrust
             if (resourceChanges.Any(m => m.Value == 0))
                 return proto_part.partInfo.title;
 
-            double persistentAverageDensity = 0;
-            if (!module_snapshot.moduleValues.TryGetValue(nameof(persistentAverageDensity), ref persistentAverageDensity))
-                return proto_part.partInfo.title;
-
-            double vesselDryMass = 0;
-            if (!module_snapshot.moduleValues.TryGetValue(nameof(vesselDryMass), ref vesselDryMass))
-                return proto_part.partInfo.title;
-
-            float persistentIsp = 0;
-            if (!module_snapshot.moduleValues.TryGetValue(nameof(persistentIsp), ref persistentIsp))
-                return proto_part.partInfo.title;
-
             VesselAutopilot.AutopilotMode persistentAutopilotMode = (VesselAutopilot.AutopilotMode) Enum.Parse(
                 typeof(VesselAutopilot.AutopilotMode), module_snapshot.moduleValues.GetValue(nameof(persistentAutopilotMode)));
 
@@ -1282,11 +1270,7 @@ namespace PersistentThrust
                 var fixedRequirement = -resourceChange.Value * elapsed_s;
 
                 if (availableResources.TryGetValue(resourceChange.Key, out double availableAmount))
-                {
-                    fuelRequirementMet = availableAmount > 0 && fixedRequirement > 0
-                        ? Math.Min(fuelRequirementMet, availableAmount / fixedRequirement)
-                        : 0;
-                }
+                    fuelRequirementMet = availableAmount > 0 && fixedRequirement > 0 ? Math.Min(fuelRequirementMet, availableAmount / fixedRequirement) : 0;
                 else
                     fuelRequirementMet = 0;
             }
@@ -1298,11 +1282,21 @@ namespace PersistentThrust
                     resourceChangeRequest.Add(new KeyValuePair<string, double>(resourceChange.Key, resourceChange.Value * fuelRequirementMet));
                 }
 
+                double vesselDryMass = 0;
+                if (!module_snapshot.moduleValues.TryGetValue(nameof(vesselDryMass), ref vesselDryMass))
+                    return proto_part.partInfo.title;
+
+                double persistentAverageDensity = 0;
+                if (!module_snapshot.moduleValues.TryGetValue(nameof(persistentAverageDensity), ref persistentAverageDensity))
+                    return proto_part.partInfo.title;
+
+                float persistentIsp = 0;
+                if (!module_snapshot.moduleValues.TryGetValue(nameof(persistentIsp), ref persistentIsp))
+                    return proto_part.partInfo.title;
+
                 var vesselMass = vesselDryMass += Utils.GetResourceMass(availableResources);
 
-                Vector3d deltaVVector = Utils.CalculateDeltaVVector(persistentAverageDensity, vesselMass,
-                    elapsed_s, persistentThrust * fuelRequirementMet, persistentIsp, thrustVector.normalized,
-                    out double demandMass);
+                Vector3d deltaVVector = Utils.CalculateDeltaVVector(persistentAverageDensity, vesselMass, elapsed_s, persistentThrust * fuelRequirementMet, persistentIsp, thrustVector.normalized);
 
                 orbit.Perturb(deltaVVector, UT);
             }
