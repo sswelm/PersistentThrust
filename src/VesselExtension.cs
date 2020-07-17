@@ -1,12 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace PersistentThrust
 {
     public static class VesselExtension
     {
-
         public static float GetDryMass(this Vessel vessel)
         {
             float dryMass = 0f;
@@ -89,12 +87,6 @@ namespace PersistentThrust
                     return Vector3d.Dot(vessel.obt_velocity.normalized,maneuverNode.GetBurnVector(vessel.orbit).normalized);
                 else
                     return Vector3d.Dot(-vessel.obt_velocity.normalized,maneuverNode.GetBurnVector(vessel.orbit).normalized);
-
-                //var forward = Vector3d.Dot(vessel.obt_velocity.normalized, vessel.transform.up.normalized) > 0;
-                //if (forward)
-                //    return Vector3d.Dot(vessel.obt_velocity.normalized, maneuverNode.GetBurnVector(vessel.orbit).normalized);
-                //else
-                //    return Vector3d.Dot(-vessel.obt_velocity.normalized, maneuverNode.GetBurnVector(vessel.orbit).normalized);
             }
             else
                 return 1;

@@ -2,7 +2,6 @@ using KSP.Localization;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using EdyCommonTools;
 using UniLinq;
 using UnityEngine;
 
@@ -79,8 +78,7 @@ namespace PersistentThrust
         public float propellantReqMet;
         [KSPField(guiFormat = "F3", guiUnits = " U/s")]
         public double masslessUsage;
-
-        [KSPField(guiFormat = "F3", guiActive = true, guiUnits = " deg")]
+        [KSPField(guiFormat = "F3", guiActive = true, guiName = "#LOC_PT_HeadingVersusManeuver", guiUnits = " deg")]
         public double vesselHeadingVersusManeuverInDegrees;
 
         // Config Settings
@@ -1050,7 +1048,6 @@ namespace PersistentThrust
         /// <returns> The amount of resource that was consumed. </returns>
         private double RequestResource(PersistentPropellant propellant, double demand, bool simulate = false)
         {
-
             if (!DetectKerbalism.Found())
                 return part.RequestResource(propellant.definition.id, demand, propellant.propellant.GetFlowMode(), simulate);
 
