@@ -111,10 +111,12 @@ namespace PersistentThrust
         public BaseField masslessUsageField;
         public FieldInfo currentModuleEngineFieldInfo;
 
+        public double vesselHeadingVersusManeuver;
         public float previousFixedDeltaTime;
         public bool isPersistentEngine;             // Flag if using PersistentEngine features
         public bool warpToReal;                     // Are we transitioning from TimeWarp to realtime?
         public int warpToRealCountDown;
+        public int forcedThrotleDownCountDown;
         public bool isMultiMode;
 
         public int vesselChangedSoiCountdown = 10;
@@ -278,10 +280,10 @@ namespace PersistentThrust
         {
             if (this.vessel is null || currentEngine?.engine is null || !isEnabled) return;
 
-            RestoreHeadingAtLoad();
-
-            var vesselHeadingVersusManeuver = vessel.VesselOrbitHeadingVersusManeuverVector();
+            vesselHeadingVersusManeuver = vessel.VesselOrbitHeadingVersusManeuverVector();
             vesselHeadingVersusManeuverInDegrees = Math.Acos(Math.Max(-1, Math.Min(1, vesselHeadingVersusManeuver))) * Rad2Deg;
+
+            RestoreHeadingAtLoad();
 
             _kerbalismResourceChangeRequest.Clear();
 
@@ -317,7 +319,7 @@ namespace PersistentThrust
                     if (processMasslessSeparately && currentEngine.engineHasAnyMassLessPropellants)
                         ReloadPropellantsWithoutMasslessPropellants();
 
-                    if (vesselHeadingVersusManeuverInDegrees > maneuverTolerance)
+                    if (vesselHeadingVersusManeuverInDegrees > maneuverTolerance - (persistentThrust > 0 ? 1 : 0))
                     {
                         currentEngine.engine.maxFuelFlow = 1e-10f;
                         currentEngine.finalThrust = 0;
@@ -396,8 +398,9 @@ namespace PersistentThrust
                     if (persistentThrottle > 0 && currentEngine.persistentIsp > 0 && isPersistentEngine && HasPersistentThrust)
                     {
                         // Calculated requested thrust
-                        var requestedThrust = vesselHeadingVersusManeuverInDegrees <= maneuverTolerance ? currentEngine.engine.thrustPercentage * 0.01f * persistentThrottle * currentEngine.engine.maxThrust : 0;
-                        //float requestedThrust = currentEngine.engine.thrustPercentage * 0.01f * persistentThrottle * currentEngine.engine.maxThrust;
+                        var requestedThrust = vesselHeadingVersusManeuverInDegrees <= (maneuverTolerance + (persistentThrust > 0 ? 1 : 0))
+                            ? currentEngine.engine.thrustPercentage * 0.01f * persistentThrottle * currentEngine.engine.maxThrust 
+                            : 0;
 
                         // Calculate deltaV vector & resource demand from propellants with mass
                         Vector3d deltaVVector = Utils.CalculateDeltaVVector(currentEngine.averageDensity, vessel.GetTotalMass(), TimeWarp.fixedDeltaTime, requestedThrust, currentEngine.persistentIsp, part.transform.up, out currentEngine.demandMass);
@@ -718,7 +721,7 @@ namespace PersistentThrust
         /// </summary>
         private void ApplyEffect(string effect, float ratio)
         {
-            if (string.IsNullOrEmpty(name))
+            if (string.IsNullOrEmpty(effect))
                 return;
 
             part.Effect(effect, ratio, -1);
@@ -739,7 +742,7 @@ namespace PersistentThrust
         /// <summary>
         /// Adjusts the vessel's throttle and eventually returns to real time.
         /// </summary>
-        private void SetThrottle(float newSetting, bool returnToRealTime)
+        private void SetThrottle(float newSetting, bool returnToRealTime = false, bool reset = false)
         {
             vessel.ctrlState.mainThrottle = newSetting;
 
@@ -750,6 +753,12 @@ namespace PersistentThrust
 
                 currentEngine.engine.requestedThrottle = newSetting;
                 currentEngine.engine.currentThrottle = newSetting;
+
+                if (reset)
+                {
+                    currentEngine.engine.Shutdown();
+                    currentEngine.engine.Activate();
+                }
 
                 if (!returnToRealTime) continue;
 
@@ -1077,15 +1086,30 @@ namespace PersistentThrust
 
         private void RestoreHeadingAtLoad()
         {
-            fixedUpdateCount++;
             // restore heading at load
-            if (HasPersistentHeadingEnabled && fixedUpdateCount <= 60 && vesselAlignmentWithAutopilotMode > 0.995)
+            if (HasPersistentHeadingEnabled && fixedUpdateCount++ <= 60 && vesselAlignmentWithAutopilotMode > 0.995)
             {
                 vessel.Autopilot.SetMode(persistentAutopilotMode);
                 vessel.PersistHeading(TimeWarp.fixedDeltaTime, HighLogic.CurrentGame.Parameters.CustomParams<PTDevSettings>().headingTolerance, vesselChangedSoiCountdown > 0);
             }
+            //else if (forcedThrotleDownCountDown-- > 0)
+            //{
+            //    persistentThrottle = 0;
+            //    persistentAutopilotMode = vessel.Autopilot.Mode;
+            //    SetThrottle(0, true);
+            //}
+            //else if (persistentAutopilotMode == VesselAutopilot.AutopilotMode.Maneuver && vessel.Autopilot.Mode != VesselAutopilot.AutopilotMode.Maneuver)
+            //{
+            //    forcedThrotleDownCountDown = 50;
+            //    persistentThrottle = 0;
+            //    persistentAutopilotMode = vessel.Autopilot.Mode;
+            //    SetThrottle(0, false, true);
+            //}
             else
+            {
                 persistentAutopilotMode = vessel.Autopilot.Mode;
+            }
+                
         }
 
         private void ResetMonitoringVariables()
@@ -1329,7 +1353,7 @@ namespace PersistentThrust
             }
 
             if (targetOrbit != null)
-                thrustVector = (targetOrbit.getPositionAtUT(UT) - vessel.orbit.getPositionAtUT(UT));
+                thrustVector = targetOrbit.getPositionAtUT(UT) - vessel.orbit.getPositionAtUT(UT);
             return thrustVector;
         }
 
