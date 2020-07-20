@@ -163,6 +163,24 @@ namespace PersistentThrust
             }
         }
 
+        public override void OnSave(ConfigNode node)
+        {
+            base.OnSave(node);
+
+            if (vessel.Autopilot.Mode == VesselAutopilot.AutopilotMode.Maneuver && vessel.patchedConicSolver.maneuverNodes.Count > 0)
+            {
+                var maneuverNode = vessel.patchedConicSolver.maneuverNodes[0];
+
+                persistentManeuverUT = maneuverNode.UT;
+                persistentManeuverNextPatch = maneuverNode.nextPatch.Serialize();
+                persistentManeuverPatch = maneuverNode.patch.Serialize();
+
+                node.SetValue(nameof(persistentManeuverUT), persistentManeuverUT, true);
+                node.SetValue(nameof(persistentManeuverNextPatch), persistentManeuverNextPatch, true);
+                node.SetValue(nameof(persistentManeuverPatch), persistentManeuverPatch, true);
+            }
+        }
+
 
 
         /// <summary>
