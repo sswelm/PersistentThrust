@@ -284,7 +284,7 @@ namespace PersistentThrust
         {
             if (this.vessel is null || currentEngine?.engine is null || !isEnabled) return;
 
-            vesselHeadingVersusManeuver = vessel.VesselOrbitHeadingVersusManeuverVector();
+            vesselHeadingVersusManeuver = vessel.GetVesselOrbitHeadingVersusManeuverVector();
             vesselHeadingVersusManeuverInDegrees = Math.Acos(Math.Max(-1, Math.Min(1, vesselHeadingVersusManeuver))) * Rad2Deg;
 
             RestoreHeadingAtLoad();

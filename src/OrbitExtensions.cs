@@ -29,5 +29,19 @@ namespace PersistentThrust
             orbit.Init();
             orbit.UpdateFromUT(UT);
         }
+
+        public static Vector3d GetBurnVector(this Orbit currentOrbit, Orbit patch, Orbit nextPatch, double UT)
+        {
+            if (currentOrbit != null && nextPatch != null)
+            {
+                if (currentOrbit.referenceBody != nextPatch.referenceBody)
+                {
+                    return (nextPatch.getOrbitalVelocityAtUT(UT) - patch.getOrbitalVelocityAtUT(UT)).xzy;
+                }
+                return (nextPatch.getOrbitalVelocityAtUT(UT) - currentOrbit.getOrbitalVelocityAtUT(UT)).xzy;
+            }
+
+            return Vector3d.zero;
+        }
     }
 }

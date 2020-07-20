@@ -70,7 +70,7 @@ namespace PersistentThrust
             return Vector3d.Dot(vessel.transform.up.normalized, requestedDirection);
         }
 
-        public static double VesselOrbitHeadingVersusManeuverVector(this Vessel vessel)
+        public static double GetVesselOrbitHeadingVersusManeuverVector(this Vessel vessel)
         {
             if (vessel == null || vessel.patchedConicSolver == null || vessel.orbit == null ||  vessel.patchedConicSolver.maneuverNodes == null)
                 return -1;
@@ -82,19 +82,25 @@ namespace PersistentThrust
                 if (maneuverNode == null)
                     return -1;
 
-                var orbit = vessel.GetOrbit();
-                var burnVector = maneuverNode.GetBurnVector(orbit).normalized;
-                var obtVelocity = orbit.getOrbitalVelocityAtUT(Planetarium.GetUniversalTime()).xzy.normalized;
-                var orbitHeadingAtManeuverVsBurn = Vector3d.Dot(orbit.getOrbitalVelocityAtUT(maneuverNode.UT).xzy.normalized, burnVector);
-                var forward = orbitHeadingAtManeuverVsBurn > 0;
-                if (forward)
-                    return Math.Min(orbitHeadingAtManeuverVsBurn, Vector3d.Dot(obtVelocity, burnVector));
-                else
-                    return Math.Min(-orbitHeadingAtManeuverVsBurn, Vector3d.Dot(-obtVelocity, burnVector));
+                return GetVesselOrbitHeadingVersusManeuverVector(vessel.GetOrbit(), maneuverNode.patch, maneuverNode.nextPatch, maneuverNode.UT);
             }
             else
                 return 1;
         }
+
+
+        public static double GetVesselOrbitHeadingVersusManeuverVector(Orbit vesselOrbit, Orbit patch, Orbit nextPatch, double UT)
+        {
+            var burnVector = vesselOrbit.GetBurnVector(patch, nextPatch, UT).normalized;    
+            var obtVelocity = vesselOrbit.getOrbitalVelocityAtUT(Planetarium.GetUniversalTime()).xzy.normalized;
+            var orbitHeadingAtManeuverVsBurn = Vector3d.Dot(vesselOrbit.getOrbitalVelocityAtUT(UT).xzy.normalized, burnVector);
+            var forward = orbitHeadingAtManeuverVsBurn > 0;
+            if (forward)
+                return Math.Min(orbitHeadingAtManeuverVsBurn, Vector3d.Dot(obtVelocity, burnVector));
+            else
+                return Math.Min(-orbitHeadingAtManeuverVsBurn, Vector3d.Dot(-obtVelocity, burnVector));
+        }
+
 
         public static Vector3d GetRequestedDirection(this Vessel vessel, double universalTime)
         {
