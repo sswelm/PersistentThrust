@@ -82,27 +82,28 @@ namespace PersistentThrust
                 if (maneuverNode == null)
                     return -1;
 
-                //var orbit = vessel.GetOrbit();
-                var forward = Vector3d.Dot(vessel.obt_velocity.normalized, maneuverNode.GetBurnVector(vessel.orbit).normalized) > 0;
+                var burnVector = maneuverNode.GetBurnVector(vessel.orbit).normalized;
+
+                var forward = Vector3d.Dot(vessel.orbit.getOrbitalVelocityAtUT(maneuverNode.UT).xzy.normalized, burnVector) > 0;
                 if (forward)
                 {
-                    var headingVsBurn = Vector3d.Dot(vessel.transform.up.normalized, maneuverNode.GetBurnVector(vessel.orbit).normalized);
+                    var headingVsBurn = Vector3d.Dot(vessel.transform.up.normalized, burnVector);
                     if (headingVsBurn < 0)
                         return headingVsBurn;
                     else
-                        return Vector3d.Dot(vessel.obt_velocity.normalized, maneuverNode.GetBurnVector(vessel.orbit).normalized);
+                        return Vector3d.Dot(vessel.obt_velocity.normalized, burnVector);
                 }
                 else
                 {
-                    var headingVsBurn = Vector3d.Dot(vessel.transform.up.normalized, maneuverNode.GetBurnVector(vessel.orbit).normalized);
+                    var headingVsBurn = Vector3d.Dot(vessel.transform.up.normalized, burnVector);
                     if (headingVsBurn < 0)
                         return headingVsBurn;
                     else
-                        return Vector3d.Dot(-vessel.obt_velocity.normalized, maneuverNode.GetBurnVector(vessel.orbit).normalized);
+                        return Vector3d.Dot(-vessel.obt_velocity.normalized, burnVector);
                 }
             }
             else
-                return 1;
+                return -1;
         }
 
         public static Vector3d GetRequestedDirection(this Vessel vessel, double universalTime)

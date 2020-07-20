@@ -81,6 +81,10 @@ namespace PersistentThrust
         [KSPField(guiFormat = "F3", guiActive = true, guiName = "#LOC_PT_HeadingVersusManeuver", guiUnits = " deg")]
         public double vesselHeadingVersusManeuverInDegrees;
 
+
+        [KSPField(guiActive = true)]
+        public bool? forward;
+
         // Config Settings
         [KSPField]
         public string throttleAnimationName;
@@ -1086,6 +1090,16 @@ namespace PersistentThrust
 
         private void RestoreHeadingAtLoad()
         {
+            if (vessel.patchedConicSolver.maneuverNodes.Count > 0)
+            {
+                var maneuverNode = vessel.patchedConicSolver.maneuverNodes[0];
+                var burnVector = maneuverNode.GetBurnVector(vessel.orbit).normalized;
+                forward = Vector3d.Dot(vessel.orbit.getOrbitalVelocityAtUT(maneuverNode.UT).xzy.normalized, burnVector) > 0;
+            }
+            else
+                forward = null;
+
+
             // restore heading at load
             if (HasPersistentHeadingEnabled && fixedUpdateCount++ <= 60 && vesselAlignmentWithAutopilotMode > 0.995)
             {
