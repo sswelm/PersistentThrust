@@ -82,28 +82,18 @@ namespace PersistentThrust
                 if (maneuverNode == null)
                     return -1;
 
-                var burnVector = maneuverNode.GetBurnVector(vessel.orbit).normalized;
-
-                var forward = Vector3d.Dot(vessel.orbit.getOrbitalVelocityAtUT(maneuverNode.UT).xzy.normalized, burnVector) > 0;
+                var orbit = vessel.GetOrbit();
+                var burnVector = maneuverNode.GetBurnVector(orbit).normalized;
+                var obtVelocity = orbit.getOrbitalVelocityAtUT(Planetarium.GetUniversalTime()).xzy.normalized;
+                var orbitHeadingAtManeuverVsBurn = Vector3d.Dot(orbit.getOrbitalVelocityAtUT(maneuverNode.UT).xzy.normalized, burnVector);
+                var forward = orbitHeadingAtManeuverVsBurn > 0;
                 if (forward)
-                {
-                    var headingVsBurn = Vector3d.Dot(vessel.transform.up.normalized, burnVector);
-                    if (headingVsBurn < 0)
-                        return headingVsBurn;
-                    else
-                        return Vector3d.Dot(vessel.obt_velocity.normalized, burnVector);
-                }
+                    return Math.Min(orbitHeadingAtManeuverVsBurn, Vector3d.Dot(obtVelocity, burnVector));
                 else
-                {
-                    var headingVsBurn = Vector3d.Dot(vessel.transform.up.normalized, burnVector);
-                    if (headingVsBurn < 0)
-                        return headingVsBurn;
-                    else
-                        return Vector3d.Dot(-vessel.obt_velocity.normalized, burnVector);
-                }
+                    return Math.Min(-orbitHeadingAtManeuverVsBurn, Vector3d.Dot(-obtVelocity, burnVector));
             }
             else
-                return -1;
+                return 1;
         }
 
         public static Vector3d GetRequestedDirection(this Vessel vessel, double universalTime)
