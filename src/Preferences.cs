@@ -33,11 +33,5 @@ namespace PersistentThrust
         // Config settings
         [GameParameters.CustomIntParameterUI("#LOT_PT_SettingsDev_QueueLength", minValue = 2, maxValue = 10, toolTip = "#LOT_PT_SettingsDev_QueueLengthToolTip")]
         public int queueLength = 2;
-
-        // Other Settings
-        public int missingPowerCountdownSize = 10;
-        public int propellantReqMetFactorQueueSize = 100;
-        public double minimumPropellantReqMetFactor = 0.2;
-        public float headingTolerance = 0.002f;
     }
 }

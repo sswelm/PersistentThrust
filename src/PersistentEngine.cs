@@ -85,6 +85,14 @@ namespace PersistentThrust
 
         // Config Settings
         [KSPField]
+        public int missingPowerCountdownSize = 10;
+        [KSPField]
+        public int propellantReqMetFactorQueueSize = 100;
+        [KSPField]
+        public double minimumPropellantReqMetFactor = 0.2;
+        [KSPField]
+        public float headingTolerance = 0.002f;
+        [KSPField]
         public string throttleAnimationName;
         [KSPField]
         public bool useDynamicBuffer = false;
@@ -514,7 +522,7 @@ namespace PersistentThrust
                 }
 
                 if (vessel.IsControllable && HasPersistentHeadingEnabled)
-                    vesselAlignmentWithAutopilotMode = vessel.PersistHeading(TimeWarp.fixedDeltaTime, HighLogic.CurrentGame.Parameters.CustomParams<PTDevSettings>().headingTolerance, vesselChangedSoiCountdown > 0, vesselAlignmentWithAutopilotMode == 1);
+                    vesselAlignmentWithAutopilotMode = vessel.PersistHeading(TimeWarp.fixedDeltaTime, headingTolerance, vesselChangedSoiCountdown > 0, vesselAlignmentWithAutopilotMode == 1);
             }
 
             CollectStatistics();
@@ -673,16 +681,16 @@ namespace PersistentThrust
                     currentEngine.missingPowerCountdown--;
                 }
                 else
-                    currentEngine.missingPowerCountdown = HighLogic.CurrentGame.Parameters.CustomParams<PTDevSettings>().missingPowerCountdownSize;
+                    currentEngine.missingPowerCountdown = missingPowerCountdownSize;
             }
 
             // attempt to stabilize thrust output with First In Last Out Queue
             currentEngine.propellantReqMetFactorQueue.Enqueue((float)overallPropellantReqMet);
-            if (currentEngine.propellantReqMetFactorQueue.Count() > HighLogic.CurrentGame.Parameters.CustomParams<PTDevSettings>().propellantReqMetFactorQueueSize)
+            if (currentEngine.propellantReqMetFactorQueue.Count() > propellantReqMetFactorQueueSize)
                 currentEngine.propellantReqMetFactorQueue.Dequeue();
             float averagePropellantReqMetFactor = currentEngine.propellantReqMetFactorQueue.Average();
 
-            if (averagePropellantReqMetFactor < HighLogic.CurrentGame.Parameters.CustomParams<PTDevSettings>().minimumPropellantReqMetFactor)
+            if (averagePropellantReqMetFactor < minimumPropellantReqMetFactor)
                 currentEngine.autoMaximizePersistentIsp = true;
 
             finalPropellantReqMetFactor = !vessel.packed || MaximizePersistentIsp || currentEngine.autoMaximizePersistentIsp
@@ -1021,7 +1029,7 @@ namespace PersistentThrust
                     ? Mathf.Pow(currentEngine.propellantReqMetFactor, 1 / fudgeExponent)
                     : currentEngine.propellantReqMetFactor);
 
-                if (currentEngine.propellantReqMetFactorQueue.Count > HighLogic.CurrentGame.Parameters.CustomParams<PTDevSettings>().propellantReqMetFactorQueueSize)
+                if (currentEngine.propellantReqMetFactorQueue.Count > propellantReqMetFactorQueueSize)
                     currentEngine.propellantReqMetFactorQueue.Dequeue();
             }
             else
@@ -1140,7 +1148,7 @@ namespace PersistentThrust
             if (HasPersistentHeadingEnabled && fixedUpdateCount++ <= 60 && vesselAlignmentWithAutopilotMode > 0.995)
             {
                 vessel.Autopilot.SetMode(persistentAutopilotMode);
-                vessel.PersistHeading(TimeWarp.fixedDeltaTime, HighLogic.CurrentGame.Parameters.CustomParams<PTDevSettings>().headingTolerance, vesselChangedSoiCountdown > 0);
+                vessel.PersistHeading(TimeWarp.fixedDeltaTime, headingTolerance, vesselChangedSoiCountdown > 0);
             }
             else
                 persistentAutopilotMode = vessel.Autopilot.Mode;
