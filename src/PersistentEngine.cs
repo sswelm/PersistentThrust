@@ -172,12 +172,17 @@ namespace PersistentThrust
                 : persistentThrust > 0 
                     ? moduleEngines.Sum(m => m.finalThrust * m.averageDensity) / moduleEngines.Sum(m => m.engine.maxThrust) 
                     : persistentThrust;
+            node.SetValue(nameof(persistentAverageDensity), persistentAverageDensity, true);
 
             vesselDryMass = vessel.GetDryMass();
+            node.SetValue(nameof(vesselDryMass), vesselDryMass, true);
 
             // serialize resource request
             if (_kerbalismResourceChangeRequest.Any())
+            {
                 persistentResourceChange = string.Join(";", _kerbalismResourceChangeRequest.Select(x => x.Key + "=" + x.Value).ToArray());
+                node.SetValue(nameof(persistentResourceChange), persistentResourceChange, true);
+            }
 
             if (vessel.Autopilot.Mode == VesselAutopilot.AutopilotMode.Target || vessel.Autopilot.Mode == VesselAutopilot.AutopilotMode.AntiTarget)
             {
