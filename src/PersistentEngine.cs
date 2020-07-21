@@ -298,23 +298,22 @@ namespace PersistentThrust
                 if (warpToRealCountDown-- <= 0)
                     warpToReal = false;
             }
-
             if (vessel.packed)
             {
                 // maintain thrust setting during TimeWarp
                 vessel.ctrlState.mainThrottle = persistentThrottle;
 
-                // stop engines when X pressed
-                if (Input.GetKeyDown(KeyCode.X))
+                // stop engines when X pressed and always returns to real time
+                if (vessel.CurrentControlLevel > Vessel.ControlLevel.NONE && GameSettings.THROTTLE_CUTOFF.GetKeyDown() && !GameSettings.MODIFIER_KEY.GetKey())
                     SetThrottleAfterKey(0, true);
                 // full throttle when Z pressed
-                else if (Input.GetKeyDown(KeyCode.Z))
+                else if (vessel.CurrentControlLevel > Vessel.ControlLevel.NONE && GameSettings.THROTTLE_FULL.GetKeyDown() && !GameSettings.MODIFIER_KEY.GetKey())
                     SetThrottleAfterKey(1, HighLogic.CurrentGame.Parameters.CustomParams<PTSettings>().returnToRealtimeAfterKeyPressed);
                 // increase throttle when Shift pressed
-                else if (Input.GetKeyDown(KeyCode.LeftShift))
+                else if (vessel.CurrentControlLevel > Vessel.ControlLevel.PARTIAL_UNMANNED && GameSettings.THROTTLE_UP.GetKey() && !GameSettings.MODIFIER_KEY.GetKey())
                     SetThrottleAfterKey(Mathf.Min(1, persistentThrottle + 0.01f), HighLogic.CurrentGame.Parameters.CustomParams<PTSettings>().returnToRealtimeAfterKeyPressed);
                 // decrease throttle when Ctrl pressed
-                else if (Input.GetKeyDown(KeyCode.LeftControl))
+                else if (vessel.CurrentControlLevel > Vessel.ControlLevel.PARTIAL_UNMANNED && GameSettings.THROTTLE_DOWN.GetKey() && !GameSettings.MODIFIER_KEY.GetKey())
                     SetThrottleAfterKey(Mathf.Max(0, persistentThrottle - 0.01f), HighLogic.CurrentGame.Parameters.CustomParams<PTSettings>().returnToRealtimeAfterKeyPressed);
             }
             else
@@ -807,6 +806,7 @@ namespace PersistentThrust
         private void SetThrottle(float newSetting, bool returnToRealTime = false, bool reset = false)
         {
             vessel.ctrlState.mainThrottle = newSetting;
+            persistentThrottle = newSetting;
 
             PersistentEngineModule[] processedEngines = isMultiMode ? new[] { currentEngine } : moduleEngines;
             for (var i = 0; i < processedEngines.Length; i++)
