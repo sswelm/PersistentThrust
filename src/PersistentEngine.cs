@@ -1077,23 +1077,19 @@ namespace PersistentThrust
         private double RequestResource(PersistentPropellant propellant, double demand, bool simulate = false)
         {
             if (!DetectKerbalism.Found())
-                return part.RequestResource(propellant.definition.id, demand, propellant.propellant.GetFlowMode(), simulate);
+                return part.RequestResource(propellant.definition.id, demand, propellant.propellant.GetFlowMode(), simulate || (propellant.density > 0 && !vessel.packed));
 
-            _availablePartResources.TryGetValue(propellant.definition.name, out double currentAmount);
-
-            double available = Math.Min(currentAmount, demand);
+            _availablePartResources.TryGetValue(propellant.definition.name, out double availableAmount);
 
             if (simulate)
-                _availablePartResources[propellant.definition.name] = Math.Max(0, currentAmount - demand);
+                _availablePartResources[propellant.definition.name] = Math.Max(0, availableAmount - demand);
             else
             {
-                double demandPerSecond = demand / TimeWarp.fixedDeltaTime;
-
                 _kerbalismResourceChangeRequest.TryGetValue(propellant.definition.name, out double currentDemand);
-                _kerbalismResourceChangeRequest[propellant.definition.name] = currentDemand - demandPerSecond;
+                _kerbalismResourceChangeRequest[propellant.definition.name] = currentDemand - (demand / TimeWarp.fixedDeltaTime);
             }
 
-            return available;
+            return Math.Min(availableAmount, demand);
         }
 
         private void RestoreMaxFuelFlow()
