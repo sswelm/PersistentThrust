@@ -161,7 +161,7 @@ namespace PersistentThrust
         {
             base.OnSave(node);
 
-            if (vessel.Autopilot.Mode == VesselAutopilot.AutopilotMode.Maneuver && vessel.patchedConicSolver.maneuverNodes.Count > 0)
+            if (!HighLogic.LoadedSceneIsEditor && vessel.Autopilot.Mode == VesselAutopilot.AutopilotMode.Maneuver && vessel.patchedConicSolver.maneuverNodes.Count > 0)
             {
                 var maneuverNode = vessel.patchedConicSolver.maneuverNodes[0];
 
@@ -641,8 +641,8 @@ namespace PersistentThrust
             if (averagePropellantReqMetFactor < HighLogic.CurrentGame.Parameters.CustomParams<PTDevSettings>().minimumPropellantReqMetFactor)
                 currentEngine.autoMaximizePersistentIsp = true;
 
-            finalPropellantReqMetFactor = !vessel.packed || MaximizePersistentIsp || currentEngine.autoMaximizePersistentIsp 
-                ? averagePropellantReqMetFactor 
+            finalPropellantReqMetFactor = !vessel.packed || MaximizePersistentIsp || currentEngine.autoMaximizePersistentIsp
+                ? averagePropellantReqMetFactor
                 : Mathf.Pow(averagePropellantReqMetFactor, fudgeExponent);
 
             // secondly we can consume the resource based on propellant availability
@@ -655,13 +655,13 @@ namespace PersistentThrust
                 if ((pp.density > 0 && requestPropMass) || (pp.density == 0 && requestPropMassless))
                 {
                     double demandIn = pp.density > 0
-                        ? MaximizePersistentIsp || currentEngine.autoMaximizePersistentIsp 
-                            ? averagePropellantReqMetFactor * demands[i] 
+                        ? MaximizePersistentIsp || currentEngine.autoMaximizePersistentIsp
+                            ? averagePropellantReqMetFactor * demands[i]
                             : demands[i]
                         : overallPropellantReqMet * demands[i];
 
-                    double demandOut = PersistentPropellant.IsInfinite(pp.propellant) 
-                        ? demandIn 
+                    double demandOut = PersistentPropellant.IsInfinite(pp.propellant)
+                        ? demandIn
                         : RequestResource(pp, demandIn, false);
 
                     demandsOut[i] = demandOut;
