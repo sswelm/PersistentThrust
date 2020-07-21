@@ -83,10 +83,6 @@ namespace PersistentThrust
         [KSPField(guiFormat = "F3", guiActive = true, guiName = "#LOC_PT_HeadingVersusManeuver", guiUnits = " deg")]
         public double vesselHeadingVersusManeuverInDegree;
 
-
-        [KSPField(guiActive = true)]
-        public bool? forward;
-
         // Config Settings
         [KSPField]
         public string throttleAnimationName;
@@ -106,9 +102,6 @@ namespace PersistentThrust
         public List<string> powerEffectNameList = new List<string>();
         public List<string> runningEffectNameList = new List<string>();
 
-        //public double demandMass;
-        public double bufferSize;
-
         public PersistentEngineModule currentEngine;
         public PersistentEngineModule[] moduleEngines = new PersistentEngineModule[0];
         public MultiModeEngine multiModeEngine;
@@ -117,6 +110,7 @@ namespace PersistentThrust
         public BaseField masslessUsageField;
         public FieldInfo currentModuleEngineFieldInfo;
 
+        public double bufferSize;
         public double vesselHeadingVersusManeuver;
         public float previousFixedDeltaTime;
         public bool isPersistentEngine;             // Flag if using PersistentEngine features
@@ -301,7 +295,7 @@ namespace PersistentThrust
         /// </summary>
         public void FixedUpdate() // FixedUpdate is also called while not staged
         {
-            if (this.vessel is null || currentEngine?.engine is null || !isEnabled) return;
+            if (vessel is null || currentEngine?.engine is null || !isEnabled) return;
 
             vesselHeadingVersusManeuver = vessel.GetVesselOrbitHeadingVersusManeuverVector();
             vesselHeadingVersusManeuverInDegree = Math.Acos(Math.Max(-1, Math.Min(1, vesselHeadingVersusManeuver))) * Orbit.Rad2Deg;
@@ -344,7 +338,8 @@ namespace PersistentThrust
 
                     if (vesselHeadingVersusManeuverInDegree > maneuverToleranceInDegree - (persistentThrust > 0 ? 1 : 0))
                     {
-                        currentEngine.engine.maxFuelFlow = 1e-10f;
+                        //currentEngine.engine.maxFuelFlow = 1e-10f;
+                        currentEngine.engine.multFlow = 0;
                         currentEngine.finalThrust = 0;
 
                         UpdateBuffers();
@@ -377,7 +372,8 @@ namespace PersistentThrust
                         double maxFuelFlow = currentEngine.persistentIsp > 0 ? currentEngine.engine.maxThrust / (currentEngine.persistentIsp * PhysicsGlobals.GravitationalAcceleration) : 0;
 
                         // adjust fuel flow
-                        currentEngine.engine.maxFuelFlow = maxFuelFlow > 0 && currentEngine.propellantReqMetFactor > 0 ? (float)(maxFuelFlow * currentEngine.propellantReqMetFactor) : 1e-10f;
+                        //currentEngine.engine.maxFuelFlow = maxFuelFlow > 0 && currentEngine.propellantReqMetFactor > 0 ? (float)(maxFuelFlow * currentEngine.propellantReqMetFactor) : 1e-10f;
+                        currentEngine.engine.multFlow = maxFuelFlow > 0 && currentEngine.propellantReqMetFactor > 0 ? currentEngine.propellantReqMetFactor : 0;
 
                         // update displayed thrust and fx
                         currentEngine.finalThrust = currentEngine.engine.currentThrottle * currentEngine.engine.maxThrust * Math.Min(currentEngine.propellantReqMetFactor, currentEngine.engine.propellantReqMet * 0.01f);
@@ -1100,25 +1096,14 @@ namespace PersistentThrust
             return available;
         }
 
-
-
         private void RestoreMaxFuelFlow()
         {
-            currentEngine.engine.maxFuelFlow = (float)(currentEngine.persistentIsp > 0 ? currentEngine.engine.maxThrust / (currentEngine.persistentIsp * PhysicsGlobals.GravitationalAcceleration) : 1e-10f);
+            //currentEngine.engine.maxFuelFlow = (float)(currentEngine.persistentIsp > 0 ? currentEngine.engine.maxThrust / (currentEngine.persistentIsp * PhysicsGlobals.GravitationalAcceleration) : 1e-10f);
+            currentEngine.engine.multFlow = 1;
         }
 
         private void RestoreHeadingAtLoad()
         {
-            if (vessel.patchedConicSolver.maneuverNodes.Count > 0)
-            {
-                var maneuverNode = vessel.patchedConicSolver.maneuverNodes[0];
-                var burnVector = maneuverNode.GetBurnVector(vessel.orbit).normalized;
-                forward = Vector3d.Dot(vessel.orbit.getOrbitalVelocityAtUT(maneuverNode.UT).xzy.normalized, burnVector) > 0;
-            }
-            else
-                forward = null;
-
-
             // restore heading at load
             if (HasPersistentHeadingEnabled && fixedUpdateCount++ <= 60 && vesselAlignmentWithAutopilotMode > 0.995)
             {
@@ -1126,10 +1111,7 @@ namespace PersistentThrust
                 vessel.PersistHeading(TimeWarp.fixedDeltaTime, HighLogic.CurrentGame.Parameters.CustomParams<PTDevSettings>().headingTolerance, vesselChangedSoiCountdown > 0);
             }
             else
-            {
                 persistentAutopilotMode = vessel.Autopilot.Mode;
-            }
-                
         }
 
         private void ResetMonitoringVariables()
