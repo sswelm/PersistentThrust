@@ -336,7 +336,7 @@ namespace PersistentThrust
                     if (processMasslessSeparately && currentEngine.engineHasAnyMassLessPropellants)
                         ReloadPropellantsWithoutMasslessPropellants();
 
-                    if (vesselHeadingVersusManeuverInDegree > maneuverToleranceInDegree - (persistentThrust > 0 ? 1 : 0))
+                    if (vesselHeadingVersusManeuverInDegree > maneuverToleranceInDegree + (persistentThrust > 0 ? 1 : 0))
                     {
                         //currentEngine.engine.maxFuelFlow = 1e-10f;
                         currentEngine.engine.multFlow = 0;
@@ -359,10 +359,8 @@ namespace PersistentThrust
                         double massFlowRate = currentEngine.persistentIsp > 0
                             ? currentEngine.engine.currentThrottle * currentEngine.engine.maxThrust / (currentEngine.persistentIsp * PhysicsGlobals.GravitationalAcceleration)
                             : 0;
-                        // Change in mass over time interval dT
-                        double deltaMass = massFlowRate * TimeWarp.fixedDeltaTime;
                         // Resource demand from propellants with mass
-                        currentEngine.demandMass = currentEngine.averageDensity > 0 ? deltaMass / currentEngine.averageDensity : 0;
+                        currentEngine.demandMass = currentEngine.averageDensity > 0 ? massFlowRate * TimeWarp.fixedDeltaTime / currentEngine.averageDensity : 0;
                         // Calculate resource demands
                         currentEngine.fuelDemands = CalculateDemands(currentEngine.demandMass);
                         // Apply resource demands & test for resource depletion
