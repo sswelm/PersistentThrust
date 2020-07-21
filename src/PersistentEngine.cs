@@ -60,7 +60,7 @@ namespace PersistentThrust
         public string persistentResourceChange;
         [KSPField(isPersistant = true)]
         public float vesselDryMass;
-        [KSPField(isPersistant = true)] 
+        [KSPField(isPersistant = true)]
         public Guid persistentVesselTargetId;
         [KSPField(isPersistant = true)]
         public string persistentVesselTargetBodyName;
@@ -161,7 +161,7 @@ namespace PersistentThrust
         {
             base.OnSave(node);
 
-            if (!HighLogic.LoadedSceneIsEditor && vessel.Autopilot.Mode == VesselAutopilot.AutopilotMode.Maneuver && vessel.patchedConicSolver.maneuverNodes.Count > 0)
+            if (HighLogic.LoadedSceneIsFlight && vessel != null && vessel.Autopilot.Mode == VesselAutopilot.AutopilotMode.Maneuver && vessel.patchedConicSolver.maneuverNodes.Count > 0)
             {
                 var maneuverNode = vessel.patchedConicSolver.maneuverNodes[0];
 
@@ -416,7 +416,7 @@ namespace PersistentThrust
                     {
                         // Calculated requested thrust
                         var requestedThrust = vesselHeadingVersusManeuverInDegree <= (maneuverToleranceInDegree + (persistentThrust > 0 ? 1 : 0))
-                            ? currentEngine.engine.thrustPercentage * 0.01f * persistentThrottle * currentEngine.engine.maxThrust 
+                            ? currentEngine.engine.thrustPercentage * 0.01f * persistentThrottle * currentEngine.engine.maxThrust
                             : 0;
 
                         // Calculate deltaV vector & resource demand from propellants with mass
