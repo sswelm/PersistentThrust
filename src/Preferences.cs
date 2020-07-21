@@ -1,9 +1,4 @@
-﻿using System;
-using System.Reflection;
-using KSP.IO;
-using KSP.Localization;
-
-namespace PersistentThrust
+﻿namespace PersistentThrust
 {
 	public class PTSettings : GameParameters.CustomParameterNode
 	{

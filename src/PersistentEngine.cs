@@ -28,7 +28,6 @@ namespace PersistentThrust
 
     public class PersistentEngine : PartModule
     {
-
         #region Fields
 
         // Persistant
@@ -132,8 +131,6 @@ namespace PersistentThrust
         private readonly Dictionary<string, double> _kerbalismResourceChangeRequest = new Dictionary<string, double>();
         private readonly Queue<float> _mainThrottleQueue = new Queue<float>();
         private Dictionary<string, double> _availablePartResources = new Dictionary<string, double>();
-
-        private List<PersistentEngine> _persistentEngines;
 
         #endregion
 
@@ -241,7 +238,7 @@ namespace PersistentThrust
             if (!string.IsNullOrEmpty(throttleAnimationName))
                 throttleAnimationState = SetUpAnimation(throttleAnimationName, part);
 
-            _persistentEngines = vessel.FindPartModulesImplementing<PersistentEngine>();
+            
 
             masslessUsageField = Fields[nameof(this.masslessUsage)];
         }
@@ -1042,7 +1039,9 @@ namespace PersistentThrust
         {
             var activePropellant = currentPersistentPropellant;
 
-            List<PersistentPropellant> activePropellants = _persistentEngines.SelectMany(pe => pe.moduleEngines.SelectMany(pl =>
+            var persistentEngines = vessel.FindPartModulesImplementing<PersistentEngine>();
+
+            List<PersistentPropellant> activePropellants = persistentEngines.SelectMany(pe => pe.moduleEngines.SelectMany(pl =>
                 pl.propellants.Where(pp =>
                     pp.missionTime == vessel.missionTime &&
                     pp.definition.id == currentPersistentPropellant.definition.id))).ToList();
@@ -1057,7 +1056,7 @@ namespace PersistentThrust
                 currentPersistentPropellant.propellant.GetFlowMode(), out currentPersistentPropellant.amount,
                 out currentPersistentPropellant.maxAmount, true);
             // calculate total demand on operational engines
-            currentPersistentPropellant.totalEnginesDemand = _persistentEngines
+            currentPersistentPropellant.totalEnginesDemand = persistentEngines
                 .Where(e => e.currentEngine.engine.getIgnitionState)
                 .Sum(m => m.currentEngine.propellants
                     .Where(l => l.definition.id == currentPersistentPropellant.definition.id)
