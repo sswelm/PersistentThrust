@@ -1270,9 +1270,9 @@ namespace PersistentThrust
                 case VesselAutopilot.AutopilotMode.AntiTarget:
                     thrustVector = -GetThrustVectorToTarget(vessel, module_snapshot, thrustVector, UT);
                     break;
-                case VesselAutopilot.AutopilotMode.Maneuver:
-                    thrustVector = orbit.GetThrustVectorToManeuver(module_snapshot);
-                    break;
+                //case VesselAutopilot.AutopilotMode.Maneuver:
+                //    thrustVector = orbit.GetThrustVectorToManeuver(module_snapshot);
+                //    break;
             }
 
             if (thrustVector == Vector3d.zero)
