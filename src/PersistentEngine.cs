@@ -146,7 +146,7 @@ namespace PersistentThrust
             // Run base OnLoad method
             base.OnLoad(node);
 
-            if (part == null || part.partInfo == null)
+            if (part is null || part.partInfo is null)
                 return;
 
             Debug.Log("[PersistentThrust]: OnLoad called for " + part.partInfo.title + " " + part.persistentId);
@@ -163,19 +163,19 @@ namespace PersistentThrust
         }
 
         /// <summary>
-        /// Uses the to store data required for background processing 
+        /// Uses the to store data required for background processing
         /// </summary>
         /// <param name="node"></param>
         public override void OnSave(ConfigNode node)
         {
             base.OnSave(node);
 
-            if (!HighLogic.LoadedSceneIsFlight || vessel == null) return;
+            if (!HighLogic.LoadedSceneIsFlight || vessel is null) return;
 
             persistentAverageDensity = isMultiMode
                 ? currentEngine.averageDensity
-                : persistentThrust > 0 
-                    ? moduleEngines.Sum(m => m.finalThrust * m.averageDensity) / moduleEngines.Sum(m => m.engine.maxThrust) 
+                : persistentThrust > 0
+                    ? moduleEngines.Sum(m => m.finalThrust * m.averageDensity) / moduleEngines.Sum(m => m.engine.maxThrust)
                     : persistentThrust;
             node.SetValue(nameof(persistentAverageDensity), persistentAverageDensity, true);
 
@@ -258,7 +258,7 @@ namespace PersistentThrust
             {
                 currentEngine = processedEngines[i];
 
-                if (currentEngine.engine == null) continue;
+                if (currentEngine.engine is null) continue;
 
                 // hide stock fields
                 currentEngine.engine.Fields[nameof(currentEngine.engine.finalThrust)].guiActive = false;
@@ -550,7 +550,7 @@ namespace PersistentThrust
                 return requiredBufferSize;
 
             var partResource = part.Resources[propellant.definition.name];
-            if (partResource == null)
+            if (partResource is null)
             {
                 var node = new ConfigNode("RESOURCE");
                 node.AddValue("name", propellant.definition.name);
@@ -768,7 +768,7 @@ namespace PersistentThrust
         /// </summary>
         private static void SetAnimationRatio(float ratio, AnimationState[] animationState)
         {
-            if (animationState == null) return;
+            if (animationState is null) return;
 
             foreach (var anim in animationState)
             {
@@ -835,7 +835,7 @@ namespace PersistentThrust
 
                 FieldInfo ignitedInfo = currentEngine.engine.GetType().GetField("ignited", BindingFlags.NonPublic | BindingFlags.Instance);
 
-                if (ignitedInfo == null)
+                if (ignitedInfo is null)
                     continue;
 
                 ignitedInfo.SetValue(currentEngine.engine, true);
@@ -898,7 +898,7 @@ namespace PersistentThrust
                     GTI_MultiModeEngineFX = partModule;
                     currentModuleEngineFieldInfo = GTI_MultiModeEngineFX.GetType().GetField("currentModuleEngine", BindingFlags.NonPublic | BindingFlags.Instance);
 
-                    if (currentModuleEngineFieldInfo == null)
+                    if (currentModuleEngineFieldInfo is null)
                         Debug.LogError("[PersistentThrust]: failed to find currentModuleEngine on GTI_MultiModeEngineFX");
                     else
                         Debug.Log("[PersistentThrust]: found currentModuleEngine on GTI_MultiModeEngineFX");
@@ -909,7 +909,7 @@ namespace PersistentThrust
 
 
             var partIdentity = part.partInfo.title + " " + part.persistentId;
-            if (moduleEnginesCount == 1 && multiModeEngine == null)
+            if (moduleEnginesCount == 1 && multiModeEngine is null)
             {
                 Debug.Log("[PersistentThrust]: enabled for " + partIdentity);
                 isPersistentEngine = true;
@@ -930,7 +930,7 @@ namespace PersistentThrust
                 Debug.LogWarning("[PersistentThrust]: found Insufficient engines for MultiMode, using single engine mode PersistentThrust for " + partIdentity);
                 isPersistentEngine = false;
             }
-            else if (moduleEnginesCount > 1 && multiModeEngine == null)
+            else if (moduleEnginesCount > 1 && multiModeEngine is null)
             {
                 Debug.LogWarning("[PersistentThrust]: found multiple engines but no MultiMode PartModule, enabled multi engine PersistentThrust for " + partIdentity);
                 isPersistentEngine = true;
@@ -1174,8 +1174,8 @@ namespace PersistentThrust
 
             persistentIsp = isMultiMode
                 ? currentEngine.persistentIsp
-                : persistentThrust > 0 
-                    ? (float)(moduleEngines.Sum(m => m.finalThrust * m.persistentIsp) / persistentThrust) 
+                : persistentThrust > 0
+                    ? (float)(moduleEngines.Sum(m => m.finalThrust * m.persistentIsp) / persistentThrust)
                     : persistentIsp;
 
             // store current fixedDeltaTime for comparison
@@ -1358,7 +1358,7 @@ namespace PersistentThrust
             foreach (var resourceRequest in _kerbalismResourceChangeRequest)
             {
                 var definition = PartResourceLibrary.Instance.GetDefinition(resourceRequest.Key);
-                if (definition == null || definition.density > 0 && !vessel.packed)
+                if (definition is null || definition.density > 0 && !vessel.packed)
                     continue;
 
                 resourceChangeRequest.Add(new KeyValuePair<string, double>(resourceRequest.Key, resourceRequest.Value));
