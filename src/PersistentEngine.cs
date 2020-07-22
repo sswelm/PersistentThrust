@@ -69,6 +69,8 @@ namespace PersistentThrust
         public string persistentManeuverNextPatch;
         [KSPField(isPersistant = true)]
         public double persistentManeuverUT;
+        [KSPField(isPersistant = true)]
+        public bool defaultsLoaded;
 
         // GUI
         [KSPField(guiFormat = "F1", guiActive = true, guiName = "#autoLOC_6001378", guiUnits = "#autoLOC_7001400")]
@@ -234,10 +236,20 @@ namespace PersistentThrust
         /// <param name="state"> gives an indication of where in flight you are </param>
         public override void OnStart(StartState state)
         {
-            if (state == StartState.Editor) return;
+            if (!defaultsLoaded)
+            {
+                HasPersistentThrust = HighLogic.CurrentGame.Parameters.CustomParams<PTSettings>().defaultHasPersistentThrust;
+                HasPersistentHeadingEnabled = HighLogic.CurrentGame.Parameters.CustomParams<PTSettings>().defaultHasPersistentHeadingEnabled;
+                MaximizePersistentIsp = HighLogic.CurrentGame.Parameters.CustomParams<PTSettings>().defaultMaximizePersistentIsp;
+                MaximizePersistentPower = HighLogic.CurrentGame.Parameters.CustomParams<PTSettings>().defaultMaximizePersistentPower;
+                maneuverToleranceInDegree = HighLogic.CurrentGame.Parameters.CustomParams<PTSettings>().maneuverToleranceInDegree;
+                defaultsLoaded = true;
+            }
 
             if (!string.IsNullOrEmpty(throttleAnimationName))
                 throttleAnimationState = SetUpAnimation(throttleAnimationName, part);
+
+            if (state == StartState.Editor) return;
 
             masslessUsageField = Fields[nameof(this.masslessUsage)];
         }

@@ -13,7 +13,16 @@
         // Config Settings
         [GameParameters.CustomParameterUI("#LOC_PT_Settings_ReturnToRealTime", toolTip = "#LOC_PT_Settings_ReturnToRealTimeToolTip")]
         public bool returnToRealtimeAfterKeyPressed = false;
-
+        [GameParameters.CustomParameterUI("#LOC_PT_DefaultHasPersistentThrust", toolTip = "#LOC_PT_DefaultHasPersistentThrustToolTip")]
+        public bool defaultHasPersistentThrust = true;
+        [GameParameters.CustomParameterUI("#LOC_PT_DefaultHasPersistentHeadingEnabled", toolTip = "#LOC_PT_DefaultHasPersistentHeadingEnabledToolTip")]
+        public bool defaultHasPersistentHeadingEnabled = true;
+        [GameParameters.CustomParameterUI("#LOC_PT_DefaultMaximizePersistentIsp", toolTip = "#LOC_PT_DefaultMaximizePersistentIspToolTip")]
+        public bool defaultMaximizePersistentIsp = true;
+        [GameParameters.CustomParameterUI("#LOC_PT_DefaultMaximizePersistentPower", toolTip = "#LOC_PT_DefaultMaximizePersistentPowerToolTip")]
+        public bool defaultMaximizePersistentPower = false;
+        [GameParameters.CustomFloatParameterUI("#LOC_PT_DefaultManeuverTolerance", minValue = 0, maxValue = 90, toolTip = "#LOC_PT_DefaultManeuverToleranceToolTip")]
+        public float maneuverToleranceInDegree = 90;
     }
 
     public class PTDevSettings : GameParameters.CustomParameterNode
