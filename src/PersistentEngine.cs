@@ -122,9 +122,9 @@ namespace PersistentThrust
         public float previousFixedDeltaTime;
         public bool isPersistentEngine;             // Flag if using PersistentEngine features
         public bool warpToReal;                     // Are we transitioning from TimeWarp to realtime?
-        public int warpToRealCountDown;
         public bool isMultiMode;
 
+        public int warpToRealCountDown;
         public int vesselChangedSoiCountdown = 10;
         public int fixedUpdateCount;
 
@@ -146,7 +146,7 @@ namespace PersistentThrust
             // Run base OnLoad method
             base.OnLoad(node);
 
-            if (part is null || part.partInfo is null)
+            if (part?.partInfo is null)
                 return;
 
             Debug.Log("[PersistentThrust]: OnLoad called for " + part.partInfo.title + " " + part.persistentId);
@@ -172,15 +172,14 @@ namespace PersistentThrust
 
             if (!HighLogic.LoadedSceneIsFlight || vessel is null) return;
 
+            node.SetValue(nameof(vesselDryMass), vessel.GetDryMass(), true);
+
             persistentAverageDensity = isMultiMode
                 ? currentEngine.averageDensity
                 : persistentThrust > 0
                     ? moduleEngines.Sum(m => m.finalThrust * m.averageDensity) / moduleEngines.Sum(m => m.engine.maxThrust)
                     : persistentThrust;
             node.SetValue(nameof(persistentAverageDensity), persistentAverageDensity, true);
-
-            vesselDryMass = vessel.GetDryMass();
-            node.SetValue(nameof(vesselDryMass), vesselDryMass, true);
 
             // serialize resource request
             if (_kerbalismResourceChangeRequest.Any())
@@ -189,39 +188,41 @@ namespace PersistentThrust
                 node.SetValue(nameof(persistentResourceChange), persistentResourceChange, true);
             }
 
-            if (vessel.Autopilot.Mode == VesselAutopilot.AutopilotMode.Target || vessel.Autopilot.Mode == VesselAutopilot.AutopilotMode.AntiTarget)
+            switch (vessel.Autopilot.Mode)
             {
-                var orbitDriver = vessel.targetObject.GetOrbitDriver();
-                if (orbitDriver.vessel != null)
+                case VesselAutopilot.AutopilotMode.Target:
+                case VesselAutopilot.AutopilotMode.AntiTarget:
                 {
-                    persistentVesselTargetId = orbitDriver.vessel.id;
-                    persistentVesselTargetBodyName = string.Empty;
+                    var orbitDriver = vessel.targetObject.GetOrbitDriver();
+                    if (orbitDriver.vessel != null)
+                    {
+                        persistentVesselTargetId = orbitDriver.vessel.id;
+                        persistentVesselTargetBodyName = string.Empty;
+                    }
+                    else if (orbitDriver.celestialBody != null)
+                    {
+                        persistentVesselTargetId = Guid.Empty;
+                        persistentVesselTargetBodyName = orbitDriver.celestialBody.bodyName;
+                    }
+                    else
+                    {
+                        persistentVesselTargetId = Guid.Empty;
+                        persistentVesselTargetBodyName = string.Empty;
+                    }
+
+                    node.SetValue(nameof(persistentVesselTargetId), persistentVesselTargetId.ToString(), true);
+                    node.SetValue(nameof(persistentVesselTargetBodyName), persistentVesselTargetBodyName, true);
+                    break;
                 }
-                else if (orbitDriver.celestialBody != null)
+                case VesselAutopilot.AutopilotMode.Maneuver when vessel.patchedConicSolver.maneuverNodes.Count > 0:
                 {
-                    persistentVesselTargetId = Guid.Empty;
-                    persistentVesselTargetBodyName = orbitDriver.celestialBody.bodyName;
+                    var maneuverNode = vessel.patchedConicSolver.maneuverNodes[0];
+
+                    node.SetValue(nameof(persistentManeuverUT), maneuverNode.UT, true);
+                    node.SetValue(nameof(persistentManeuverNextPatch), maneuverNode.nextPatch.Serialize(), true);
+                    node.SetValue(nameof(persistentManeuverPatch), maneuverNode.patch.Serialize(), true);
+                    break;
                 }
-                else
-                {
-                    persistentVesselTargetId = Guid.Empty;
-                    persistentVesselTargetBodyName = string.Empty;
-                }
-
-                node.SetValue(nameof(persistentVesselTargetId), persistentVesselTargetId.ToString(), true);
-                node.SetValue(nameof(persistentVesselTargetBodyName), persistentVesselTargetBodyName, true);
-            }
-            else if (vessel.Autopilot.Mode == VesselAutopilot.AutopilotMode.Maneuver && vessel.patchedConicSolver.maneuverNodes.Count > 0)
-            {
-                var maneuverNode = vessel.patchedConicSolver.maneuverNodes[0];
-
-                persistentManeuverUT = maneuverNode.UT;
-                persistentManeuverNextPatch = maneuverNode.nextPatch.Serialize();
-                persistentManeuverPatch = maneuverNode.patch.Serialize();
-
-                node.SetValue(nameof(persistentManeuverUT), persistentManeuverUT, true);
-                node.SetValue(nameof(persistentManeuverNextPatch), persistentManeuverNextPatch, true);
-                node.SetValue(nameof(persistentManeuverPatch), persistentManeuverPatch, true);
             }
         }
 
@@ -238,8 +239,6 @@ namespace PersistentThrust
             if (!string.IsNullOrEmpty(throttleAnimationName))
                 throttleAnimationState = SetUpAnimation(throttleAnimationName, part);
 
-            
-
             masslessUsageField = Fields[nameof(this.masslessUsage)];
         }
 
@@ -252,18 +251,16 @@ namespace PersistentThrust
         {
             thrustTxt = Utils.FormatThrust(persistentThrust);
 
-            PersistentEngineModule[] processedEngines = isMultiMode ? new[] { currentEngine } : moduleEngines;
+            PersistentEngineModule[] persistentEngineModules = isMultiMode ? new[] { currentEngine } : moduleEngines;
 
-            for (var i = 0; i < processedEngines.Length; i++)
+            foreach (var persistentEngine in persistentEngineModules)
             {
-                currentEngine = processedEngines[i];
-
-                if (currentEngine.engine is null) continue;
+                if (persistentEngine.engine is null) continue;
 
                 // hide stock fields
-                currentEngine.engine.Fields[nameof(currentEngine.engine.finalThrust)].guiActive = false;
-                currentEngine.engine.Fields[nameof(currentEngine.engine.realIsp)].guiActive = false;
-                currentEngine.engine.Fields[nameof(currentEngine.engine.propellantReqMet)].guiActive = false;
+                persistentEngine.engine.Fields[nameof(persistentEngine.engine.finalThrust)].guiActive = false;
+                persistentEngine.engine.Fields[nameof(persistentEngine.engine.realIsp)].guiActive = false;
+                persistentEngine.engine.Fields[nameof(persistentEngine.engine.propellantReqMet)].guiActive = false;
             }
 
             float averagePropellantReqMetFactor = isMultiMode
@@ -331,11 +328,9 @@ namespace PersistentThrust
 
             SetAnimationRatio(0, throttleAnimationState);
 
-            foreach (var engine in moduleEngines)
+            foreach (var persistentEngineModule in moduleEngines)
             {
-                currentEngine = engine;
-
-                UpdateFX();
+                UpdateFX(persistentEngineModule);
             }
         }
 
@@ -363,7 +358,7 @@ namespace PersistentThrust
 
             ResetMonitoringVariables();
 
-            PersistentEngineModule[] processedEngines = isMultiMode ? new[] { currentEngine } : moduleEngines;
+            PersistentEngineModule[] persistentEngineModules = isMultiMode ? new[] { currentEngine } : moduleEngines;
 
             // Realtime mode
             if (!vessel.packed)
@@ -374,9 +369,9 @@ namespace PersistentThrust
                 if (!warpToReal)
                     UpdatePersistentThrottle();
 
-                for (var i = 0; i < processedEngines.Length; i++)
+                for (var i = 0; i < persistentEngineModules.Length; i++)
                 {
-                    currentEngine = processedEngines[i];
+                    currentEngine = persistentEngineModules[i];
 
                     // Update persistent thrust isp if NOT transitioning from warp to realtime
                     if (!warpToReal)
@@ -433,7 +428,6 @@ namespace PersistentThrust
                         RestoreMaxFuelFlow();
 
                         currentEngine.propellantReqMetFactor = currentEngine.engine.propellantReqMet * 0.01f;
-
                         currentEngine.finalThrust = currentEngine.engine.GetCurrentThrust();
 
                         UpdateBuffers();
@@ -441,7 +435,7 @@ namespace PersistentThrust
 
                     UpdatePropellantReqMetFactorQueue();
 
-                    UpdateFX();
+                    UpdateFX(currentEngine);
 
                     SetThrottleAnimation();
                 }
@@ -456,9 +450,9 @@ namespace PersistentThrust
                     warpToReal = true; // Set to true for transition to realtime
                 }
 
-                for (var i = 0; i < processedEngines.Length; i++)
+                for (var i = 0; i < persistentEngineModules.Length; i++)
                 {
-                    currentEngine = processedEngines[i];
+                    currentEngine = persistentEngineModules[i];
 
                     // restore maximum flow
                     RestoreMaxFuelFlow();
@@ -472,10 +466,6 @@ namespace PersistentThrust
 
                         // Calculate deltaV vector & resource demand from propellants with mass
                         Vector3d deltaVVector = Utils.CalculateDeltaVVector(currentEngine.averageDensity, vessel.GetTotalMass(), TimeWarp.fixedDeltaTime, requestedThrust, currentEngine.persistentIsp, part.transform.up, out currentEngine.demandMass);
-
-                        //Debug.Log("[PersistentThrust]: For vessel with mass " + vessel.totalMass + " applied Perturb for " + deltaVVector.magnitude.ToString("F5") +
-                        //          " m/s resulting in speed " + vessel.obt_velocity.magnitude);
-
                         // Calculate resource demands
                         currentEngine.fuelDemands = CalculateDemands(currentEngine.demandMass);
                         // Apply resource demands & test for resource depletion
@@ -514,7 +504,7 @@ namespace PersistentThrust
 
                     SetThrottleAnimation();
 
-                    UpdateFX();
+                    UpdateFX(currentEngine);
                 }
 
                 if (vessel.IsControllable && HasPersistentHeadingEnabled)
@@ -723,12 +713,12 @@ namespace PersistentThrust
         /// <summary>
         /// Updates the engine visual FX based on the ratio between current thrust and total thrust.
         /// </summary>
-        public virtual void UpdateFX()
+        public virtual void UpdateFX(PersistentEngineModule persistentEngineModule)
         {
-            var exhaustRatio = currentEngine.engine.maxThrust > 0 ? currentEngine.finalThrust / currentEngine.engine.maxThrust : 0;
+            var exhaustRatio = persistentEngineModule.engine.maxThrust > 0 ? persistentEngineModule.finalThrust / persistentEngineModule.engine.maxThrust : 0;
 
-            ApplyEffect(currentEngine.powerEffectName, exhaustRatio);
-            ApplyEffect(currentEngine.runningEffectName, exhaustRatio);
+            ApplyEffect(persistentEngineModule.powerEffectName, exhaustRatio);
+            ApplyEffect(persistentEngineModule.runningEffectName, exhaustRatio);
         }
 
 
@@ -808,10 +798,10 @@ namespace PersistentThrust
             vessel.ctrlState.mainThrottle = newSetting;
             persistentThrottle = newSetting;
 
-            PersistentEngineModule[] processedEngines = isMultiMode ? new[] { currentEngine } : moduleEngines;
-            for (var i = 0; i < processedEngines.Length; i++)
+            PersistentEngineModule[] persistentEngineModules = isMultiMode ? new[] { currentEngine } : moduleEngines;
+            for (var i = 0; i < persistentEngineModules.Length; i++)
             {
-                currentEngine = processedEngines[i];
+                currentEngine = persistentEngineModules[i];
 
                 currentEngine.engine.requestedThrottle = newSetting;
                 currentEngine.engine.currentThrottle = newSetting;
@@ -835,10 +825,7 @@ namespace PersistentThrust
 
                 FieldInfo ignitedInfo = currentEngine.engine.GetType().GetField("ignited", BindingFlags.NonPublic | BindingFlags.Instance);
 
-                if (ignitedInfo is null)
-                    continue;
-
-                ignitedInfo.SetValue(currentEngine.engine, true);
+                ignitedInfo?.SetValue(currentEngine.engine, true);
             }
         }
 
@@ -1272,7 +1259,7 @@ namespace PersistentThrust
                     thrustVector = -GetThrustVectorToTarget(vessel, module_snapshot, UT);
                     break;
                 //case VesselAutopilot.AutopilotMode.Maneuver:
-                //    thrustVector = orbit.GetThrustVectorToManeuver(module_snapshot);
+                //    thrustVector = orbit.GetThrustVectorToManeuver(moduleSnapshot);
                 //    break;
             }
 
@@ -1319,13 +1306,13 @@ namespace PersistentThrust
             return proto_part.partInfo.title;
         }
 
-        private static Vector3d GetThrustVectorToTarget(Vessel vessel, ProtoPartModuleSnapshot module_snapshot, double UT)
+        private static Vector3d GetThrustVectorToTarget(Vessel vessel, ProtoPartModuleSnapshot moduleSnapshot, double UT)
         {
             string persistentVesselTargetBodyName = string.Empty;
-            module_snapshot.moduleValues.TryGetValue(nameof(persistentVesselTargetBodyName), ref persistentVesselTargetBodyName);
+            moduleSnapshot.moduleValues.TryGetValue(nameof(persistentVesselTargetBodyName), ref persistentVesselTargetBodyName);
 
             string persistentVesselTargetId = Guid.Empty.ToString();
-            module_snapshot.moduleValues.TryGetValue(nameof(persistentVesselTargetId), ref persistentVesselTargetId);
+            moduleSnapshot.moduleValues.TryGetValue(nameof(persistentVesselTargetId), ref persistentVesselTargetId);
 
             Guid persistentVesselTargetGuid = new Guid(persistentVesselTargetId);
 
