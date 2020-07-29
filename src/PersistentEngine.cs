@@ -261,9 +261,12 @@ namespace PersistentThrust
         /// </summary>
         public override void OnUpdate()
         {
-            thrustTxt = Utils.FormatThrust(persistentThrust);
-
             PersistentEngineModule[] persistentEngineModules = isMultiMode ? new[] { currentEngine } : moduleEngines;
+
+            if (persistentEngineModules.Length == 0)
+                return;
+
+            thrustTxt = Utils.FormatThrust(persistentThrust);
 
             foreach (var persistentEngine in persistentEngineModules)
             {
@@ -966,8 +969,12 @@ namespace PersistentThrust
             for (var i = 0; i < moduleEngines.Length; i++)
             {
                 var persistentEngineModule = moduleEngines[i];
-                persistentEngineModule.powerEffectName = powerEffectNameList[i];
-                persistentEngineModule.runningEffectName = runningEffectNameList[i];
+
+                if (powerEffectNameList.Count > i)
+                    persistentEngineModule.powerEffectName = powerEffectNameList[i];
+
+                if (runningEffectNameList.Count > i)
+                    persistentEngineModule.runningEffectName = runningEffectNameList[i];
 
                 ApplyEffect(persistentEngineModule.powerEffectName, 0);
                 ApplyEffect(persistentEngineModule.runningEffectName, 0);
@@ -1253,10 +1260,10 @@ namespace PersistentThrust
                     thrustVector = -orbitalVelocityAtUt;
                     break;
                 case VesselAutopilot.AutopilotMode.Normal:
-                    thrustVector = Vector3.Cross(orbitalVelocityAtUt, (orbit.getPositionAtUT(UT) - vessel.mainBody.getPositionAtUT(UT) ));
+                    thrustVector = Vector3.Cross(orbitalVelocityAtUt, orbit.getPositionAtUT(UT) - vessel.mainBody.getPositionAtUT(UT));
                     break;
                 case VesselAutopilot.AutopilotMode.Antinormal:
-                    thrustVector = -Vector3.Cross(orbitalVelocityAtUt, (orbit.getPositionAtUT(UT) - vessel.mainBody.getPositionAtUT(UT)));
+                    thrustVector = -Vector3.Cross(orbitalVelocityAtUt, orbit.getPositionAtUT(UT) - vessel.mainBody.getPositionAtUT(UT));
                     break;
                 case VesselAutopilot.AutopilotMode.RadialIn:
                     thrustVector = -Vector3.Cross(orbitalVelocityAtUt, Vector3.Cross(orbitalVelocityAtUt, vessel.orbit.getPositionAtUT(UT) - orbit.referenceBody.position));
