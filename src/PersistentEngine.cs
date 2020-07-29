@@ -261,12 +261,12 @@ namespace PersistentThrust
         /// </summary>
         public override void OnUpdate()
         {
-            PersistentEngineModule[] persistentEngineModules = isMultiMode ? new[] { currentEngine } : moduleEngines;
-
-            if (persistentEngineModules.Length == 0)
+            if (moduleEngines.Length == 0)
                 return;
 
             thrustTxt = Utils.FormatThrust(persistentThrust);
+
+            PersistentEngineModule[] persistentEngineModules = isMultiMode ? new[] { currentEngine } : moduleEngines;
 
             foreach (var persistentEngine in persistentEngineModules)
             {
@@ -310,6 +310,7 @@ namespace PersistentThrust
                 if (warpToRealCountDown-- <= 0)
                     warpToReal = false;
             }
+
             if (vessel.packed)
             {
                 // maintain thrust setting during TimeWarp
