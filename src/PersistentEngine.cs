@@ -2,6 +2,7 @@ using KSP.Localization;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using CommNet;
 using UniLinq;
 using UnityEngine;
 
@@ -1046,7 +1047,7 @@ namespace PersistentThrust
         {
             var activePropellant = currentPersistentPropellant;
 
-            var persistentEngines = vessel.FindPartModulesImplementing<PersistentEngine>();
+            var persistentEngines = vessel.FindPartModulesImplementing<PersistentEngine>().Where(m => m.currentEngine.engine.getIgnitionState).ToList();
 
             List<PersistentPropellant> activePropellants = persistentEngines.SelectMany(pe => pe.moduleEngines.SelectMany(pl =>
                 pl.propellants.Where(pp =>
@@ -1058,16 +1059,30 @@ namespace PersistentThrust
 
             // store mission time to prevent other engines doing unnecessary work
             currentPersistentPropellant.missionTime = vessel.missionTime;
+
             // determine amount and maxAmount at start of PersistentEngine testing
             part.GetConnectedResourceTotals(currentPersistentPropellant.definition.id,
                 currentPersistentPropellant.propellant.GetFlowMode(), out currentPersistentPropellant.amount,
                 out currentPersistentPropellant.maxAmount, true);
+
             // calculate total demand on operational engines
-            currentPersistentPropellant.totalEnginesDemand = persistentEngines
-                .Where(e => e.currentEngine.engine.getIgnitionState)
-                .Sum(m => m.currentEngine.propellants
-                    .Where(l => l.definition.id == currentPersistentPropellant.definition.id)
-                    .Sum(l => l.normalizedDemand));
+            currentPersistentPropellant.totalEnginesDemand = 0;
+            foreach (var persistentEngine in persistentEngines)
+            {
+                if (persistentEngine.isMultiMode)
+                {
+                    currentPersistentPropellant.totalEnginesDemand += persistentEngine.currentEngine.propellants
+                        .Where(l => l.definition.id == currentPersistentPropellant.definition.id)
+                        .Sum(l => l.normalizedDemand);
+                }
+                else
+                {
+                    currentPersistentPropellant.totalEnginesDemand += persistentEngine.moduleEngines
+                        .Sum(m => m.propellants
+                            .Where(l => l.definition.id == currentPersistentPropellant.definition.id)
+                            .Sum(l => l.normalizedDemand));
+                }
+            }
 
             return activePropellant;
         }
