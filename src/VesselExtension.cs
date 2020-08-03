@@ -73,7 +73,7 @@ namespace PersistentThrust
         public static double GetVesselOrbitHeadingVersusManeuverVector(this Vessel vessel)
         {
             if (vessel == null || vessel.patchedConicSolver == null || vessel.orbit == null ||  vessel.patchedConicSolver.maneuverNodes == null)
-                return -1;
+                return 1;
 
             if (vessel.patchedConicSolver.maneuverNodes.Count > 0)
             {
