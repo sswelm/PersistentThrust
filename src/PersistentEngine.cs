@@ -131,7 +131,7 @@ namespace PersistentThrust
         public int vesselChangedSoiCountdown = 10;
         public int fixedUpdateCount;
 
-        private readonly Dictionary<string, double> _kerbalismResourceChangeRequest = new Dictionary<string, double>();
+        private readonly Dictionary<string, double> _resourceChangeRequest = new Dictionary<string, double>();
         private readonly Queue<float> _mainThrottleQueue = new Queue<float>();
         private Dictionary<string, double> _availablePartResources = new Dictionary<string, double>();
 
@@ -185,9 +185,9 @@ namespace PersistentThrust
             node.SetValue(nameof(persistentAverageDensity), persistentAverageDensity, true);
 
             // serialize resource request
-            if (_kerbalismResourceChangeRequest.Any())
+            if (_resourceChangeRequest.Any())
             {
-                persistentResourceChange = string.Join(";", _kerbalismResourceChangeRequest.Select(x => x.Key + "=" + x.Value).ToArray());
+                persistentResourceChange = string.Join(";", _resourceChangeRequest.Select(x => x.Key + "=" + x.Value).ToArray());
                 node.SetValue(nameof(persistentResourceChange), persistentResourceChange, true);
             }
 
@@ -358,14 +358,18 @@ namespace PersistentThrust
         /// </summary>
         public void FixedUpdate() // FixedUpdate is also called while not staged
         {
-            if (vessel is null || currentEngine?.engine is null || !isEnabled) return;
+            if (vessel is null || currentEngine?.engine is null || !isEnabled)
+            {
+                persistentThrust = 0;
+                return;
+            }
 
             vesselHeadingVersusManeuver = vessel.GetVesselOrbitHeadingVersusManeuverVector();
             vesselHeadingVersusManeuverInDegree = Math.Acos(Math.Max(-1, Math.Min(1, vesselHeadingVersusManeuver))) * Orbit.Rad2Deg;
 
             RestoreHeadingAtLoad();
 
-            _kerbalismResourceChangeRequest.Clear();
+            _resourceChangeRequest.Clear();
 
             if (vesselChangedSoiCountdown > 0)
                 vesselChangedSoiCountdown--;
@@ -1141,20 +1145,20 @@ namespace PersistentThrust
         /// <returns> The amount of resource that was consumed. </returns>
         private double RequestResource(PersistentPropellant propellant, double demand, bool simulate = false)
         {
-            if (!DetectKerbalism.Found())
-                return part.RequestResource(propellant.definition.id, demand, propellant.propellant.GetFlowMode(), simulate || (propellant.density > 0 && !vessel.packed));
-
             _availablePartResources.TryGetValue(propellant.definition.name, out double availableAmount);
 
             if (simulate)
                 _availablePartResources[propellant.definition.name] = Math.Max(0, availableAmount - demand);
             else
             {
-                _kerbalismResourceChangeRequest.TryGetValue(propellant.definition.name, out double currentDemand);
-                _kerbalismResourceChangeRequest[propellant.definition.name] = currentDemand - (demand / TimeWarp.fixedDeltaTime);
+                _resourceChangeRequest.TryGetValue(propellant.definition.name, out double currentDemand);
+                _resourceChangeRequest[propellant.definition.name] = currentDemand - (demand / TimeWarp.fixedDeltaTime);
             }
 
-            return Math.Min(availableAmount, demand);
+            if (DetectKerbalism.Found())
+                return Math.Min(availableAmount, demand);
+            else
+                return part.RequestResource(propellant.definition.id, demand, propellant.propellant.GetFlowMode(), simulate || (propellant.density > 0 && !vessel.packed)); ;
         }
 
         private void RestoreMaxFuelFlow()
@@ -1269,6 +1273,9 @@ namespace PersistentThrust
             Vector3d thrustVector = Vector3d.zero;
             switch (persistentAutopilotMode)
             {
+                case VesselAutopilot.AutopilotMode.StabilityAssist:
+                    thrustVector = vessel.GetTransform().up.normalized;
+                    break;
                 case VesselAutopilot.AutopilotMode.Prograde:
                     thrustVector = orbitalVelocityAtUt;
                     break;
@@ -1377,7 +1384,7 @@ namespace PersistentThrust
 
             resourceChangeRequest.Clear();
 
-            foreach (var resourceRequest in _kerbalismResourceChangeRequest)
+            foreach (var resourceRequest in _resourceChangeRequest)
             {
                 var definition = PartResourceLibrary.Instance.GetDefinition(resourceRequest.Key);
                 if (definition is null || definition.density > 0 && !vessel.packed)
