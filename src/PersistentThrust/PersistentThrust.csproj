@@ -81,6 +81,7 @@
     <Compile Include="BackgroundProcessing.cs" />
     <Compile Include="DetectKerbalism.cs" />
     <Compile Include="DetectRealFuels.cs" />
+    <Compile Include="GoToVessel.cs" />
     <Compile Include="PTGUI.cs" />
     <Compile Include="OrbitExtensions.cs" />
     <Compile Include="GameEventSubscriber.cs" />

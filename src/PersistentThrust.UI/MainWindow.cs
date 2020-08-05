@@ -37,6 +37,8 @@ namespace PersistentThrust.UI
 
             mainWindowInterface = main;
 
+            m_VesselElementPrefab = main.VesselElementPrefab;
+
             if (m_VersionText != null)
                 m_VersionText.text = main.Version;
 
@@ -45,7 +47,6 @@ namespace PersistentThrust.UI
             transform.localScale *= main.Scale;
 
             CreateVesselList(main.Vessels);
-
         }
 
         public void Update()
@@ -59,7 +60,7 @@ namespace PersistentThrust.UI
         {
             foreach (var vInterface in vesselInterfaces)
             {
-                vesselElements[vInterface.VesselId].updateElement(vInterface);
+                vesselElements[vInterface.VesselId].UpdateElement(vInterface);
             }
         }
 
@@ -148,7 +149,7 @@ namespace PersistentThrust.UI
             if (vElement == null)
                 return;
 
-            vElement.setElement(elementInterface);
+            vElement.SetElement(elementInterface);
 
             vElement.gameObject.SetActive(mainWindowInterface.IsVisible);
 

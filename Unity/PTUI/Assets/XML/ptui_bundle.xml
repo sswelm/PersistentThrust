@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<KSPBundleDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" UrlName="ptui" Name="ptui" CreatedTime="-8586052314920391401">
+<KSPBundleDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" UrlName="ptui" Name="ptui" CreatedTime="-8586049757599858972">
   <Author />
   <Info />
   <Assets>
-    <Asset Name="PTUIPanel" Path="Assets/_MyKSPAssets/UI Export 1/PTUIPanel.prefab" Type="GameObject" Url="_MyKSPAssets/UI Export 1/PTUIPanel" AutoLoad="false" />
     <Asset Name="PTUIPanel" Path="Assets/_MyKSPAssets/UI Export/PTUIPanel.prefab" Type="GameObject" Url="_MyKSPAssets/UI Export/PTUIPanel" AutoLoad="false" />
   </Assets>
   <Dependencies />

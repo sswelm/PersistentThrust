@@ -12,8 +12,11 @@ namespace PersistentThrust
         public string VesselName { get; set; }
         public bool HasPersistentThrustActive { get; set; }
         public bool PersistentThrustWasToggled { get; set; }
+        public bool AutopilotModeWasChanged { get; set; }
         public bool HasInfoWindowActive { get; set; }
         public Sprite VesselIcon { get; set; }
+        public AutoPilotModeEnum VesselAutopilotMode { get; set; }
+        public bool VesselAutopilotActive { get; set; }
 
         private Vessel vessel;
         private VesselType currentVesselType;
@@ -45,13 +48,47 @@ namespace PersistentThrust
             x.VesselIcon = GetVesselIcon(v.vesselType);
             x.HasInfoWindowActive = false;
             x.currentVesselType = v.vesselType;
+            x.VesselAutopilotMode = v.Autopilot.ToPTIEnum();
 
             return x;
         }
 
-        private void Start()
+        public void GoToVessel()
         {
+            if (FlightGlobals.ActiveVessel != vessel)
+            {
+                var title = "Warning!";
+                var msg = "Do you really want go to ";
+                msg += vessel.name.ToString() + "?";
+                DialogGUIButton[] buttons;
 
+                if (HighLogic.LoadedSceneIsFlight)
+                {
+                    buttons = new DialogGUIButton[] {
+                        new DialogGUIButton("Go", () => { GotoVessel.JumpToVessel(vessel); }),
+                        new DialogGUIButton("Target", () => { GotoVessel.SetVesselAsTarget(vessel); }),
+                        new DialogGUIButton("Stay", () => { })
+                    };
+                }
+                else
+                {
+                    buttons = new DialogGUIButton[] {
+                        new DialogGUIButton("Go", () => { GotoVessel.JumpToVessel(vessel); }),
+                        new DialogGUIButton("Stay", () => { })
+                    };
+                }
+
+                PopupDialog.SpawnPopupDialog
+                    (
+                        new Vector2(0.5f, 0.5f),
+                        new Vector2(0.5f, 0.5f),
+                        new MultiOptionDialog(title, msg, title, HighLogic.UISkin, buttons),
+                        false,
+                        HighLogic.UISkin,
+                        true,
+                        string.Empty
+                    );
+            }
         }
 
         /// <summary>
@@ -64,6 +101,19 @@ namespace PersistentThrust
                 SetVesselWidePersistentThurst(HasPersistentThrustActive);
 
                 PersistentThrustWasToggled = false;
+            }
+
+            if (AutopilotModeWasChanged)
+            {
+                if(VesselAutopilotActive)
+                {
+                    vessel.Autopilot.Enable();
+                    vessel.Autopilot.SetMode(VesselAutopilotMode.ToKSPEnum());
+                }
+                else
+                    vessel.Autopilot.Disable();
+
+                AutopilotModeWasChanged = false;
             }
 
             UpdateVesselInfo();
@@ -107,6 +157,16 @@ namespace PersistentThrust
                 currentVesselType = vessel.vesselType;
                 VesselIcon = GetVesselIcon(vessel.vesselType);
             }
+
+            if(VesselAutopilotActive != vessel.Autopilot.Enabled)
+            {
+                VesselAutopilotActive = vessel.Autopilot.Enabled;
+            }
+
+            if (VesselAutopilotMode != vessel.Autopilot.ToPTIEnum())
+            {
+                VesselAutopilotMode = vessel.Autopilot.ToPTIEnum();
+            }
         }
 
         public void UpdateVesselThrustInfo(bool? isOn = null)
@@ -124,7 +184,7 @@ namespace PersistentThrust
             if (didCheckPTEnabled)
                 return hasPersistentThrustEnabled;
 
-            if(hasPersistentThrustEnabled is null)
+            if (hasPersistentThrustEnabled is null)
                 hasPersistentThrustEnabled = new List<bool>();
 
             if (vessel.loaded)
@@ -162,7 +222,6 @@ namespace PersistentThrust
 
         public void SetVesselWidePersistentThurst(bool isOn)
         {
-
             if (vessel.loaded)
             {
                 var PEmoduleList = vessel.FindPartModulesImplementing<PersistentEngine>();
@@ -186,6 +245,67 @@ namespace PersistentThrust
             }
 
             ResetPTEnabledCheck();
+        }
+    }
+
+    public static class AutopilotEnumExtensions
+    {
+        public static AutoPilotModeEnum ToPTIEnum(this VesselAutopilot ap)
+        {
+            switch (ap.Mode)
+            {
+                case VesselAutopilot.AutopilotMode.StabilityAssist:
+                    return AutoPilotModeEnum.StabilityAssist;
+                case VesselAutopilot.AutopilotMode.Prograde:
+                    return AutoPilotModeEnum.Prograde;
+                case VesselAutopilot.AutopilotMode.Retrograde:
+                    return AutoPilotModeEnum.Retrograde;
+                case VesselAutopilot.AutopilotMode.Normal:
+                    return AutoPilotModeEnum.Normal;
+                case VesselAutopilot.AutopilotMode.Antinormal:
+                    return AutoPilotModeEnum.Antinormal;
+                case VesselAutopilot.AutopilotMode.RadialIn:
+                    return AutoPilotModeEnum.RadialIn;
+                case VesselAutopilot.AutopilotMode.RadialOut:
+                    return AutoPilotModeEnum.RadialOut;
+                case VesselAutopilot.AutopilotMode.Target:
+                    return AutoPilotModeEnum.Target;
+                case VesselAutopilot.AutopilotMode.AntiTarget:
+                    return AutoPilotModeEnum.AntiTarget;
+                case VesselAutopilot.AutopilotMode.Maneuver:
+                    return AutoPilotModeEnum.Maneuver;
+                default:
+                    return AutoPilotModeEnum.StabilityAssist;
+            }
+        }
+
+        public static VesselAutopilot.AutopilotMode ToKSPEnum(this AutoPilotModeEnum apMode)
+        {
+            switch (apMode)
+            {
+                case AutoPilotModeEnum.StabilityAssist:
+                    return VesselAutopilot.AutopilotMode.StabilityAssist;
+                case AutoPilotModeEnum.Prograde:
+                    return VesselAutopilot.AutopilotMode.Prograde;
+                case AutoPilotModeEnum.Retrograde:
+                    return VesselAutopilot.AutopilotMode.Retrograde;
+                case AutoPilotModeEnum.Normal:
+                    return VesselAutopilot.AutopilotMode.Normal;
+                case AutoPilotModeEnum.Antinormal:
+                    return VesselAutopilot.AutopilotMode.Antinormal;
+                case AutoPilotModeEnum.RadialIn:
+                    return VesselAutopilot.AutopilotMode.RadialIn;
+                case AutoPilotModeEnum.RadialOut:
+                    return VesselAutopilot.AutopilotMode.RadialOut;
+                case AutoPilotModeEnum.Target:
+                    return VesselAutopilot.AutopilotMode.Target;
+                case AutoPilotModeEnum.AntiTarget:
+                    return VesselAutopilot.AutopilotMode.AntiTarget;
+                case AutoPilotModeEnum.Maneuver:
+                    return VesselAutopilot.AutopilotMode.Maneuver;
+                default:
+                    return VesselAutopilot.AutopilotMode.StabilityAssist;
+            }
         }
     }
 }

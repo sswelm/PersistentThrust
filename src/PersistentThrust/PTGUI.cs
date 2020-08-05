@@ -21,6 +21,7 @@ namespace PersistentThrust
         public string Version { get; private set; }
         public bool IsVisible { get; private set; } = false;
         public static PTGUI Instance { get; private set; } = null;
+        public GameObject VesselElementPrefab { get; private set; }
         public Dictionary<Guid, IVesselElement> IvesselElements { get; set; } = new Dictionary<Guid, IVesselElement>();
         public List<IVesselElement> Vessels => IvesselElements.Values.ToList();
         public float Scale
@@ -40,6 +41,9 @@ namespace PersistentThrust
 
             Instance = this;
             Version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+
+            if (VesselElementPrefab is null)
+                VesselElementPrefab = PTGUI_Loader.VesselElementPrefab;
         }
 
         private void Start()
@@ -117,7 +121,7 @@ namespace PersistentThrust
                     null,
                     null,
                     (ApplicationLauncher.AppScenes.SPACECENTER | ApplicationLauncher.AppScenes.FLIGHT | ApplicationLauncher.AppScenes.MAPVIEW | ApplicationLauncher.AppScenes.TRACKSTATION),
-                    GameDatabase.Instance.GetTexture("PersistentThrust/Textures/toolbar", false));
+                    GameDatabase.Instance.GetTexture("PersistentThrust/Resources/Textures/toolbar", false));
             }
             catch (Exception ex)
             {

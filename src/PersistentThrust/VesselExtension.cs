@@ -24,8 +24,8 @@ namespace PersistentThrust
         {
             if (vessel.loaded)
             {
-                var PE = vessel.FindPartModuleImplementing<PersistentEngine>();
-                hasPersistentEngineModules = PE is null ? false : true;
+                var pe = vessel.FindPartModuleImplementing<PersistentEngine>();
+                hasPersistentEngineModules = !(pe is null);
             }
             else
             {

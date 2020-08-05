@@ -11,6 +11,8 @@ namespace PersistentThrust.UI.Interface
 
         List<IVesselElement> Vessels { get; }
 
+        GameObject VesselElementPrefab { get; }
+
         Vector2 Position { get; set; }
 
         float Scale { get; }

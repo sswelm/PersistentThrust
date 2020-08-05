@@ -9,6 +9,7 @@ namespace PersistentThrust
     {
         private static bool _didScan;
         private static bool _kerbalismFound;
+        public static Assembly KerbalismAssembly = null;
 
         public static bool Found()
         {

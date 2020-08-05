@@ -45,14 +45,19 @@
       <HintPath>..\..\..\..\KSP\RO DEV\KSP_x64_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="UnityEngine.InputLegacyModule">
+      <HintPath>..\..\..\..\KSP\RO DEV\KSP_x64_Data\Managed\UnityEngine.InputLegacyModule.dll</HintPath>
+    </Reference>
     <Reference Include="UnityEngine.UI">
       <HintPath>..\Unity\8.1\UnityEngine.UI.dll</HintPath>
       <Private>False</Private>
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="TooltipText.cs" />
     <Compile Include="Interface\IMainWindow.cs" />
     <Compile Include="Interface\IVesselElement.cs" />
+    <Compile Include="Style.cs" />
     <Compile Include="VesselInfoWindow.cs" />
     <Compile Include="MainWindow.cs" />
     <Compile Include="VesselElement.cs" />

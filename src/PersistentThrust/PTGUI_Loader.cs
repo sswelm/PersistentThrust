@@ -1,15 +1,20 @@
 ﻿using System.Collections.Generic;
-using System.IO;
-using System.Reflection;
 using UnityEngine;
+using UnityEngine.UI;
+using PersistentThrust.UI;
+using System.Linq;
 
 namespace PersistentThrust
 {
-    [KSPAddon(KSPAddon.Startup.Instantly, true)]
+    [KSPAddon(KSPAddon.Startup.MainMenu, true)]
     public class PTGUI_Loader : MonoBehaviour
     {
-        public static GameObject PanelPrefab { get; private set; }
+        private const string bundleName = "/ptui.ksp";
+        private static GameObject[] loadedPrefabs;
         public static Dictionary<VesselType, Sprite> vesselSprites;
+
+        public static GameObject PanelPrefab { get; private set; }
+        public static GameObject VesselElementPrefab { get; private set; }
 
         /// <summary>
         /// Called by Unity at initialization, which happens as soon as the game starts.
@@ -17,9 +22,79 @@ namespace PersistentThrust
         /// </summary>
         private void Awake()
         {
-            AssetBundle prefabs = AssetBundle.LoadFromFile(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "ptui.dat"));
+            if (loadedPrefabs is null)
+            {
+                string path = KSPUtil.ApplicationRootPath + "GameData/PersistentThrust/Resources";
 
-            PanelPrefab = prefabs.LoadAsset("PTUIPanel") as GameObject;
+                AssetBundle prefabs = AssetBundle.LoadFromFile(path + bundleName);
+
+                if (prefabs != null)
+                    loadedPrefabs = prefabs.LoadAllAssets<GameObject>();
+            }
+
+            if (loadedPrefabs != null)
+            {
+                if (UISkinManager.defaultSkin != null)
+                    ProcessUIPrefabs();
+            }
+        }
+        private void ProcessUIPrefabs()
+        {
+            for (int i = loadedPrefabs.Length - 1; i >= 0; i--)
+            {
+                GameObject o = loadedPrefabs[i];
+
+                if (o.name == "PTUIPanel")
+                    PanelPrefab = o;
+
+                if (o.name == "VesselElement")
+                    VesselElementPrefab = o;
+
+                if (o != null)
+                    ProcessUIComponents(o);
+            }
+        }
+        private void ProcessUIComponents(GameObject obj)
+        {
+            Style[] styles = obj.GetComponentsInChildren<Style>(true);
+
+            if (styles == null)
+                return;
+
+            for (int i = 0; i < styles.Length; i++)
+                ProcessComponents(styles[i]);
+        }
+
+        private void ProcessComponents(Style style)
+        {
+            if (style == null)
+                return;
+
+            UISkinDef skin = UISkinManager.defaultSkin;
+
+            if (skin == null)
+                return;
+
+            switch (style.ElementType)
+            {
+                case Style.ElementTypes.Window:
+                    style.SetImage(skin.window.normal.background, Image.Type.Sliced);
+                    break;
+                case Style.ElementTypes.Box:
+                    style.SetImage(skin.box.normal.background, Image.Type.Sliced);
+                    break;
+                case Style.ElementTypes.Button:
+                    style.SetButton(skin.button.normal.background, skin.button.highlight.background, skin.button.active.background, skin.button.disabled.background);
+                    break;
+                case Style.ElementTypes.Toggle:
+                    style.SetToggle(skin.button.normal.background, skin.button.highlight.background, skin.button.active.background, skin.button.disabled.background);
+                    break;
+                case Style.ElementTypes.Slider:
+                    style.SetSlider(skin.horizontalSlider.normal.background, skin.horizontalSliderThumb.normal.background, skin.horizontalSliderThumb.highlight.background, skin.horizontalSliderThumb.active.background, skin.horizontalSliderThumb.disabled.background);
+                    break;
+                default:
+                    break;
+            }
         }
 
         /// <summary>
@@ -32,14 +107,14 @@ namespace PersistentThrust
             vesselSprites = new Dictionary<VesselType, Sprite>
             {
                 // Load the textures and convert them to sprites
-                [VesselType.Base] = ToSprite(GameDatabase.Instance.GetTexture("PersistentThrust/Textures/base", false)),
-                [VesselType.Lander] = ToSprite(GameDatabase.Instance.GetTexture("PersistentThrust/Textures/lander", false)),
-                [VesselType.Plane] = ToSprite(GameDatabase.Instance.GetTexture("PersistentThrust/Textures/plane", false)),
-                [VesselType.Probe] = ToSprite(GameDatabase.Instance.GetTexture("PersistentThrust/Textures/probe", false)),
-                [VesselType.Relay] = ToSprite(GameDatabase.Instance.GetTexture("PersistentThrust/Textures/relay", false)),
-                [VesselType.Rover] = ToSprite(GameDatabase.Instance.GetTexture("PersistentThrust/Textures/rover", false)),
-                [VesselType.Ship] = ToSprite(GameDatabase.Instance.GetTexture("PersistentThrust/Textures/ship", false)),
-                [VesselType.Unknown] = ToSprite(GameDatabase.Instance.GetTexture("PersistentThrust/Textures/empty", false))
+                [VesselType.Base] = ToSprite(GameDatabase.Instance.GetTexture("PersistentThrust/Resources/Textures/base", false)),
+                [VesselType.Lander] = ToSprite(GameDatabase.Instance.GetTexture("PersistentThrust/Resources/Textures/lander", false)),
+                [VesselType.Plane] = ToSprite(GameDatabase.Instance.GetTexture("PersistentThrust/Resources/Textures/plane", false)),
+                [VesselType.Probe] = ToSprite(GameDatabase.Instance.GetTexture("PersistentThrust/Resources/Textures/probe", false)),
+                [VesselType.Relay] = ToSprite(GameDatabase.Instance.GetTexture("PersistentThrust/Resources/Textures/relay", false)),
+                [VesselType.Rover] = ToSprite(GameDatabase.Instance.GetTexture("PersistentThrust/Resources/Textures/rover", false)),
+                [VesselType.Ship] = ToSprite(GameDatabase.Instance.GetTexture("PersistentThrust/Resources/Textures/ship", false)),
+                [VesselType.Unknown] = ToSprite(GameDatabase.Instance.GetTexture("PersistentThrust/Resources/Textures/empty", false))
             };
         }
 
