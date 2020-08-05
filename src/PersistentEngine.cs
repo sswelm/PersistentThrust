@@ -59,8 +59,6 @@ namespace PersistentThrust
         [KSPField(isPersistant = true)]
         public string persistentResourceChange;
         [KSPField(isPersistant = true)]
-        public float vesselDryMass;
-        [KSPField(isPersistant = true)]
         public Guid persistentVesselTargetId;
         [KSPField(isPersistant = true)]
         public string persistentVesselTargetBodyName;
@@ -174,8 +172,6 @@ namespace PersistentThrust
             base.OnSave(node);
 
             if (!HighLogic.LoadedSceneIsFlight || vessel is null) return;
-
-            node.SetValue(nameof(vesselDryMass), vessel.GetDryMass(), true);
 
             persistentAverageDensity = isMultiMode
                 ? currentEngine.averageDensity
@@ -429,7 +425,7 @@ namespace PersistentThrust
                         // Resource demand from propellants with mass
                         currentEngine.demandMass = currentEngine.averageDensity > 0 ? massFlowRate * TimeWarp.fixedDeltaTime / currentEngine.averageDensity : 0;
                         // Calculate resource demands
-                        currentEngine.fuelDemands = CalculateDemands(currentEngine.demandMass);
+                        currentEngine.fuelDemands = CalculateDemands(currentEngine.demandMass, currentEngine.propellants);
                         // Apply resource demands & test for resource depletion
                         ApplyDemands(currentEngine.fuelDemands, ref currentEngine.propellantReqMetFactor);
 
@@ -488,7 +484,7 @@ namespace PersistentThrust
                         // Calculate deltaV vector & resource demand from propellants with mass
                         Vector3d deltaVVector = Utils.CalculateDeltaVVector(currentEngine.averageDensity, vessel.GetTotalMass(), TimeWarp.fixedDeltaTime, requestedThrust, currentEngine.persistentIsp, part.transform.up, out currentEngine.demandMass);
                         // Calculate resource demands
-                        currentEngine.fuelDemands = CalculateDemands(currentEngine.demandMass);
+                        currentEngine.fuelDemands = CalculateDemands(currentEngine.demandMass, currentEngine.propellants);
                         // Apply resource demands & test for resource depletion
                         ApplyDemands(currentEngine.fuelDemands, ref currentEngine.propellantReqMetFactor);
 
@@ -603,15 +599,15 @@ namespace PersistentThrust
         /// <summary>
         /// Calculates demands of each resource from a total mass input.
         /// </summary>
-        public double[] CalculateDemands(double mass)
+        public static double[] CalculateDemands(double mass, List<PersistentPropellant> propellants)
         {
-            var demands = new double[currentEngine.propellants.Count];
+            var demands = new double[propellants.Count];
             if (mass <= 0) return demands;
 
             // Per propellant demand
-            for (var i = 0; i < currentEngine.propellants.Count; i++)
+            for (var i = 0; i < propellants.Count; i++)
             {
-                demands[i] = currentEngine.propellants[i].CalculateDemand(mass);
+                demands[i] = propellants[i].CalculateDemand(mass);
             }
             return demands;
         }
@@ -1235,6 +1231,10 @@ namespace PersistentThrust
             List<KeyValuePair<string, double>> resourceChangeRequest,
             double elapsed_s)
         {
+            PersistentBackgroundProcessing.VesselDataDict.TryGetValue(vessel.persistentId, out VesselData vesselData);
+            if (vesselData == null)
+                return proto_part.partInfo.title;
+
             double persistentThrust = 0;
             if (!module_snapshot.moduleValues.TryGetValue(nameof(persistentThrust), ref persistentThrust))
                 return proto_part.partInfo.title;
@@ -1244,7 +1244,8 @@ namespace PersistentThrust
                 return proto_part.partInfo.title;
 
             double vesselAlignmentWithAutopilotMode = 0;
-            if (!module_snapshot.moduleValues.TryGetValue(nameof(vesselAlignmentWithAutopilotMode), ref vesselAlignmentWithAutopilotMode))
+            if (!module_snapshot.moduleValues.TryGetValue(nameof(vesselAlignmentWithAutopilotMode),
+                ref vesselAlignmentWithAutopilotMode))
                 return proto_part.partInfo.title;
 
             // ignore background update when not aligned with autopilot mode
@@ -1264,7 +1265,8 @@ namespace PersistentThrust
                 return proto_part.partInfo.title;
 
             VesselAutopilot.AutopilotMode persistentAutopilotMode = (VesselAutopilot.AutopilotMode) Enum.Parse(
-                typeof(VesselAutopilot.AutopilotMode), module_snapshot.moduleValues.GetValue(nameof(persistentAutopilotMode)));
+                typeof(VesselAutopilot.AutopilotMode),
+                module_snapshot.moduleValues.GetValue(nameof(persistentAutopilotMode)));
 
             Orbit orbit = vessel.GetOrbit();
             double UT = Planetarium.GetUniversalTime();
@@ -1283,16 +1285,22 @@ namespace PersistentThrust
                     thrustVector = -orbitalVelocityAtUt;
                     break;
                 case VesselAutopilot.AutopilotMode.Normal:
-                    thrustVector = Vector3.Cross(orbitalVelocityAtUt, orbit.getPositionAtUT(UT) - vessel.mainBody.getPositionAtUT(UT));
+                    thrustVector = Vector3.Cross(orbitalVelocityAtUt,
+                        orbit.getPositionAtUT(UT) - vessel.mainBody.getPositionAtUT(UT));
                     break;
                 case VesselAutopilot.AutopilotMode.Antinormal:
-                    thrustVector = -Vector3.Cross(orbitalVelocityAtUt, orbit.getPositionAtUT(UT) - vessel.mainBody.getPositionAtUT(UT));
+                    thrustVector = -Vector3.Cross(orbitalVelocityAtUt,
+                        orbit.getPositionAtUT(UT) - vessel.mainBody.getPositionAtUT(UT));
                     break;
                 case VesselAutopilot.AutopilotMode.RadialIn:
-                    thrustVector = -Vector3.Cross(orbitalVelocityAtUt, Vector3.Cross(orbitalVelocityAtUt, vessel.orbit.getPositionAtUT(UT) - orbit.referenceBody.position));
+                    thrustVector = -Vector3.Cross(orbitalVelocityAtUt,
+                        Vector3.Cross(orbitalVelocityAtUt,
+                            vessel.orbit.getPositionAtUT(UT) - orbit.referenceBody.position));
                     break;
                 case VesselAutopilot.AutopilotMode.RadialOut:
-                    thrustVector = Vector3.Cross(orbitalVelocityAtUt, Vector3.Cross(orbitalVelocityAtUt, vessel.orbit.getPositionAtUT(UT) - orbit.referenceBody.position));
+                    thrustVector = Vector3.Cross(orbitalVelocityAtUt,
+                        Vector3.Cross(orbitalVelocityAtUt,
+                            vessel.orbit.getPositionAtUT(UT) - orbit.referenceBody.position));
                     break;
                 case VesselAutopilot.AutopilotMode.Target:
                     thrustVector = GetThrustVectorToTarget(vessel, module_snapshot, UT);
@@ -1314,36 +1322,49 @@ namespace PersistentThrust
                 var fixedRequirement = -resourceChange.Value * elapsed_s;
 
                 if (availableResources.TryGetValue(resourceChange.Key, out double availableAmount))
-                    fuelRequirementMet = availableAmount > 0 && fixedRequirement > 0 ? Math.Min(fuelRequirementMet, availableAmount / fixedRequirement) : 0;
+                {
+                    var resourceDefinition = PartResourceLibrary.Instance.GetDefinition(resourceChange.Key);
+
+                    if ((resourceDefinition.density <= 0 && CheatOptions.InfiniteElectricity) ||
+                        resourceDefinition.density > 0 && CheatOptions.InfinitePropellant)
+                        fuelRequirementMet = 1;
+                    else
+                        fuelRequirementMet = availableAmount > 0 && fixedRequirement > 0
+                            ? Math.Min(fuelRequirementMet, availableAmount / fixedRequirement)
+                            : 0;
+                }
                 else
                     fuelRequirementMet = 0;
             }
 
-            if (fuelRequirementMet > 0)
+            if (fuelRequirementMet <= 0)
+                return proto_part.partInfo.title;
+
+            foreach (var resourceChange in resourceChanges)
             {
-                foreach (var resourceChange in resourceChanges)
-                {
-                    resourceChangeRequest.Add(new KeyValuePair<string, double>(resourceChange.Key, resourceChange.Value * fuelRequirementMet));
-                }
+                var resourceDefinition = PartResourceLibrary.Instance.GetDefinition(resourceChange.Key);
 
-                double vesselDryMass = 0;
-                if (!module_snapshot.moduleValues.TryGetValue(nameof(vesselDryMass), ref vesselDryMass))
-                    return proto_part.partInfo.title;
+                if ((resourceDefinition.density <= 0 && CheatOptions.InfiniteElectricity) ||
+                    resourceDefinition.density > 0 && CheatOptions.InfinitePropellant)
+                    continue;
 
-                double persistentAverageDensity = 0;
-                if (!module_snapshot.moduleValues.TryGetValue(nameof(persistentAverageDensity), ref persistentAverageDensity))
-                    return proto_part.partInfo.title;
-
-                float persistentIsp = 0;
-                if (!module_snapshot.moduleValues.TryGetValue(nameof(persistentIsp), ref persistentIsp))
-                    return proto_part.partInfo.title;
-
-                var vesselMass = vesselDryMass += Utils.GetResourceMass(availableResources);
-
-                Vector3d deltaVVector = Utils.CalculateDeltaVVector(persistentAverageDensity, vesselMass, elapsed_s, persistentThrust * fuelRequirementMet, persistentIsp, thrustVector.normalized);
-
-                orbit.Perturb(deltaVVector, UT);
+                resourceChangeRequest.Add(new KeyValuePair<string, double>(resourceChange.Key,
+                    resourceChange.Value * fuelRequirementMet));
             }
+
+            double persistentAverageDensity = 0;
+            if (!module_snapshot.moduleValues.TryGetValue(nameof(persistentAverageDensity),
+                ref persistentAverageDensity))
+                return proto_part.partInfo.title;
+
+            float persistentIsp = 0;
+            if (!module_snapshot.moduleValues.TryGetValue(nameof(persistentIsp), ref persistentIsp))
+                return proto_part.partInfo.title;
+
+            Vector3d deltaVVector = Utils.CalculateDeltaVVector(persistentAverageDensity, vesselData.TotalVesselMass, elapsed_s,
+                persistentThrust * fuelRequirementMet, persistentIsp, thrustVector.normalized);
+
+            orbit.Perturb(deltaVVector, UT);
 
             return proto_part.partInfo.title;
         }

@@ -6,7 +6,6 @@ namespace PersistentThrust
     // Container for propellant info used by PersistentEngine
     public class PersistentPropellant
     {
-
         #region Fields
 
         public Propellant propellant;
@@ -39,15 +38,12 @@ namespace PersistentThrust
         }
 
 
-
         /// <summary>
         /// Calculates demand of this propellant given the total demand of the moduleEngine.
         /// </summary>
         public double CalculateDemand(double demand)
         {
-            normalizedDemand = demand * normalizedRatio;
-
-            return normalizedDemand;
+            return demand * normalizedRatio;
         }
 
 
