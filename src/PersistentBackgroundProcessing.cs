@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
@@ -12,36 +13,33 @@ namespace PersistentThrust
         public ProtoPartModuleSnapshot ProtoPartModuleSnapshot { get; set; }
     }
 
+    public class SolarPanelData
+    {
+        public uint PersistentPartId { get; set; }
+        public Part ProtoPart { get; set; }
+        public ModuleDeployableSolarPanel ModuleDeployableSolarPanel { get; set; }
+        public ProtoPartModuleSnapshot ProtoPartModuleSnapshot { get; set; }
+    }
+    
+
     public class VesselData
     {
-        public uint VesselPersistentId { get; set; }
-
+        public Vessel Vessel { get; set; }
+        public uint PersistentVesselId { get; set; }    
         public double TotalVesselMassInKg { get; set; }
-        public double TotalVesselMass { get; set; }
+        public double TotalVesselMassInTon { get; set; }
         public bool? HasAnyActivePersistentEngine { get; set; }
 
         public Dictionary<uint, EngineData> Engines { get; set; } = new Dictionary<uint, EngineData>();
+        public Dictionary<uint, SolarPanelData> SolarPanels { get; set; } = new Dictionary<uint, SolarPanelData>();
 
-        public VesselData(uint vesselPersistentId)
+        public Dictionary<string, double> AvailableResources { get; set; }  = new Dictionary<string, double>();
+        public Dictionary<string, double> MaxAmountResources { get; set; } = new Dictionary<string, double>();
+
+        public VesselData(Vessel vessel)
         {
-            VesselPersistentId = vesselPersistentId;
-        }
-
-        public void UpdateMass(Vessel vessel)
-        {
-            TotalVesselMass = 0;
-
-            // for each part
-            foreach (ProtoPartSnapshot protoPartSnapshot in vessel.protoVessel.protoPartSnapshots)
-            {
-                TotalVesselMass += protoPartSnapshot.mass;
-                foreach (var resource in protoPartSnapshot.resources)
-                {
-                    TotalVesselMass += resource.amount * resource.definition.density;
-                }
-            }
-
-            TotalVesselMassInKg = TotalVesselMass * 1000;
+            Vessel = vessel;
+            PersistentVesselId = vessel.persistentId;
         }
     }
 
@@ -83,7 +81,7 @@ namespace PersistentThrust
                 // lookup cashed vessel data
                 if (!VesselDataDict.TryGetValue(vessel.persistentId, out VesselData vesselData))
                 {
-                    vesselData = new VesselData(vessel.persistentId);
+                    vesselData = new VesselData(vessel);
                     VesselDataDict.Add(vessel.persistentId, vesselData);
                 }
 
@@ -94,10 +92,12 @@ namespace PersistentThrust
                     continue;
                 }
 
-                // update mass if any engines
-                if (vesselData.Engines.Any())
+                // update when active engine or uninitialized
+                if (vesselData.HasAnyActivePersistentEngine.HasValue == false || vesselData.Engines.Any())
                 {
-                    vesselData.UpdateMass(vessel);
+                    // determine available resources and total vessel mass
+                    vesselData.TotalVesselMassInTon = GetResourcesAndTotalVesselMass(vessel, vesselData.AvailableResources, vesselData.MaxAmountResources);
+                    vesselData.TotalVesselMassInKg = vesselData.TotalVesselMassInTon * 1000;
                 }
 
                 // skip further processing if no persistent engine active present
@@ -117,11 +117,6 @@ namespace PersistentThrust
             if (!vesselData.Engines.Any())
                 return;
 
-            vesselData.UpdateMass(vessel);
-
-            // determine available resources
-            GetAvailableResources(vessel, out Dictionary<string, double> availableResources, out Dictionary<string, double> maxAmountResources);
-
             var totalResourceChangeRequests = new Dictionary<string, double>();
 
             foreach (var engine in vesselData.Engines)
@@ -138,7 +133,7 @@ namespace PersistentThrust
 
                 var resourceChangeRequest = new List<KeyValuePair<string, double>>();
 
-                ProcessUnloadedPersistentEngine(protoPartSnapshot, vessel, vesselData, availableResources, resourceChangeRequest);
+                ProcessUnloadedPersistentEngine(protoPartSnapshot, vessel, vesselData, resourceChangeRequest);
 
                 foreach (var keyValuePair in resourceChangeRequest)
                 {
@@ -147,7 +142,7 @@ namespace PersistentThrust
                 }
             }
 
-            UpdateResources(vessel, totalResourceChangeRequests, availableResources);
+            UpdateResources(vessel, totalResourceChangeRequests, vesselData.AvailableResources);
         }
 
         private static void UpdateResources(
@@ -181,15 +176,19 @@ namespace PersistentThrust
             }
         }
 
-        private static void GetAvailableResources(Vessel vessel, out Dictionary<string, double> availableResources, out Dictionary<string, double> maxAmountResources)
+        private static double GetResourcesAndTotalVesselMass(Vessel vessel, Dictionary<string, double> availableResources, Dictionary<string, double> maxAmountResources)
         {
-            availableResources = new Dictionary<string, double>();
-            maxAmountResources = new Dictionary<string, double>();
+            availableResources.Clear();
+            maxAmountResources.Clear();
+            double totalVesselMass = 0;
 
             foreach (ProtoPartSnapshot protoPartSnapshot in vessel.protoVessel.protoPartSnapshots)
             {
-                foreach (var protoPartResourceSnapshot in protoPartSnapshot.resources)
+                totalVesselMass += protoPartSnapshot.mass;
+                foreach (ProtoPartResourceSnapshot protoPartResourceSnapshot in protoPartSnapshot.resources)
                 {
+                    totalVesselMass += protoPartResourceSnapshot.amount * protoPartResourceSnapshot.definition.density;
+
                     availableResources.TryGetValue(protoPartResourceSnapshot.resourceName, out double amount);
                     maxAmountResources.TryGetValue(protoPartResourceSnapshot.resourceName, out double maxAmount);
 
@@ -197,6 +196,8 @@ namespace PersistentThrust
                     maxAmountResources[protoPartResourceSnapshot.resourceName] = maxAmount + protoPartResourceSnapshot.maxAmount;
                 }
             }
+
+            return totalVesselMass;
         }
 
         private static void LoadUnloadedParts(Vessel vessel, VesselData vesselData)
@@ -236,12 +237,48 @@ namespace PersistentThrust
 
             Part protoPart = availablePart?.partPrefab;
 
+            if (protoPart == null)
+                return false;
+
+            LoadModuleDeployableSolarPanel(protoPartSnapshot, vesselData, protoPart);
+
+            return LoadPersistentEngine(protoPartSnapshot, vesselData, protoPart);
+        }
+
+        private static void LoadModuleDeployableSolarPanel(ProtoPartSnapshot protoPartSnapshot, VesselData vesselData, Part protoPart)
+        {
+            var moduleDeployableSolarPanel = protoPart?.FindModuleImplementing<ModuleDeployableSolarPanel>();
+
+            if (moduleDeployableSolarPanel is null)
+                return;
+
+            ProtoPartModuleSnapshot protoPartModuleSnapshot = protoPartSnapshot.FindModule(nameof(ModuleDeployableSolarPanel));
+
+            if (protoPartModuleSnapshot == null)
+                return;
+
+            // Load ModuleDeployableSolarPanel from ProtoPartModuleSnapshot
+            moduleDeployableSolarPanel.deployState = (ModuleDeployablePart.DeployState)Enum.Parse(typeof(VesselAutopilot.AutopilotMode),
+                protoPartModuleSnapshot.moduleValues.GetValue(nameof(moduleDeployableSolarPanel.deployState)));
+
+            // store data
+            vesselData.SolarPanels.Add(protoPartSnapshot.persistentId, new SolarPanelData
+            {
+                PersistentPartId = protoPartSnapshot.persistentId,
+                ProtoPart = protoPart,
+                ProtoPartModuleSnapshot = protoPartModuleSnapshot,
+                ModuleDeployableSolarPanel = moduleDeployableSolarPanel
+            });
+        }
+
+        private static bool LoadPersistentEngine(ProtoPartSnapshot protoPartSnapshot, VesselData vesselData, Part protoPart)
+        {
             var persistentEngine = protoPart?.FindModuleImplementing<PersistentEngine>();
 
             if (persistentEngine is null)
                 return false;
 
-            ProtoPartModuleSnapshot protoPartModuleSnapshot = protoPartSnapshot.modules.FirstOrDefault(m => m.moduleName == nameof(PersistentEngine));
+            ProtoPartModuleSnapshot protoPartModuleSnapshot = protoPartSnapshot.FindModule(nameof(PersistentEngine));
 
             if (protoPartModuleSnapshot == null)
                 return false;
@@ -271,7 +308,6 @@ namespace PersistentThrust
             ProtoPartSnapshot protoPartSnapshot, 
             Vessel vessel, 
             VesselData vesselData, 
-            Dictionary<string, double> availableResources, 
             List<KeyValuePair<string, double>> resourceChangeRequest)
         {
             if (DetectKerbalism.Found())
@@ -293,7 +329,7 @@ namespace PersistentThrust
                 module_snapshot: engineData.ProtoPartModuleSnapshot, 
                 proto_part_module: engineData.PersistentEngine, 
                 proto_part: engineData.ProtoPart, 
-                availableResources: availableResources, 
+                availableResources: vesselData.AvailableResources, 
                 resourceChangeRequest: resourceChangeRequest, 
                 elapsed_s: TimeWarp.fixedDeltaTime);
         }
