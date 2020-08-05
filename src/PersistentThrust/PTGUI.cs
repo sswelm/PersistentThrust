@@ -1,4 +1,5 @@
-﻿using KSP.UI.Screens;
+﻿using KSP.UI;
+using KSP.UI.Screens;
 using PersistentThrust.UI;
 using PersistentThrust.UI.Interface;
 using System;
@@ -6,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
+using UnityEngine.Profiling;
 
 namespace PersistentThrust
 {
@@ -14,12 +16,23 @@ namespace PersistentThrust
     {
         MainWindow window;
         ApplicationLauncherButton button;
+
+        public Vector2 Position { get; set; } = new Vector2();
         public string Version { get; private set; }
         public bool IsVisible { get; private set; } = false;
         public static PTGUI Instance { get; private set; } = null;
-        public Dictionary<string, IVesselElement> IvesselElements { get; set; } = new Dictionary<string, IVesselElement>();
+        public Dictionary<Guid, IVesselElement> IvesselElements { get; set; } = new Dictionary<Guid, IVesselElement>();
+        public List<IVesselElement> Vessels => IvesselElements.Values.ToList();
+        public float Scale
+        {
+            get { return PTGUI_Settings.Instance.UIScale * UIMasterController.Instance.uiScale; }
+        }
 
-
+        /// <summary>
+        /// Called by Unity when the script is being loaded, which is at every scene change.
+        /// Adds the event adding the appLauncher button to onGuiApplicationLauncherReady.
+        /// Loads the vessel icons. Gets the assembly version.
+        /// </summary>
         private void Awake()
         {
             GameEvents.onGUIApplicationLauncherReady.Add(OnGUIAppLauncherReady);
@@ -29,55 +42,69 @@ namespace PersistentThrust
             Version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
         }
 
+        private void Start()
+        {
+            Position = PTGUI_Settings.Instance.mainWindowPosition;
+        }
+
+        /// <summary>
+        /// Called every frame by Unity if the MonoBehaviour is enabled.
+        /// Updates the IVesselElements list.
+        /// </summary>
         private void Update()
         {
-            if (Instance is null) return;
+            if (Instance is null || !IsVisible) return; // GUI not initialized or not visible, no need to update anything.
 
-            foreach (Vessel v in FlightGlobals.Vessels)
+            for (int i = FlightGlobals.Vessels.Count - 1; i >= 0; i--)
             {
-                AddVesselToIVesselList(v);
+                Profiler.BeginSample("AddVesselToIVesselList");
+                AddVesselToIVesselList(FlightGlobals.Vessels[i]);
+                Profiler.EndSample();
             }
         }
 
+        /// <summary>
+        /// Instantiates a new MainWindow prefab GameObject, sets its parent to the MainCanvas and saves a reference to the MainWindow component.
+        /// Sets IsVisible to true, Updates the IVesselElements list, initializes the window.
+        /// </summary>
         private void OpenWindow()
         {
             if (PTGUI_Loader.PanelPrefab == null)
                 return;
 
-            GameObject obj = Instantiate(PTGUI_Loader.PanelPrefab, new Vector3(0, 0, 0), Quaternion.identity) as GameObject;
-
-            if (obj == null)
-                return;
-
-            obj.transform.SetParent(MainCanvasUtil.MainCanvas.transform);
-
-            window = obj.GetComponent<MainWindow>();
+            window = Instantiate(PTGUI_Loader.PanelPrefab).GetComponent<MainWindow>();
 
             if (window == null)
                 return;
 
+            window.transform.SetParent(MainCanvasUtil.MainCanvas.transform);
+
             IsVisible = true;
 
+            // Update the vessel list by clearing it and forcing an Update.
+            IvesselElements.Clear();
+            Update();
+
+            // Pass the instance to the MainWindow class as an interface to initialize the window.
             window.setInitialState(Instance);
         }
 
+        /// <summary>
+        /// Closes the main window. Sets IsVisible to false.
+        /// </summary>
         private void CloseWindow()
         {
             IsVisible = false;
-            window.enabled = false;
 
-            IvesselElements.Clear();
+            PTGUI_Settings.Instance.mainWindowPosition = Position;
 
             if (window != null)
-                window.gameObject.SetActive(false);
+                window.gameObject.DestroyGameObject();
         }
 
-        private void OnSceneChange(GameScenes s)
-        {
-            if (s == GameScenes.EDITOR)
-                CloseWindow();
-        }
-
+        /// <summary>
+        /// Tries adding a applicationLauncher button for the GUI. Logs the exception if it fails.
+        /// </summary>
         private void OnGUIAppLauncherReady()
         {
             try
@@ -91,7 +118,6 @@ namespace PersistentThrust
                     null,
                     (ApplicationLauncher.AppScenes.SPACECENTER | ApplicationLauncher.AppScenes.FLIGHT | ApplicationLauncher.AppScenes.MAPVIEW | ApplicationLauncher.AppScenes.TRACKSTATION),
                     GameDatabase.Instance.GetTexture("PersistentThrust/Textures/toolbar", false));
-                GameEvents.onGameSceneLoadRequested.Add(this.OnSceneChange);
             }
             catch (Exception ex)
             {
@@ -100,49 +126,55 @@ namespace PersistentThrust
             }
         }
 
+        /// <summary>
+        /// Called by Unity when the MonoBehaviour is destroyed. Closes the window and prevents duplicate toolbar buttons.
+        /// </summary>
         public void OnDestroy()
         {
             CloseWindow();
-            ApplicationLauncher.Instance.RemoveModApplication(button);
-            GameEvents.onGUIApplicationLauncherReady.Remove(OnGUIAppLauncherReady);
+            ApplicationLauncher.Instance.RemoveModApplication(button); // needed since the script gets re-initialized by KSP at every scene change.
+            GameEvents.onGUIApplicationLauncherReady.Remove(OnGUIAppLauncherReady); // removes the method that adds the button, otherwise it would get added multiple times.
+
+            if (PTGUI_Settings.Instance.Save())
+                Debug.Log($"[PersistentThrustSettings]: Settings saved.");
         }
 
+        /// <summary>
+        /// Checks if a vessel is valid. If it is, creates a new PTGUI_Vessel Monobehaviour and adds its interface to the IVesselElements list.
+        /// Otherwise, it removes it from the vessel list.
+        /// </summary>
+        /// <param name="v"> Vessel that is being examined. </param>
         private void AddVesselToIVesselList(Vessel v)
         {
-            bool keep = true;
-            if (v.isEVA || !v.isCommandable || v.vesselType == VesselType.SpaceObject)
-                keep = false;
-            if (v.situation != Vessel.Situations.ORBITING && v.situation != Vessel.Situations.SUB_ORBITAL && v.situation != Vessel.Situations.ESCAPING)
-                keep = false;
+            // Check if vessel is valid, in a valid situation, and if it has any persistent engine
+            bool remove;
 
-            // Fails filter, so remove from the dictionary
-            if (!keep)
+            Profiler.BeginSample("CheckValidVessel");
+            if (IvesselElements.ContainsKey(v.id))
+                remove = !v.IsVesselValid() || !v.IsVesselSituationValid();
+            else
+                remove = !v.IsVesselValid() || !v.IsVesselSituationValid() || !v.HasPersistentEngineModules();
+            Profiler.EndSample();
+
+            // If not in the dictionary and valid, add it
+            if (!IvesselElements.ContainsKey(v.id) && !remove)
             {
-                IvesselElements.Remove(v.vesselName);
-                return; // Fails filter, so return
+                var veInterface = PTGUI_Vessel.Create(v); // Add new vessel to the list and instantiate
+                IvesselElements[v.id] = veInterface;
+                veInterface.HasPersistentThrustActive = veInterface.PersistentThrustEnabled(v).Contains(true);
             }
 
-            if (IvesselElements.TryGetValue(v.vesselName, out var x)) // Already in the dictionary, so update the dictionary entry
+            // Fails filter, so remove the vessel
+            if (remove && IvesselElements.ContainsKey(v.id))
             {
-                x.VesselName = v.vesselName;
-                x.VesselIcon = PTGUI_Vessel.GetVesselTypeIcon(v.vesselType);
-                x.HasPersistentThrustActive = v.HasPersistentThrustEnabled();
+                window.RemoveVessel(IvesselElements[v.id]);
+                IvesselElements.Remove(v.id);
             }
-
-            var veInterface = new PTGUI_Vessel // Add new vessel to the list
-            {
-                VesselName = v.vesselName,
-                VesselIcon = PTGUI_Vessel.GetVesselTypeIcon(v.vesselType),
-                HasPersistentThrustActive = v.HasPersistentThrustEnabled(),
-                HasInfoWindowActive = false,
-            };
-
-            IvesselElements[v.vesselName] = veInterface;
         }
 
-        public IList<IVesselElement> GetVessels
+        public void ClampToScreen(RectTransform rect)
         {
-            get { return new List<IVesselElement>(IvesselElements.Values.ToArray()); }
+            UIMasterController.ClampToScreen(rect, -rect.sizeDelta / 2);
         }
     }
 }

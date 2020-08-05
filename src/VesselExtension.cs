@@ -1,13 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace PersistentThrust
 {
     public static class VesselExtension
     {
-        private static bool hasPersistentThrustEnabled;
-
         public static float GetDryMass(this Vessel vessel)
         {
             float dryMass = 0f;
@@ -18,39 +15,6 @@ namespace PersistentThrust
             }
 
             return dryMass;
-        }
-
-        public static bool HasPersistentEngineModules(this Vessel vessel)
-        {
-            if (vessel.loaded)
-            {
-                var PE = vessel.FindPartModuleImplementing<PersistentEngine>();
-                hasPersistentThrustEnabled = PE is null ? false : true;
-            }
-            else
-            {
-                foreach (var protoPart in vessel.protoVessel.protoPartSnapshots)
-                {
-                    ProtoPartModuleSnapshot moduleSnapshot = protoPart.FindModule(nameof(PersistentEngine));
-
-                    if (moduleSnapshot is null)
-                        continue;
-
-                    hasPersistentThrustEnabled = true;
-                }
-            }
-
-            return hasPersistentThrustEnabled;
-        }
-
-        public static bool IsVesselSituationValid(this Vessel v)
-        {
-            return v.situation == Vessel.Situations.ORBITING || v.situation == Vessel.Situations.ESCAPING || v.situation == Vessel.Situations.SUB_ORBITAL;
-        }
-
-        public static bool IsVesselValid(this Vessel v)
-        {
-            return !(v.vesselType == VesselType.SpaceObject || !v.isCommandable || v.isEVA);
         }
 
         public static double PersistHeading(this Vessel vessel, float fixedDeltaTime, float headingTolerance = 0.001f, bool forceRotation = false, bool canDropOutOfTimeWarp = true)
@@ -75,7 +39,7 @@ namespace PersistentThrust
 
             var ratioHeadingVersusRequest = Vector3d.Dot(vessel.transform.up.normalized, requestedDirection);
 
-            var finalTolerance = Math.Min(0.995, (1 - Math.Min(1, fixedDeltaTime * headingTolerance)));
+            var finalTolerance =  Math.Min(0.995, (1 - Math.Min(1, fixedDeltaTime * headingTolerance)));
 
             if (forceRotation || ratioHeadingVersusRequest > finalTolerance)
             {

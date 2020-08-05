@@ -18,33 +18,25 @@ namespace PersistentThrust.UI
 
         private IVesselElement vesselElementInterface;
 
-
-        public void UpdateVesselName(string newName)
+        private void Start()
         {
-            if (m_vesselName != null)
-                m_vesselName.text = newName;
+            //Add listener for when the state of the Toggle changes, to take action
+            m_persistentThrustToggle.onValueChanged.AddListener(delegate {
+                PersistentThrustToggle(m_persistentThrustToggle.isOn);
+            });
+            m_vesselInfoToggle.onValueChanged.AddListener(delegate {
+                VesselInfoToggle(m_vesselInfoToggle.isOn);
+            });
         }
 
-        public void SetPersistentThrustEnabledToggle(bool state)
+        private void Update()
         {
-            if (m_persistentThrustToggle != null)
-                m_persistentThrustToggle.isOn = state;
+
         }
 
-        public void SetVesselInfoToggle(bool state)
+        private void OnDestroy()
         {
-            if (m_vesselInfoToggle != null)
-                m_vesselInfoToggle.isOn = state;
-
-            //Turn on Vessel info window
-        }
-
-        public void SetVesselIcon(Sprite icon)
-        {
-            if (m_vesselIcon != null)
-                m_vesselIcon.sprite = icon;
-
-            //Turn on Vessel info window
+            Destroy(vesselElementInterface.GameObj);
         }
 
         public bool GetPersistentThrustEnabledToggle()
@@ -67,25 +59,42 @@ namespace PersistentThrust.UI
 
             if (element.VesselIcon != null)
                 m_vesselIcon.sprite = element.VesselIcon;
+
+            m_persistentThrustToggle.isOn = element.HasPersistentThrustActive;
+            m_vesselInfoToggle.isOn = element.HasInfoWindowActive;
+        }
+
+        public void updateElement(IVesselElement element)
+        {
+            if (element == null)
+                return;
+
+            vesselElementInterface = element;
+
+            if (element.VesselName != null)
+                m_vesselName.text = element.VesselName;
+
+            if (element.VesselIcon != null)
+                m_vesselIcon.sprite = element.VesselIcon;
+
+            m_vesselInfoToggle.isOn = element.HasInfoWindowActive;
+            m_persistentThrustToggle.isOn = element.HasPersistentThrustActive;
         }
 
         // Listeners
-        /*
         public void PersistentThrustToggle(bool isOn)
         {
-            if (!loaded)
-                return;
-
             if (m_persistentThrustToggle == null)
                 return;
 
-            //Turn on Persistent Thrust
+            vesselElementInterface.HasPersistentThrustActive = isOn;
+            vesselElementInterface.PersistentThrustWasToggled = true;
         }
-        */
 
-        public void myButtonListener()
+        public void VesselInfoToggle(bool isOn)
         {
-            //Methods with no arguments can be added to any button or to any other element if the argument does not need to be specified
+            if (m_vesselInfoToggle == null)
+                return;
         }
     }
 }

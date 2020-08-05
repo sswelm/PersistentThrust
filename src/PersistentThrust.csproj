@@ -24,17 +24,13 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>portable</DebugType>
+    <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <Prefer32Bit>false</Prefer32Bit>
-    <DebugSymbols>true</DebugSymbols>
-  </PropertyGroup>
-  <PropertyGroup>
-    <StartupObject />
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Assembly-CSharp, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
@@ -52,10 +48,6 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>Unity\8.1\UnityEngine.AnimationModule.dll</HintPath>
     </Reference>
-    <Reference Include="UnityEngine.AssetBundleModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Unity\8.1\UnityEngine.AssetBundleModule.dll</HintPath>
-    </Reference>
     <Reference Include="UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>Unity\8.1\UnityEngine.CoreModule.dll</HintPath>
@@ -68,44 +60,24 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>Unity\8.1\UnityEngine.JSONSerializeModule.dll</HintPath>
     </Reference>
-    <Reference Include="UnityEngine.UI, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Unity\8.1\UnityEngine.UI.dll</HintPath>
-    </Reference>
-    <Reference Include="UnityEngine.UIModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Unity\8.1\UnityEngine.UIModule.dll</HintPath>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BackgroundProcessing.cs" />
     <Compile Include="DetectKerbalism.cs" />
     <Compile Include="DetectRealFuels.cs" />
-    <Compile Include="PTGUI.cs" />
     <Compile Include="OrbitExtensions.cs" />
     <Compile Include="GameEventSubscriber.cs" />
     <Compile Include="PersistentEngine.cs" />
     <Compile Include="Preferences.cs" />
     <Compile Include="Propellant.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="PTGUI_Loader.cs" />
-    <Compile Include="PTGUI_Settings.cs" />
-    <Compile Include="PTGUI_Vessel.cs" />
     <Compile Include="Utils.cs" />
     <Compile Include="VesselExtension.cs" />
   </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\PersistentThrust.UI\PersistentThrust.UI.csproj">
-      <Project>{8f28a284-ab59-4bf8-9be9-59b19ee9df2c}</Project>
-      <Name>PersistentThrust.UI</Name>
-    </ProjectReference>
-  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>copy /y "$(TargetDir)$(ProjectName).dll" "$(SolutionDir)\..\GameData\$(ProjectName)\Plugin\$(ProjectName).dll"
-copy /y "$(TargetDir)$(ProjectName).pdb" "$(SolutionDir)\..\GameData\$(ProjectName)\Plugin\$(ProjectName).pdb"</PostBuildEvent>
+    <PostBuildEvent>copy /Y "$(TargetDir)$(ProjectName).dll" "$(SolutionDir)\..\GameData\$(ProjectName)\Plugin\$(ProjectName).dll</PostBuildEvent>
   </PropertyGroup>
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">
   </Target>

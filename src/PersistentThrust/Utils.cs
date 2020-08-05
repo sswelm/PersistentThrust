@@ -37,7 +37,7 @@ namespace PersistentThrust
 
 
         /// <summary>
-        /// Calculates DeltaV vector.
+        /// Calculates DeltaV vector from step size, vessel mass, propellant mass, thrust vector and Isp.
         /// </summary>
         public static Vector3d CalculateDeltaVVector(double densityPropellantAverage, double vesselMass, double deltaTime, double thrust, float isp, Vector3d thrustVector, out double mass)
         {
@@ -47,7 +47,7 @@ namespace PersistentThrust
             var deltaMass = massFlowRate * deltaTime;
             // Resource demand from propellants with mass
             mass = densityPropellantAverage > 0 ? deltaMass / densityPropellantAverage : 0;
-            //// Resource demand from propellants with mass
+            // Resource demand from propellants with mass
             var remainingMass = vesselMass - deltaMass;
             // deltaV amount
             var deltaV = isp * PhysicsGlobals.GravitationalAcceleration * Math.Log(remainingMass > 0 ? vesselMass / remainingMass : 1);
@@ -62,7 +62,7 @@ namespace PersistentThrust
             var massFlowRate = isp > 0 ? thrust / (isp * PhysicsGlobals.GravitationalAcceleration) : 0;
             // Change in mass over time interval dT
             var deltaMass = massFlowRate * deltaTime;
-            //// Resource demand from propellants with mass
+            // Resource demand from propellants with mass
             var remainingMass = vesselMass - deltaMass;
             // deltaV amount
             var deltaV = isp * PhysicsGlobals.GravitationalAcceleration * Math.Log(remainingMass > 0 ? vesselMass / remainingMass : 1);

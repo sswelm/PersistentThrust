@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using UnityEngine;
 
 namespace PersistentThrust.UI.Interface
 {
@@ -8,13 +9,12 @@ namespace PersistentThrust.UI.Interface
 
         bool IsVisible { get; }
 
-        IList<IVesselElement> GetVessels { get; }
-        /*
-        float Scale { get; }
+        List<IVesselElement> Vessels { get; }
 
         Vector2 Position { get; set; }
 
+        float Scale { get; }
+
         void ClampToScreen(RectTransform rect);
-        */
     }
 }

@@ -14,7 +14,7 @@
         [GameParameters.CustomParameterUI("#LOC_PT_Settings_ReturnToRealTime", toolTip = "#LOC_PT_Settings_ReturnToRealTimeToolTip")]
         public bool returnToRealtimeAfterKeyPressed = false;
         [GameParameters.CustomParameterUI("#LOC_PT_DefaultHasPersistentThrust", toolTip = "#LOC_PT_DefaultHasPersistentThrustToolTip")]
-        public bool defaultHasPersistentThrust = true;
+        public bool defaultHasPersistentThrust = false;
         [GameParameters.CustomParameterUI("#LOC_PT_DefaultHasPersistentHeadingEnabled", toolTip = "#LOC_PT_DefaultHasPersistentHeadingEnabledToolTip")]
         public bool defaultHasPersistentHeadingEnabled = true;
         [GameParameters.CustomParameterUI("#LOC_PT_DefaultMaximizePersistentIsp", toolTip = "#LOC_PT_DefaultMaximizePersistentIspToolTip")]

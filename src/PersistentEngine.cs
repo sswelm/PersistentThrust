@@ -2,7 +2,6 @@ using KSP.Localization;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using CommNet;
 using UniLinq;
 using UnityEngine;
 
@@ -43,6 +42,7 @@ namespace PersistentThrust
         [KSPField(isPersistant = true, guiActiveEditor = false, guiActive = true, guiName = "#LOC_PT_ManeuverTolerance", guiUnits = " %"), UI_FloatRange(stepIncrement = 1, maxValue = 90, minValue = 0, requireFullControl = false, affectSymCounterparts = UI_Scene.All)]//Beamed Power Throttle
         public float maneuverToleranceInDegree = 90;
 
+        // Persistent values to use during TimeWarp and offline processing
         [KSPField(isPersistant = true)]
         public VesselAutopilot.AutopilotMode persistentAutopilotMode;
         [KSPField(isPersistant = true)]
@@ -130,7 +130,7 @@ namespace PersistentThrust
         public int vesselChangedSoiCountdown = 10;
         public int fixedUpdateCount;
 
-        private readonly Dictionary<string, double> _resourceChangeRequest = new Dictionary<string, double>();
+        private readonly Dictionary<string, double> _kerbalismResourceChangeRequest = new Dictionary<string, double>();
         private readonly Queue<float> _mainThrottleQueue = new Queue<float>();
         private Dictionary<string, double> _availablePartResources = new Dictionary<string, double>();
 
@@ -184,9 +184,9 @@ namespace PersistentThrust
             node.SetValue(nameof(persistentAverageDensity), persistentAverageDensity, true);
 
             // serialize resource request
-            if (_resourceChangeRequest.Any())
+            if (_kerbalismResourceChangeRequest.Any())
             {
-                persistentResourceChange = string.Join(";", _resourceChangeRequest.Select(x => x.Key + "=" + x.Value).ToArray());
+                persistentResourceChange = string.Join(";", _kerbalismResourceChangeRequest.Select(x => x.Key + "=" + x.Value).ToArray());
                 node.SetValue(nameof(persistentResourceChange), persistentResourceChange, true);
             }
 
@@ -194,37 +194,37 @@ namespace PersistentThrust
             {
                 case VesselAutopilot.AutopilotMode.Target:
                 case VesselAutopilot.AutopilotMode.AntiTarget:
+                {
+                    var orbitDriver = vessel.targetObject.GetOrbitDriver();
+                    if (orbitDriver.vessel != null)
                     {
-                        var orbitDriver = vessel.targetObject.GetOrbitDriver();
-                        if (orbitDriver.vessel != null)
-                        {
-                            persistentVesselTargetId = orbitDriver.vessel.id;
-                            persistentVesselTargetBodyName = string.Empty;
-                        }
-                        else if (orbitDriver.celestialBody != null)
-                        {
-                            persistentVesselTargetId = Guid.Empty;
-                            persistentVesselTargetBodyName = orbitDriver.celestialBody.bodyName;
-                        }
-                        else
-                        {
-                            persistentVesselTargetId = Guid.Empty;
-                            persistentVesselTargetBodyName = string.Empty;
-                        }
-
-                        node.SetValue(nameof(persistentVesselTargetId), persistentVesselTargetId.ToString(), true);
-                        node.SetValue(nameof(persistentVesselTargetBodyName), persistentVesselTargetBodyName, true);
-                        break;
+                        persistentVesselTargetId = orbitDriver.vessel.id;
+                        persistentVesselTargetBodyName = string.Empty;
                     }
+                    else if (orbitDriver.celestialBody != null)
+                    {
+                        persistentVesselTargetId = Guid.Empty;
+                        persistentVesselTargetBodyName = orbitDriver.celestialBody.bodyName;
+                    }
+                    else
+                    {
+                        persistentVesselTargetId = Guid.Empty;
+                        persistentVesselTargetBodyName = string.Empty;
+                    }
+
+                    node.SetValue(nameof(persistentVesselTargetId), persistentVesselTargetId.ToString(), true);
+                    node.SetValue(nameof(persistentVesselTargetBodyName), persistentVesselTargetBodyName, true);
+                    break;
+                }
                 case VesselAutopilot.AutopilotMode.Maneuver when vessel.patchedConicSolver.maneuverNodes.Count > 0:
-                    {
-                        var maneuverNode = vessel.patchedConicSolver.maneuverNodes[0];
+                {
+                    var maneuverNode = vessel.patchedConicSolver.maneuverNodes[0];
 
-                        node.SetValue(nameof(persistentManeuverUT), maneuverNode.UT, true);
-                        node.SetValue(nameof(persistentManeuverNextPatch), maneuverNode.nextPatch.Serialize(), true);
-                        node.SetValue(nameof(persistentManeuverPatch), maneuverNode.patch.Serialize(), true);
-                        break;
-                    }
+                    node.SetValue(nameof(persistentManeuverUT), maneuverNode.UT, true);
+                    node.SetValue(nameof(persistentManeuverNextPatch), maneuverNode.nextPatch.Serialize(), true);
+                    node.SetValue(nameof(persistentManeuverPatch), maneuverNode.patch.Serialize(), true);
+                    break;
+                }
             }
         }
 
@@ -251,27 +251,9 @@ namespace PersistentThrust
 
             if (state == StartState.Editor) return;
 
-            Fields[nameof(this.HasPersistentThrust)].uiControlFlight.onFieldChanged += OnPersistentThrustPAWToggled;
-
             masslessUsageField = Fields[nameof(this.masslessUsage)];
         }
 
-        private void OnPersistentThrustPAWToggled(BaseField f, object obj)
-        {
-            if (PTGUI.Instance is null || !PTGUI.Instance.IsVisible || !PTGUI.Instance.IvesselElements.ContainsKey(vessel.id))
-                return;
-
-            var x = PTGUI.Instance.IvesselElements[vessel.id]?.GameObj;
-            if (x is null)
-                return;
-
-            var v = x.GetComponent<PTGUI_Vessel>();
-            if (v is null)
-                return;
-
-            v.UpdateVesselThrustInfo(HasPersistentThrust);
-            v.SetVesselWidePersistentThurst(HasPersistentThrust);
-        }
 
 
         /// <summary>
@@ -279,9 +261,6 @@ namespace PersistentThrust
         /// </summary>
         public override void OnUpdate()
         {
-            if (moduleEngines.Length == 0)
-                return;
-
             thrustTxt = Utils.FormatThrust(persistentThrust);
 
             PersistentEngineModule[] persistentEngineModules = isMultiMode ? new[] { currentEngine } : moduleEngines;
@@ -328,7 +307,6 @@ namespace PersistentThrust
                 if (warpToRealCountDown-- <= 0)
                     warpToReal = false;
             }
-
             if (vessel.packed)
             {
                 // maintain thrust setting during TimeWarp
@@ -375,18 +353,14 @@ namespace PersistentThrust
         /// </summary>
         public void FixedUpdate() // FixedUpdate is also called while not staged
         {
-            if (vessel is null || currentEngine?.engine is null || !isEnabled)
-            {
-                persistentThrust = 0;
-                return;
-            }
+            if (vessel is null || currentEngine?.engine is null || !isEnabled) return;
 
             vesselHeadingVersusManeuver = vessel.GetVesselOrbitHeadingVersusManeuverVector();
             vesselHeadingVersusManeuverInDegree = Math.Acos(Math.Max(-1, Math.Min(1, vesselHeadingVersusManeuver))) * Orbit.Rad2Deg;
 
             RestoreHeadingAtLoad();
 
-            _resourceChangeRequest.Clear();
+            _kerbalismResourceChangeRequest.Clear();
 
             if (vesselChangedSoiCountdown > 0)
                 vesselChangedSoiCountdown--;
@@ -992,12 +966,8 @@ namespace PersistentThrust
             for (var i = 0; i < moduleEngines.Length; i++)
             {
                 var persistentEngineModule = moduleEngines[i];
-
-                if (powerEffectNameList.Count > i)
-                    persistentEngineModule.powerEffectName = powerEffectNameList[i];
-
-                if (runningEffectNameList.Count > i)
-                    persistentEngineModule.runningEffectName = runningEffectNameList[i];
+                persistentEngineModule.powerEffectName = powerEffectNameList[i];
+                persistentEngineModule.runningEffectName = runningEffectNameList[i];
 
                 ApplyEffect(persistentEngineModule.powerEffectName, 0);
                 ApplyEffect(persistentEngineModule.runningEffectName, 0);
@@ -1068,7 +1038,7 @@ namespace PersistentThrust
         {
             var activePropellant = currentPersistentPropellant;
 
-            var persistentEngines = vessel.FindPartModulesImplementing<PersistentEngine>().Where(m => m.currentEngine.engine.getIgnitionState).ToList();
+            var persistentEngines = vessel.FindPartModulesImplementing<PersistentEngine>();
 
             List<PersistentPropellant> activePropellants = persistentEngines.SelectMany(pe => pe.moduleEngines.SelectMany(pl =>
                 pl.propellants.Where(pp =>
@@ -1080,30 +1050,16 @@ namespace PersistentThrust
 
             // store mission time to prevent other engines doing unnecessary work
             currentPersistentPropellant.missionTime = vessel.missionTime;
-
             // determine amount and maxAmount at start of PersistentEngine testing
             part.GetConnectedResourceTotals(currentPersistentPropellant.definition.id,
                 currentPersistentPropellant.propellant.GetFlowMode(), out currentPersistentPropellant.amount,
                 out currentPersistentPropellant.maxAmount, true);
-
             // calculate total demand on operational engines
-            currentPersistentPropellant.totalEnginesDemand = 0;
-            foreach (var persistentEngine in persistentEngines)
-            {
-                if (persistentEngine.isMultiMode)
-                {
-                    currentPersistentPropellant.totalEnginesDemand += persistentEngine.currentEngine.propellants
-                        .Where(l => l.definition.id == currentPersistentPropellant.definition.id)
-                        .Sum(l => l.normalizedDemand);
-                }
-                else
-                {
-                    currentPersistentPropellant.totalEnginesDemand += persistentEngine.moduleEngines
-                        .Sum(m => m.propellants
-                            .Where(l => l.definition.id == currentPersistentPropellant.definition.id)
-                            .Sum(l => l.normalizedDemand));
-                }
-            }
+            currentPersistentPropellant.totalEnginesDemand = persistentEngines
+                .Where(e => e.currentEngine.engine.getIgnitionState)
+                .Sum(m => m.currentEngine.propellants
+                    .Where(l => l.definition.id == currentPersistentPropellant.definition.id)
+                    .Sum(l => l.normalizedDemand));
 
             return activePropellant;
         }
@@ -1162,20 +1118,20 @@ namespace PersistentThrust
         /// <returns> The amount of resource that was consumed. </returns>
         private double RequestResource(PersistentPropellant propellant, double demand, bool simulate = false)
         {
+            if (!DetectKerbalism.Found())
+                return part.RequestResource(propellant.definition.id, demand, propellant.propellant.GetFlowMode(), simulate || (propellant.density > 0 && !vessel.packed));
+
             _availablePartResources.TryGetValue(propellant.definition.name, out double availableAmount);
 
             if (simulate)
                 _availablePartResources[propellant.definition.name] = Math.Max(0, availableAmount - demand);
             else
             {
-                _resourceChangeRequest.TryGetValue(propellant.definition.name, out double currentDemand);
-                _resourceChangeRequest[propellant.definition.name] = currentDemand - (demand / TimeWarp.fixedDeltaTime);
+                _kerbalismResourceChangeRequest.TryGetValue(propellant.definition.name, out double currentDemand);
+                _kerbalismResourceChangeRequest[propellant.definition.name] = currentDemand - (demand / TimeWarp.fixedDeltaTime);
             }
 
-            if (DetectKerbalism.Found())
-                return Math.Min(availableAmount, demand);
-            else
-                return part.RequestResource(propellant.definition.id, demand, propellant.propellant.GetFlowMode(), simulate || (propellant.density > 0 && !vessel.packed)); ;
+            return Math.Min(availableAmount, demand);
         }
 
         private void RestoreMaxFuelFlow()
@@ -1252,10 +1208,6 @@ namespace PersistentThrust
             List<KeyValuePair<string, double>> resourceChangeRequest,
             double elapsed_s)
         {
-            bool HasPersistentThrust = bool.Parse(module_snapshot.moduleValues.GetValue(nameof(HasPersistentThrust)));
-            if (!HasPersistentThrust)
-                return proto_part.partInfo.title;
-
             double persistentThrust = 0;
             if (!module_snapshot.moduleValues.TryGetValue(nameof(persistentThrust), ref persistentThrust))
                 return proto_part.partInfo.title;
@@ -1284,7 +1236,7 @@ namespace PersistentThrust
             if (resourceChanges.Any(m => m.Value == 0))
                 return proto_part.partInfo.title;
 
-            VesselAutopilot.AutopilotMode persistentAutopilotMode = (VesselAutopilot.AutopilotMode)Enum.Parse(
+            VesselAutopilot.AutopilotMode persistentAutopilotMode = (VesselAutopilot.AutopilotMode) Enum.Parse(
                 typeof(VesselAutopilot.AutopilotMode), module_snapshot.moduleValues.GetValue(nameof(persistentAutopilotMode)));
 
             Orbit orbit = vessel.GetOrbit();
@@ -1294,9 +1246,6 @@ namespace PersistentThrust
             Vector3d thrustVector = Vector3d.zero;
             switch (persistentAutopilotMode)
             {
-                case VesselAutopilot.AutopilotMode.StabilityAssist:
-                    thrustVector = vessel.GetTransform().up.normalized;
-                    break;
                 case VesselAutopilot.AutopilotMode.Prograde:
                     thrustVector = orbitalVelocityAtUt;
                     break;
@@ -1304,10 +1253,10 @@ namespace PersistentThrust
                     thrustVector = -orbitalVelocityAtUt;
                     break;
                 case VesselAutopilot.AutopilotMode.Normal:
-                    thrustVector = Vector3.Cross(orbitalVelocityAtUt, orbit.getPositionAtUT(UT) - vessel.mainBody.getPositionAtUT(UT));
+                    thrustVector = Vector3.Cross(orbitalVelocityAtUt, (orbit.getPositionAtUT(UT) - vessel.mainBody.getPositionAtUT(UT) ));
                     break;
                 case VesselAutopilot.AutopilotMode.Antinormal:
-                    thrustVector = -Vector3.Cross(orbitalVelocityAtUt, orbit.getPositionAtUT(UT) - vessel.mainBody.getPositionAtUT(UT));
+                    thrustVector = -Vector3.Cross(orbitalVelocityAtUt, (orbit.getPositionAtUT(UT) - vessel.mainBody.getPositionAtUT(UT)));
                     break;
                 case VesselAutopilot.AutopilotMode.RadialIn:
                     thrustVector = -Vector3.Cross(orbitalVelocityAtUt, Vector3.Cross(orbitalVelocityAtUt, vessel.orbit.getPositionAtUT(UT) - orbit.referenceBody.position));
@@ -1321,9 +1270,9 @@ namespace PersistentThrust
                 case VesselAutopilot.AutopilotMode.AntiTarget:
                     thrustVector = -GetThrustVectorToTarget(vessel, module_snapshot, UT);
                     break;
-                    //case VesselAutopilot.AutopilotMode.Maneuver:
-                    //    thrustVector = orbit.GetThrustVectorToManeuver(moduleSnapshot);
-                    //    break;
+                //case VesselAutopilot.AutopilotMode.Maneuver:
+                //    thrustVector = orbit.GetThrustVectorToManeuver(moduleSnapshot);
+                //    break;
             }
 
             if (thrustVector == Vector3d.zero)
@@ -1405,7 +1354,7 @@ namespace PersistentThrust
 
             resourceChangeRequest.Clear();
 
-            foreach (var resourceRequest in _resourceChangeRequest)
+            foreach (var resourceRequest in _kerbalismResourceChangeRequest)
             {
                 var definition = PartResourceLibrary.Instance.GetDefinition(resourceRequest.Key);
                 if (definition is null || definition.density > 0 && !vessel.packed)
