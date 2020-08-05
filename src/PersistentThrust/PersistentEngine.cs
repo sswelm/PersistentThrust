@@ -2,7 +2,6 @@ using KSP.Localization;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using CommNet;
 using UniLinq;
 using UnityEngine;
 
@@ -43,6 +42,7 @@ namespace PersistentThrust
         [KSPField(isPersistant = true, guiActiveEditor = false, guiActive = true, guiName = "#LOC_PT_ManeuverTolerance", guiUnits = " %"), UI_FloatRange(stepIncrement = 1, maxValue = 90, minValue = 0, requireFullControl = false, affectSymCounterparts = UI_Scene.All)]//Beamed Power Throttle
         public float maneuverToleranceInDegree = 90;
 
+        // Persistent values to use during TimeWarp and offline processing
         [KSPField(isPersistant = true)]
         public VesselAutopilot.AutopilotMode persistentAutopilotMode;
         [KSPField(isPersistant = true)]

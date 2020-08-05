@@ -6,7 +6,7 @@ namespace PersistentThrust
 {
     public static class VesselExtension
     {
-        private static bool hasPersistentThrustEnabled;
+        private static bool hasPersistentEngineModules;
 
         public static float GetDryMass(this Vessel vessel)
         {
@@ -25,7 +25,7 @@ namespace PersistentThrust
             if (vessel.loaded)
             {
                 var PE = vessel.FindPartModuleImplementing<PersistentEngine>();
-                hasPersistentThrustEnabled = PE is null ? false : true;
+                hasPersistentEngineModules = PE is null ? false : true;
             }
             else
             {
@@ -36,11 +36,11 @@ namespace PersistentThrust
                     if (moduleSnapshot is null)
                         continue;
 
-                    hasPersistentThrustEnabled = true;
+                    hasPersistentEngineModules = true;
                 }
             }
 
-            return hasPersistentThrustEnabled;
+            return hasPersistentEngineModules;
         }
 
         public static bool IsVesselSituationValid(this Vessel v)
