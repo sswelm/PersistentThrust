@@ -526,5 +526,67 @@ PrefabInstance:
       propertyPath: m_AnchorMax.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 7719240879857254282, guid: ac5b0300437475c45ac901c06e7db0d8,
+        type: 3}
+      propertyPath: m_AnchorMin.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7719240879857254282, guid: ac5b0300437475c45ac901c06e7db0d8,
+        type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7719240879857254282, guid: ac5b0300437475c45ac901c06e7db0d8,
+        type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1128038423342838657, guid: ac5b0300437475c45ac901c06e7db0d8,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4995323828840991902, guid: ac5b0300437475c45ac901c06e7db0d8,
+        type: 3}
+      propertyPath: onValueChanged.m_PersistentCalls.m_Calls.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4995323828840991902, guid: ac5b0300437475c45ac901c06e7db0d8,
+        type: 3}
+      propertyPath: onValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_Mode
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4995323828840991902, guid: ac5b0300437475c45ac901c06e7db0d8,
+        type: 3}
+      propertyPath: onValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_CallState
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 4995323828840991902, guid: ac5b0300437475c45ac901c06e7db0d8,
+        type: 3}
+      propertyPath: onValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_Target
+      value: 
+      objectReference: {fileID: 7001759832603502370}
+    - target: {fileID: 4995323828840991902, guid: ac5b0300437475c45ac901c06e7db0d8,
+        type: 3}
+      propertyPath: onValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
+      value: PersistentThrustToggle
+      objectReference: {fileID: 0}
+    - target: {fileID: 4995323828840991902, guid: ac5b0300437475c45ac901c06e7db0d8,
+        type: 3}
+      propertyPath: onValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_Arguments.m_ObjectArgumentAssemblyTypeName
+      value: UnityEngine.Object, UnityEngine
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: ac5b0300437475c45ac901c06e7db0d8, type: 3}
+--- !u!114 &7001759832603502370 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1128038423342838658, guid: ac5b0300437475c45ac901c06e7db0d8,
+    type: 3}
+  m_PrefabInstance: {fileID: 7001759832603502369}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1297744682, guid: 43b5149e22b12f74ea05be2854e473e2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
