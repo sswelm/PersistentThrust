@@ -33,8 +33,9 @@ namespace PersistentThrust
         public Dictionary<uint, EngineData> Engines { get; set; } = new Dictionary<uint, EngineData>();
         public Dictionary<uint, SolarPanelData> SolarPanels { get; set; } = new Dictionary<uint, SolarPanelData>();
 
-        public Dictionary<string, double> AvailableResources { get; set; }  = new Dictionary<string, double>();
+        public Dictionary<string, double> AvailableResources { get; set; } = new Dictionary<string, double>();
         public Dictionary<string, double> MaxAmountResources { get; set; } = new Dictionary<string, double>();
+        public Dictionary<string, double> ResourceChangeRequests { get; set; } = new Dictionary<string, double>();
 
         public VesselData(Vessel vessel)
         {
@@ -90,6 +91,14 @@ namespace PersistentThrust
                     vesselData = new VesselData(vessel);
                     VesselDataDict.Add(vessel.id, vesselData);
                 }
+                else
+                {
+                    // ensure vessel is up to date
+                    if (vesselData.Vessel != vessel)
+                        vesselData.Vessel = vessel;
+
+                    vesselData.ResourceChangeRequests.Clear(); 
+                }
 
                 // update vessel data when loaded
                 if (vessel.loaded)
@@ -111,23 +120,41 @@ namespace PersistentThrust
                     continue;
 
                 // look for active persistent engines in all vessel parts
-                LoadUnloadedParts(vessel, vesselData);
+                LoadUnloadedParts(vesselData);
 
-                // process persistent engine if we already found any active persistent engine
-                ProcessUnloadedPersistentEngines(vesselData, vessel);
+                // extract power from Solar Panels
+                ProcessUnloadedPersistentSolarPanels(vesselData);
+
+                // process persistent engines
+                ProcessUnloadedPersistentEngines(vesselData);
             }
         }
 
-        private static void ProcessUnloadedPersistentEngines(VesselData vesselData, Vessel vessel)
+        private static void ProcessUnloadedPersistentSolarPanels(VesselData vesselData)
         {
+            if (DetectKerbalism.Found())
+                return;
+
+            if (!vesselData.SolarPanels.Any())
+                return;
+
+            foreach (var solarPanel in vesselData.SolarPanels)
+            {
+                // ToDo Generate Power
+            }
+        }
+
+        private static void ProcessUnloadedPersistentEngines(VesselData vesselData)
+        {
+            if (DetectKerbalism.Found())
+                return;
+
             if (!vesselData.Engines.Any())
                 return;
 
-            var totalResourceChangeRequests = new Dictionary<string, double>();
-
             foreach (var engine in vesselData.Engines)
             {
-                ProtoPartSnapshot protoPartSnapshot = vessel.protoVessel.protoPartSnapshots
+                ProtoPartSnapshot protoPartSnapshot = vesselData.Vessel.protoVessel.protoPartSnapshots
                     .FirstOrDefault(m => m.persistentId == engine.Value.PersistentPartId);
 
                 if (protoPartSnapshot == null)
@@ -139,31 +166,28 @@ namespace PersistentThrust
 
                 var resourceChangeRequest = new List<KeyValuePair<string, double>>();
 
-                ProcessUnloadedPersistentEngine(protoPartSnapshot, vessel, vesselData, resourceChangeRequest);
+                ProcessUnloadedPersistentEngine(protoPartSnapshot, vesselData, resourceChangeRequest);
 
                 foreach (var keyValuePair in resourceChangeRequest)
                 {
-                    totalResourceChangeRequests.TryGetValue(keyValuePair.Key, out double requestedAmount);
-                    totalResourceChangeRequests[keyValuePair.Key] = requestedAmount - keyValuePair.Value;
+                    vesselData.ResourceChangeRequests.TryGetValue(keyValuePair.Key, out double requestedAmount);
+                    vesselData.ResourceChangeRequests[keyValuePair.Key] = requestedAmount - keyValuePair.Value;
                 }
             }
 
-            UpdateResources(vessel, totalResourceChangeRequests, vesselData.AvailableResources);
+            UpdateResources(vesselData);
         }
 
-        private static void UpdateResources(
-            Vessel vessel, 
-            Dictionary<string, double> totalResourceChangeRequests,
-            Dictionary<string, double> availableResources)
+        private static void UpdateResources(VesselData vesselData)
         {
-            foreach (var resourceRequest in totalResourceChangeRequests)
+            foreach (var resourceRequest in vesselData.ResourceChangeRequests)
             {
-                availableResources.TryGetValue(resourceRequest.Key, out double available);
+                vesselData.AvailableResources.TryGetValue(resourceRequest.Key, out double available);
 
                 if (available < float.Epsilon)
                     available = 0;
 
-                foreach (ProtoPartSnapshot protoPartSnapshot in vessel.protoVessel.protoPartSnapshots)
+                foreach (ProtoPartSnapshot protoPartSnapshot in vesselData.Vessel.protoVessel.protoPartSnapshots)
                 {
                     foreach (var protoPartResourceSnapshot in protoPartSnapshot.resources)
                     {
@@ -206,7 +230,7 @@ namespace PersistentThrust
             return totalVesselMass;
         }
 
-        private static void LoadUnloadedParts(Vessel vessel, VesselData vesselData)
+        private static void LoadUnloadedParts(VesselData vesselData)
         {
             if (vesselData.Engines.Any())
                 return;
@@ -214,7 +238,7 @@ namespace PersistentThrust
             // initially assume no active persistent engine present   
             vesselData.HasAnyActivePersistentEngine = false;
 
-            foreach (ProtoPartSnapshot protoPartSnapshot in vessel.protoVessel.protoPartSnapshots)
+            foreach (ProtoPartSnapshot protoPartSnapshot in vesselData.Vessel.protoVessel.protoPartSnapshots)
             {
                 LoadUnloadedPart(protoPartSnapshot, vesselData);
             }
@@ -311,13 +335,9 @@ namespace PersistentThrust
 
         private static void ProcessUnloadedPersistentEngine(
             ProtoPartSnapshot protoPartSnapshot, 
-            Vessel vessel, 
             VesselData vesselData, 
             List<KeyValuePair<string, double>> resourceChangeRequest)
         {
-            if (DetectKerbalism.Found())
-                return;
-
             // lookup engine data
             vesselData.Engines.TryGetValue(protoPartSnapshot.persistentId, out EngineData engineData);
 
@@ -329,7 +349,7 @@ namespace PersistentThrust
 
             // execute persistent engine BackgroundUpdate
             PersistentEngine.BackgroundUpdate(
-                vessel: vessel, 
+                vessel: vesselData.Vessel, 
                 part_snapshot: protoPartSnapshot, 
                 module_snapshot: engineData.ProtoPartModuleSnapshot, 
                 proto_part_module: engineData.PersistentEngine, 
