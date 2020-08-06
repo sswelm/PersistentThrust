@@ -25,7 +25,7 @@ namespace PersistentThrust
     public class VesselData
     {
         public Vessel Vessel { get; set; }
-        public uint PersistentVesselId { get; set; }    
+        
         public double TotalVesselMassInKg { get; set; }
         public double TotalVesselMassInTon { get; set; }
         public bool? HasAnyActivePersistentEngine { get; set; }
@@ -39,7 +39,6 @@ namespace PersistentThrust
         public VesselData(Vessel vessel)
         {
             Vessel = vessel;
-            PersistentVesselId = vessel.persistentId;
         }
     }
 
@@ -47,7 +46,14 @@ namespace PersistentThrust
     [KSPScenario(ScenarioCreationOptions.AddToAllGames, new[] {GameScenes.SPACECENTER, GameScenes.TRACKSTATION, GameScenes.FLIGHT, GameScenes.EDITOR})]
     public sealed class PersistentBackgroundProcessing : ScenarioModule
     {
-        public static readonly Dictionary<uint, VesselData> VesselDataDict = new Dictionary<uint, VesselData>();
+        public static readonly Dictionary<Guid, VesselData> VesselDataDict = new Dictionary<Guid, VesselData>();
+
+        public override void OnLoad(ConfigNode node)
+        {
+            base.OnLoad(node);
+
+            VesselDataDict.Clear();
+        }
 
         /// <summary>
         /// Called by the part every refresh frame where it is active, which can be less frequent than FixedUpdate which is called every processing frame
@@ -79,10 +85,10 @@ namespace PersistentThrust
                     continue;
 
                 // lookup cashed vessel data
-                if (!VesselDataDict.TryGetValue(vessel.persistentId, out VesselData vesselData))
+                if (!VesselDataDict.TryGetValue(vessel.id, out VesselData vesselData))
                 {
                     vesselData = new VesselData(vessel);
-                    VesselDataDict.Add(vessel.persistentId, vesselData);
+                    VesselDataDict.Add(vessel.id, vesselData);
                 }
 
                 // update vessel data when loaded
@@ -258,8 +264,7 @@ namespace PersistentThrust
                 return;
 
             // Load ModuleDeployableSolarPanel from ProtoPartModuleSnapshot
-            moduleDeployableSolarPanel.deployState = (ModuleDeployablePart.DeployState)Enum.Parse(typeof(VesselAutopilot.AutopilotMode),
-                protoPartModuleSnapshot.moduleValues.GetValue(nameof(moduleDeployableSolarPanel.deployState)));
+            moduleDeployableSolarPanel.deployState = (ModuleDeployablePart.DeployState)Enum.Parse(typeof(ModuleDeployablePart.DeployState), protoPartModuleSnapshot.moduleValues.GetValue(nameof(moduleDeployableSolarPanel.deployState)));
 
             // store data
             vesselData.SolarPanels.Add(protoPartSnapshot.persistentId, new SolarPanelData

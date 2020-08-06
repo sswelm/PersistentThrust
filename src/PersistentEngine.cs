@@ -1248,7 +1248,7 @@ namespace PersistentThrust
             List<KeyValuePair<string, double>> resourceChangeRequest,
             double elapsed_s)
         {
-            PersistentBackgroundProcessing.VesselDataDict.TryGetValue(vessel.persistentId, out VesselData vesselData);
+            PersistentBackgroundProcessing.VesselDataDict.TryGetValue(vessel.id, out VesselData vesselData);
             if (vesselData == null)
                 return proto_part.partInfo.title;
 
