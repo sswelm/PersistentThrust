@@ -63,6 +63,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="EngineBackgroundProcessing.cs" />
     <Compile Include="PersistentBackgroundProcessing.cs" />
     <Compile Include="DetectKerbalism.cs" />
     <Compile Include="DetectRealFuels.cs" />
