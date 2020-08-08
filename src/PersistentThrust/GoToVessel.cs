@@ -1,23 +1,14 @@
 ﻿using System;
+using System.Linq;
 using UnityEngine;
 
 namespace PersistentThrust
 {
     public static class GotoVessel
     {
-        [KSPField(isPersistant = true)] public static int version = 0;
-        public static void JumpToVessel(Vessel v)
+        public static void JumpToVessel(Vessel v, bool skipKerbalism = false)
         {
-            if (DetectKerbalism.Found() && DetectKerbalism.KerbalismAssembly != null)
-            {
-                DetectKerbalism.KerbalismAssembly.GetType("GotoVessel").GetMethod("JumpToVessel").Invoke(null, new object[] { v });
-                return;
-            }
-
-            string _saveGame = GamePersistence.SaveGame("Goto_" + version.ToString(), HighLogic.SaveFolder, SaveMode.OVERWRITE);
-
-            // Keep until 3 backups of Goto
-            if (version++ > 3) version = 0;
+            string _saveGame = GamePersistence.SaveGame("PT_Goto_backup", HighLogic.SaveFolder, SaveMode.OVERWRITE);
 
             if (HighLogic.LoadedSceneIsFlight)
             {

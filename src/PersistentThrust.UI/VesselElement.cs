@@ -39,12 +39,15 @@ namespace PersistentThrust.UI
         private Toggle m_maneuverToggle = null;
         [SerializeField]
         private Toggle m_stabilityToggle = null;
+        [SerializeField]
+        private Button goToButton = null;
+        [SerializeField]
+        private Toggle m_infoToggle = null;
 
         private IVesselElement vesselElementInterface;
         private AutoPilotModeEnum currentAutopilotMode;
-        private Button goToButton;
 
-        private void Start()
+        private void Awake()
         {
             var rect = GetComponent<RectTransform>();
             int indexNumber = rect.GetSiblingIndex();
@@ -54,7 +57,10 @@ namespace PersistentThrust.UI
             m_image.color = tempColor;
 
             goToButton = m_vesselIcon.gameObject.GetComponent<Button>();
+        }
 
+        private void Start()
+        {
             // Add listener to the GoToVessel button
             goToButton.onClick.AddListener(delegate
             {
@@ -106,9 +112,13 @@ namespace PersistentThrust.UI
             {
                 HeadingToggles(m_targetToggle);
             });
-            m_targetToggle.onValueChanged.AddListener(delegate
+            m_stabilityToggle.onValueChanged.AddListener(delegate
             {
                 HeadingToggles(m_stabilityToggle);
+            });
+            m_infoToggle.onValueChanged.AddListener(delegate
+            {
+                vesselElementInterface.OpenInfoWindow();
             });
         }
 
@@ -139,6 +149,9 @@ namespace PersistentThrust.UI
             m_vesselInfoToggle.isOn = element.HasInfoWindowActive;
 
             currentAutopilotMode = element.VesselAutopilotMode;
+
+            if (goToButton != null && element.IsActiveVessel)
+                goToButton.enabled = false;
 
             UpdateElementAutopilotInfo(element.VesselAutopilotMode);
         }
@@ -172,61 +185,52 @@ namespace PersistentThrust.UI
             {
                 case AutoPilotModeEnum.StabilityAssist:
                     {
-                        m_HeadingsToggleGroup.SetAllTogglesOff();
+                        m_stabilityToggle.isOn = true;
                         break;
                     }
                 case AutoPilotModeEnum.Antinormal:
                     {
                         m_antinormalToggle.isOn = true;
-                        m_HeadingsToggleGroup.NotifyToggleOn(m_antinormalToggle);
                         break;
                     }
                 case AutoPilotModeEnum.AntiTarget:
                     {
                         m_antiTargetToggle.isOn = true;
-                        m_HeadingsToggleGroup.NotifyToggleOn(m_antiTargetToggle);
                         break;
                     }
                 case AutoPilotModeEnum.Maneuver:
                     {
                         m_maneuverToggle.isOn = true;
-                        m_HeadingsToggleGroup.NotifyToggleOn(m_maneuverToggle);
                         break;
                     }
                 case AutoPilotModeEnum.Normal:
                     {
                         m_normalToggle.isOn = true;
-                        m_HeadingsToggleGroup.NotifyToggleOn(m_normalToggle);
                         break;
                     }
                 case AutoPilotModeEnum.Prograde:
                     {
                         m_progradeToggle.isOn = true;
-                        m_HeadingsToggleGroup.NotifyToggleOn(m_progradeToggle);
                         break;
                     }
                 case AutoPilotModeEnum.RadialIn:
                     {
                         m_radialIntoggle.isOn = true;
-                        m_HeadingsToggleGroup.NotifyToggleOn(m_radialIntoggle);
                         break;
                     }
                 case AutoPilotModeEnum.RadialOut:
                     {
                         m_radialOutToggle.isOn = true;
-                        m_HeadingsToggleGroup.NotifyToggleOn(m_radialOutToggle);
                         break;
                     }
                 case AutoPilotModeEnum.Retrograde:
                     {
                         m_retrogradeToggle.isOn = true;
-                        m_HeadingsToggleGroup.NotifyToggleOn(m_retrogradeToggle);
                         break;
                     }
                 case AutoPilotModeEnum.Target:
                     {
                         m_targetToggle.isOn = true;
-                        m_HeadingsToggleGroup.NotifyToggleOn(m_targetToggle);
                         break;
                     }
                 default:
@@ -243,8 +247,7 @@ namespace PersistentThrust.UI
             if (m_persistentThrustToggle == null)
                 return;
 
-            vesselElementInterface.HasPersistentThrustActive = isOn;
-            vesselElementInterface.PersistentThrustWasToggled = true;
+            vesselElementInterface.ChangeHasPersistentThrustState(isOn);
         }
 
         public void VesselInfoToggle(bool isOn)
@@ -257,50 +260,52 @@ namespace PersistentThrust.UI
 
         public void HeadingToggles(Toggle mode)
         {
-            vesselElementInterface.AutopilotModeWasChanged = true;
 
-            if (!mode.isOn)
+            if (mode.name == m_stabilityToggle.name)
+                SetInterfaceAutopilotMode(AutoPilotModeEnum.StabilityAssist, mode.isOn);
+
+            else if (mode.name == m_antinormalToggle.name)
+                SetInterfaceAutopilotMode(AutoPilotModeEnum.Antinormal, mode.isOn);
+
+            else if (mode.name == m_antiTargetToggle.name)
+                SetInterfaceAutopilotMode(AutoPilotModeEnum.AntiTarget, mode.isOn);
+
+            else if (mode.name == m_maneuverToggle.name)
+                SetInterfaceAutopilotMode(AutoPilotModeEnum.Maneuver, mode.isOn);
+
+            else if (mode.name == m_normalToggle.name)
+                SetInterfaceAutopilotMode(AutoPilotModeEnum.Normal, mode.isOn);
+
+            else if (mode.name == m_progradeToggle.name)
+                SetInterfaceAutopilotMode(AutoPilotModeEnum.Prograde, mode.isOn);
+
+            else if (mode.name == m_radialIntoggle.name)
+                SetInterfaceAutopilotMode(AutoPilotModeEnum.RadialIn, mode.isOn);
+
+            else if (mode.name == m_radialOutToggle.name)
+                SetInterfaceAutopilotMode(AutoPilotModeEnum.RadialOut, mode.isOn);
+
+            else if (mode.name == m_retrogradeToggle.name)
+                SetInterfaceAutopilotMode(AutoPilotModeEnum.Retrograde, mode.isOn);
+
+            else if (mode.name == m_targetToggle.name)
+                SetInterfaceAutopilotMode(AutoPilotModeEnum.Target, mode.isOn);
+        }
+
+        private void SetInterfaceAutopilotMode(AutoPilotModeEnum mode, bool active = true)
+        {
+            currentAutopilotMode = mode;
+
+            if (active && !vesselElementInterface.CheckAutopilotModeAvailable(mode))
             {
-                vesselElementInterface.VesselAutopilotActive = false;
-                vesselElementInterface.VesselAutopilotMode = AutoPilotModeEnum.StabilityAssist;
+                vesselElementInterface.OpenModeUnavailableDialog(mode);
                 return;
             }
 
-            if(mode.name == m_stabilityToggle.name)
-                SetInterfaceAutopilotMode(AutoPilotModeEnum.StabilityAssist);
-
-            else if(mode.name == m_antinormalToggle.name)
-                SetInterfaceAutopilotMode(AutoPilotModeEnum.Antinormal);
-
-            else if (mode.name == m_antiTargetToggle.name)
-                SetInterfaceAutopilotMode(AutoPilotModeEnum.AntiTarget);
-
-            else if (mode.name == m_maneuverToggle.name)
-                SetInterfaceAutopilotMode(AutoPilotModeEnum.Maneuver);
-
-            else if (mode.name == m_normalToggle.name)
-                SetInterfaceAutopilotMode(AutoPilotModeEnum.Normal);
-
-            else if (mode.name == m_progradeToggle.name)
-                SetInterfaceAutopilotMode(AutoPilotModeEnum.Prograde);
-
-            else if (mode.name == m_radialIntoggle.name)
-                SetInterfaceAutopilotMode(AutoPilotModeEnum.RadialIn);
-
-            else if (mode.name == m_radialOutToggle.name)
-                SetInterfaceAutopilotMode(AutoPilotModeEnum.RadialOut);
-
-            else if (mode.name == m_retrogradeToggle.name)
-                SetInterfaceAutopilotMode(AutoPilotModeEnum.Retrograde);
-
-            else if (mode.name == m_targetToggle.name)
-                SetInterfaceAutopilotMode(AutoPilotModeEnum.Target);
-        }
-
-        private void SetInterfaceAutopilotMode(AutoPilotModeEnum mode)
-        {
-            vesselElementInterface.VesselAutopilotActive = true;
+            vesselElementInterface.VesselAutopilotActive = active;
             vesselElementInterface.VesselAutopilotMode = mode;
+
+            vesselElementInterface.ChangeAutopilotMode();
         }
 
         public void GoToVessel()

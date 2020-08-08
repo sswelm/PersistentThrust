@@ -89,6 +89,7 @@
     <Compile Include="Preferences.cs" />
     <Compile Include="Propellant.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="PTGUI_Info.cs" />
     <Compile Include="PTGUI_Loader.cs" />
     <Compile Include="PTGUI_Settings.cs" />
     <Compile Include="PTGUI_Vessel.cs" />

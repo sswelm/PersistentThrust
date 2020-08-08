@@ -13,8 +13,9 @@ namespace PersistentThrust
         private static GameObject[] loadedPrefabs;
         public static Dictionary<VesselType, Sprite> vesselSprites;
 
-        public static GameObject PanelPrefab { get; private set; }
+        public static GameObject MainWindowPrefab { get; private set; }
         public static GameObject VesselElementPrefab { get; private set; }
+        public static GameObject InfoWindowPrefab { get; private set; }
 
         /// <summary>
         /// Called by Unity at initialization, which happens as soon as the game starts.
@@ -45,10 +46,13 @@ namespace PersistentThrust
                 GameObject o = loadedPrefabs[i];
 
                 if (o.name == "PTUIPanel")
-                    PanelPrefab = o;
+                    MainWindowPrefab = o;
 
-                if (o.name == "VesselElement")
+                else if (o.name == "VesselElement")
                     VesselElementPrefab = o;
+
+                else if (o.name == "InfoPanel")
+                    InfoWindowPrefab = o;
 
                 if (o != null)
                     ProcessUIComponents(o);

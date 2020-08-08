@@ -30,7 +30,7 @@ namespace PersistentThrust.UI
             rect = GetComponent<RectTransform>();
         }
 
-        public void setInitialState(IMainWindow main)
+        public void SetInitialState(IMainWindow main)
         {
             if (main == null)
                 return;
@@ -60,6 +60,9 @@ namespace PersistentThrust.UI
         {
             foreach (var vInterface in vesselInterfaces)
             {
+                //if (!vesselElements.ContainsKey(vInterface.VesselId))
+                    //continue;
+
                 vesselElements[vInterface.VesselId].UpdateElement(vInterface);
             }
         }

@@ -29,6 +29,7 @@ namespace PersistentThrust
                 if (realName.Equals("Kerbalism"))
                 {
                     _kerbalismFound = true;
+                    KerbalismAssembly = a.assembly;
                     break;
                 }
             }

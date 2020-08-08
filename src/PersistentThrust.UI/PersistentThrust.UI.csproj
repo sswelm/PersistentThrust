@@ -54,11 +54,12 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="InfoWindow.cs" />
+    <Compile Include="Interface\IInfoWindow.cs" />
     <Compile Include="TooltipText.cs" />
     <Compile Include="Interface\IMainWindow.cs" />
     <Compile Include="Interface\IVesselElement.cs" />
     <Compile Include="Style.cs" />
-    <Compile Include="VesselInfoWindow.cs" />
     <Compile Include="MainWindow.cs" />
     <Compile Include="VesselElement.cs" />
   </ItemGroup>

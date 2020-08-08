@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace PersistentThrust
@@ -20,12 +21,12 @@ namespace PersistentThrust
             return dryMass;
         }
 
-        public static bool HasPersistentEngineModules(this Vessel vessel)
+        public static List<ProtoPartModuleSnapshot> FindPersistentEngineModuleSnapshots(this Vessel vessel)
         {
+            var list = new List<ProtoPartModuleSnapshot>();
             if (vessel.loaded)
             {
-                var pe = vessel.FindPartModuleImplementing<PersistentEngine>();
-                hasPersistentEngineModules = !(pe is null);
+                return list;
             }
             else
             {
@@ -36,11 +37,51 @@ namespace PersistentThrust
                     if (moduleSnapshot is null)
                         continue;
 
-                    hasPersistentEngineModules = true;
+                    list.Add(moduleSnapshot);
                 }
+
+                return list;
+            }
+        }
+
+        public static bool HasPersistentEngineModules(this Vessel vessel)
+        {
+            if (vessel.loaded)
+            {
+                var pe = vessel.FindPartModuleImplementing<PersistentEngine>();
+                hasPersistentEngineModules = !(pe is null);
+            }
+            else
+            {
+                hasPersistentEngineModules = BackgroundProcessing.VesselDataDict[vessel.persistentId].PersistentEngines.Any();
             }
 
             return hasPersistentEngineModules;
+        }
+
+        public static VesselAutopilot.AutopilotMode GetAutopilotMode(this Vessel vessel)
+        {
+            if (vessel.loaded)
+            {
+                return vessel.Autopilot.Mode;
+            }
+            else
+            {
+                foreach (var protoPart in vessel.protoVessel.protoPartSnapshots)
+                {
+                    ProtoPartModuleSnapshot moduleSnapshot = protoPart.FindModule(nameof(PersistentEngine));
+
+                    if (moduleSnapshot is null)
+                        continue;
+
+                    VesselAutopilot.AutopilotMode apMode = (VesselAutopilot.AutopilotMode)Enum.Parse(
+                typeof(VesselAutopilot.AutopilotMode), moduleSnapshot.moduleValues.GetValue(nameof(PersistentEngine.persistentAutopilotMode)));
+
+                    return apMode;
+                }
+            }
+
+            return VesselAutopilot.AutopilotMode.StabilityAssist;
         }
 
         public static bool IsVesselSituationValid(this Vessel v)
@@ -108,7 +149,7 @@ namespace PersistentThrust
 
         public static double GetVesselOrbitHeadingVersusManeuverVector(this Vessel vessel)
         {
-            if (vessel == null || vessel.patchedConicSolver == null || vessel.orbit == null ||  vessel.patchedConicSolver.maneuverNodes == null)
+            if (vessel == null || vessel.patchedConicSolver == null || vessel.orbit == null || vessel.patchedConicSolver.maneuverNodes == null)
                 return 1;
 
             if (vessel.patchedConicSolver.maneuverNodes.Count > 0)

@@ -253,6 +253,8 @@ namespace PersistentThrust
 
             Fields[nameof(this.HasPersistentThrust)].uiControlFlight.onFieldChanged += OnPersistentThrustPAWToggled;
 
+            GameEvents.onVesselChange.Add(ResetFixedUpdateCount);
+
             masslessUsageField = Fields[nameof(this.masslessUsage)];
         }
 
@@ -550,6 +552,18 @@ namespace PersistentThrust
             }
 
             CollectStatistics();
+        }
+
+
+
+        public void OnDestroy()
+        {
+            GameEvents.onVesselChange.Remove(ResetFixedUpdateCount);
+        }
+
+        private void ResetFixedUpdateCount(Vessel v)
+        {
+            fixedUpdateCount = 0;
         }
 
         #endregion

@@ -14,8 +14,9 @@ namespace PersistentThrust
     [KSPAddon(KSPAddon.Startup.AllGameScenes, false)]
     public class PTGUI : MonoBehaviour, IMainWindow
     {
-        MainWindow window;
         ApplicationLauncherButton button;
+        MainWindow window;
+        InfoWindow infoWindow;
 
         public Vector2 Position { get; set; } = new Vector2();
         public string Version { get; private set; }
@@ -61,10 +62,11 @@ namespace PersistentThrust
 
             for (int i = FlightGlobals.Vessels.Count - 1; i >= 0; i--)
             {
-                Profiler.BeginSample("AddVesselToIVesselList");
                 AddVesselToIVesselList(FlightGlobals.Vessels[i]);
-                Profiler.EndSample();
             }
+
+            if (infoWindow != null)
+                PTGUI_Info.Instance.UpdateDisplayInfo();
         }
 
         /// <summary>
@@ -73,10 +75,10 @@ namespace PersistentThrust
         /// </summary>
         private void OpenWindow()
         {
-            if (PTGUI_Loader.PanelPrefab == null)
+            if (PTGUI_Loader.MainWindowPrefab == null)
                 return;
 
-            window = Instantiate(PTGUI_Loader.PanelPrefab).GetComponent<MainWindow>();
+            window = Instantiate(PTGUI_Loader.MainWindowPrefab).GetComponent<MainWindow>();
 
             if (window == null)
                 return;
@@ -90,7 +92,7 @@ namespace PersistentThrust
             Update();
 
             // Pass the instance to the MainWindow class as an interface to initialize the window.
-            window.setInitialState(Instance);
+            window.SetInitialState(Instance);
         }
 
         /// <summary>
@@ -104,6 +106,33 @@ namespace PersistentThrust
 
             if (window != null)
                 window.gameObject.DestroyGameObject();
+        }
+
+        // duplicate??
+        public void OpenInfoWindow(Vessel vessel)
+        {
+            if (PTGUI_Loader.InfoWindowPrefab == null)
+                return;
+
+            if (PTGUI_Info.Instance == null)
+            {
+                new PTGUI_Info(vessel);
+                infoWindow = Instantiate(PTGUI_Loader.InfoWindowPrefab).GetComponent<InfoWindow>();
+                infoWindow.SetInitialState(PTGUI_Info.Instance);
+            }
+            else
+                PTGUI_Info.Instance.DisplayInfoForVessel(vessel);
+
+            if (infoWindow == null)
+                return;
+
+            infoWindow.transform.SetParent(MainCanvasUtil.MainCanvas.transform);
+        }
+
+        public void CloseInfoWindow()
+        {
+            if (PTGUI_Info.Instance != null)
+                PTGUI_Info.Instance.CloseWindow();
         }
 
         /// <summary>
@@ -153,12 +182,10 @@ namespace PersistentThrust
             // Check if vessel is valid, in a valid situation, and if it has any persistent engine
             bool remove;
 
-            Profiler.BeginSample("CheckValidVessel");
             if (IvesselElements.ContainsKey(v.id))
                 remove = !v.IsVesselValid() || !v.IsVesselSituationValid();
             else
                 remove = !v.IsVesselValid() || !v.IsVesselSituationValid() || !v.HasPersistentEngineModules();
-            Profiler.EndSample();
 
             // If not in the dictionary and valid, add it
             if (!IvesselElements.ContainsKey(v.id) && !remove)

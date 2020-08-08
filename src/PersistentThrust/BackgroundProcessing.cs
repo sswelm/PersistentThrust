@@ -38,7 +38,7 @@ namespace PersistentThrust
                 }
             }
 
-            TotalVesselMassInKg = TotalVesselMass * 1000;
+            TotalVesselMassInKg = TotalVesselMass / 1000;
         }
     }
 
@@ -46,16 +46,13 @@ namespace PersistentThrust
     [KSPScenario(ScenarioCreationOptions.AddToAllGames, new[] {GameScenes.SPACECENTER, GameScenes.TRACKSTATION, GameScenes.FLIGHT, GameScenes.EDITOR})]
     public sealed class BackgroundProcessing : ScenarioModule
     {
-        private static readonly Dictionary<uint, VesselData> VesselDataDict = new Dictionary<uint, VesselData>();
+        public static readonly Dictionary<uint, VesselData> VesselDataDict = new Dictionary<uint, VesselData>();
 
         /// <summary>
         /// Called by the part every refresh frame where it is active, which can be less frequent than FixedUpdate which is called every processing frame
         /// </summary>
         void FixedUpdate()
         {
-            if (DetectKerbalism.Found())
-                return;
-
             foreach (Vessel vessel in FlightGlobals.Vessels)
             {
                 // ignore Kerbals
@@ -100,6 +97,9 @@ namespace PersistentThrust
 
                 // look for active persistent engines in all vessel parts
                 LoadUnloadedParts(vessel, vesselData);
+
+                if (DetectKerbalism.Found())
+                    continue;
 
                 // process persistent engine if we already found any active persistent engine
                 ProcessUnloadedPersistentEngines(vesselData, vessel);
@@ -194,7 +194,7 @@ namespace PersistentThrust
             if (vesselData.PersistentEnginePartIds.Any())
                 return;
 
-             // initially assume no active persistent engine present   
+             // initially assume no active persistent engine present
              vesselData.HasAnyActivePersistentEngine = false;
 
             foreach (ProtoPartSnapshot protoPartSnapshot in vessel.protoVessel.protoPartSnapshots)
@@ -253,10 +253,10 @@ namespace PersistentThrust
         }
 
         private static void ProcessUnloadedPersistentEngine(
-            ProtoPartSnapshot protoPartSnapshot, 
-            Vessel vessel, 
-            VesselData vesselData, 
-            Dictionary<string, double> availableResources, 
+            ProtoPartSnapshot protoPartSnapshot,
+            Vessel vessel,
+            VesselData vesselData,
+            Dictionary<string, double> availableResources,
             List<KeyValuePair<string, double>> resourceChangeRequest)
         {
             // lookup data
@@ -266,13 +266,13 @@ namespace PersistentThrust
 
             // execute persistent engine BackgroundUpdate
             PersistentEngine.BackgroundUpdate(
-                vessel: vessel, 
-                part_snapshot: protoPartSnapshot, 
-                module_snapshot: protoPartModuleSnapshot, 
-                proto_part_module: persistentEngine, 
-                proto_part: protoPart, 
-                availableResources: availableResources, 
-                resourceChangeRequest: resourceChangeRequest, 
+                vessel: vessel,
+                part_snapshot: protoPartSnapshot,
+                module_snapshot: protoPartModuleSnapshot,
+                proto_part_module: persistentEngine,
+                proto_part: protoPart,
+                availableResources: availableResources,
+                resourceChangeRequest: resourceChangeRequest,
                 elapsed_s: TimeWarp.fixedDeltaTime);
 
             // ToDo: extract resource evenly

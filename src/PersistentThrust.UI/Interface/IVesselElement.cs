@@ -25,11 +25,9 @@ namespace PersistentThrust.UI.Interface
 
         string VesselName { get; set; }
 
+        bool IsActiveVessel { get; }
+
         bool HasPersistentThrustActive { get; set; }
-
-        bool PersistentThrustWasToggled { get; set; }
-
-        bool AutopilotModeWasChanged { get; set; }
 
         bool HasInfoWindowActive { get; set; }
 
@@ -40,5 +38,15 @@ namespace PersistentThrust.UI.Interface
         bool VesselAutopilotActive { get; set; }
 
         void GoToVessel();
+
+        void ChangeHasPersistentThrustState(bool isOn);
+
+        void ChangeAutopilotMode();
+
+        bool CheckAutopilotModeAvailable(AutoPilotModeEnum apMode);
+
+        void OpenModeUnavailableDialog(AutoPilotModeEnum apMode);
+
+        void OpenInfoWindow();
     }
 }
