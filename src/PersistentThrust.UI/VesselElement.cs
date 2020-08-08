@@ -57,6 +57,7 @@ namespace PersistentThrust.UI
             m_image.color = tempColor;
 
             goToButton = m_vesselIcon.gameObject.GetComponent<Button>();
+            m_infoToggle = gameObject.GetComponent<Toggle>();
         }
 
         private void Start()
@@ -116,10 +117,12 @@ namespace PersistentThrust.UI
             {
                 HeadingToggles(m_stabilityToggle);
             });
-            m_infoToggle.onValueChanged.AddListener(delegate
-            {
-                vesselElementInterface.OpenInfoWindow();
-            });
+
+            if (m_infoToggle != null)
+                m_infoToggle.onValueChanged.AddListener(delegate
+                {
+                    vesselElementInterface.OpenInfoWindow();
+                });
         }
 
         private void Update()
