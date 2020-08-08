@@ -196,19 +196,6 @@ namespace PersistentThrust
             return 1d / (distanceInAu * distanceInAu);
         }
 
-
-        public static bool GetLineOfSight(ModuleDeployablePart solarPanel, StarLight star, Vector3d trackDir)
-        {
-            var trackingBody = solarPanel.trackingBody;
-            solarPanel.trackingTransformLocal = star.star.transform;
-            solarPanel.trackingTransformScaled = star.star.scaledBody.transform;
-            string blockingObject = "";
-            var trackingLos = solarPanel.CalculateTrackingLOS(trackDir, ref blockingObject);
-            solarPanel.trackingTransformLocal = trackingBody.transform;
-            solarPanel.trackingTransformScaled = trackingBody.scaledBody.transform;
-            return trackingLos;
-        }
-
         public static bool LineOfSightToSun(Vector3d vesselPosition, CelestialBody star)
         {
             return LineOfSightToTransmitter(vesselPosition, star.position, star.name);

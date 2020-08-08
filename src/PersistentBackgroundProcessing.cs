@@ -124,10 +124,6 @@ namespace PersistentThrust
                 }
                 else
                 {
-                    // ensure vessel is up to date
-                    if (vesselData.Vessel != vessel)
-                        vesselData.Vessel = vessel;
-
                     // reset change
                     foreach (var vesselDataResourceChange in vesselData.ResourceChanges)
                     {
@@ -172,11 +168,17 @@ namespace PersistentThrust
 
             foreach (StarLight starlight in KopernicusHelper.Stars)
             {
-                if (!KopernicusHelper.LineOfSightToSun(vesselData.Position, starlight.star))
+                double starlightRelativeLuminosity = starlight.relativeLuminosity * KopernicusHelper.GetSolarDistanceMultiplier(
+                    vesselPosition: vesselData.Position, 
+                    star: starlight.star, 
+                    astronomicalUnit: KopernicusHelper.AstronomicalUnit);
+
+                // ignore stars that are too far away to give any meaningful energy
+                if (starlightRelativeLuminosity < 0.01)
                     continue;
 
-                double starlightRelativeLuminosity = 
-                    KopernicusHelper.GetSolarDistanceMultiplier(vesselData.Position, starlight.star, KopernicusHelper.AstronomicalUnit) * starlight.relativeLuminosity;
+                if (!KopernicusHelper.LineOfSightToSun(vesselData.Position, starlight.star))
+                    continue;
 
                 foreach (var solarPanelData in vesselData.SolarPanels)
                 {
