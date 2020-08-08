@@ -103,6 +103,7 @@
     <None Include="Assets\TextMesh Pro\Resources\Shaders\TMP_Bitmap-Mobile.shader" />
     <None Include="Assets\SquadCore\Shaders\ParticleAlpha.shader" />
     <None Include="Assets\SquadCore\Shaders\EmissiveSpecular.shader" />
+    <None Include="Assets\XML\squadcore_bundle.xml" />
     <None Include="Assets\PartTools\Shaders\EmissiveBumpedSpecular.shader" />
     <None Include="Assets\PartTools\Shaders\DepthMask.shader" />
     <None Include="Assets\PartTools\Shaders\Cutoff.shader" />
@@ -139,6 +140,7 @@
     <None Include="Assets\TextMesh Pro\Examples &amp; Extras\Fonts\Oswald Bold - OFL.txt" />
     <None Include="Assets\TextMesh Pro\Resources\Shaders\TMP_SDF-Mobile Masking.shader" />
     <None Include="Assets\PartTools\Shaders\EmissiveSpecular.shader" />
+    <None Include="Assets\AutoSave\ReadMe.txt" />
     <None Include="Assets\XML\ptui_bundle.xml" />
     <None Include="Assets\SquadCore\Shaders\Cutoff.shader" />
     <None Include="Assets\SquadCore\Shaders\SpecularTransparent.shader" />
