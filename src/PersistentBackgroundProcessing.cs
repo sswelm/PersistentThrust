@@ -23,6 +23,12 @@ namespace PersistentThrust
         public List<ModuleDeployableSolarPanel> ModuleDeployableSolarPanels { get; set; }
         public List<ProtoPartModuleSnapshot> ProtoPartModuleSnapshots { get; set; }
     }
+
+    public class ResourceChange
+    {
+        public string Name { get; set; }
+        public double Change { get; set; }
+    }
     
 
     public class VesselData
@@ -35,10 +41,11 @@ namespace PersistentThrust
 
         public Dictionary<uint, EngineData> Engines { get; set; } = new Dictionary<uint, EngineData>();
         public Dictionary<uint, SolarPanelData> SolarPanels { get; set; } = new Dictionary<uint, SolarPanelData>();
+        public Dictionary<string, ResourceChange> ResourceChanges { get; set; } = new Dictionary<string, ResourceChange>();
 
         public Dictionary<string, double> AvailableResources { get; set; } = new Dictionary<string, double>();
         public Dictionary<string, double> MaxAmountResources { get; set; } = new Dictionary<string, double>();
-        public Dictionary<string, double> ResourceChanges { get; set; } = new Dictionary<string, double>();
+
 
         public VesselData(Vessel vessel)
         {
@@ -106,7 +113,11 @@ namespace PersistentThrust
                     if (vesselData.Vessel != vessel)
                         vesselData.Vessel = vessel;
 
-                    vesselData.ResourceChanges.Clear(); 
+                    // reset change
+                    foreach (var vesselDataResourceChange in vesselData.ResourceChanges)
+                    {
+                        vesselDataResourceChange.Value.Change = 0;
+                    }
                 }
 
                 // update vessel data when loaded
@@ -151,8 +162,15 @@ namespace PersistentThrust
                     if (solarPanel.deployState != ModuleDeployablePart.DeployState.EXTENDED)
                         continue;
 
-                    vesselData.ResourceChanges.TryGetValue(solarPanel.resourceName, out double resourceAmount);
-                    vesselData.ResourceChanges[solarPanel.resourceName] = solarPanel.chargeRate + resourceAmount;
+                    vesselData.ResourceChanges.TryGetValue(solarPanel.resourceName, out ResourceChange resourceChange);
+
+                    if (resourceChange == null)
+                    {
+                        resourceChange = new ResourceChange{ Name = solarPanel.resourceName};
+                        vesselData.ResourceChanges.Add(solarPanel.resourceName, resourceChange);
+                    }
+
+                    resourceChange.Change += solarPanel.chargeRate;
                  
                     // ToDo modify ChargeRate by distance from sun and orbital occlusion
                 }
@@ -161,10 +179,12 @@ namespace PersistentThrust
 
         private static void UpdateAvailableResourcesWithResourceChanges(VesselData vesselData)
         {
-            foreach (var resourceChange in vesselData.ResourceChanges)
+            var relevantResourceChanges = vesselData.ResourceChanges.Where(m => m.Value.Change != 0);
+
+            foreach (var resourceChange in relevantResourceChanges)
             {
                 vesselData.AvailableResources.TryGetValue(resourceChange.Key, out double availableAmount);
-                vesselData.AvailableResources[resourceChange.Key] = resourceChange.Value + availableAmount;
+                vesselData.AvailableResources[resourceChange.Key] = resourceChange.Value.Change + availableAmount;
             }
         }
 
@@ -191,17 +211,26 @@ namespace PersistentThrust
 
                 foreach (var keyValuePair in resourceChangeRequest)
                 {
-                    vesselData.ResourceChanges.TryGetValue(keyValuePair.Key, out double resourceAmount);
-                    vesselData.ResourceChanges[keyValuePair.Key] = resourceAmount + keyValuePair.Value;
+                    vesselData.ResourceChanges.TryGetValue(keyValuePair.Key, out ResourceChange resourceChange);
+
+                    if (resourceChange == null)
+                    {
+                        resourceChange = new ResourceChange(){ Name = keyValuePair.Key };
+                        vesselData.ResourceChanges.Add(keyValuePair.Key,  resourceChange);
+                    }
+
+                    resourceChange.Change += keyValuePair.Value;
                 }
             }
         }
 
         private static void UpdatePersistentResources(VesselData vesselData)
         {
-            foreach (var resourceRequest in vesselData.ResourceChanges)
+            var relevantResourceChanges = vesselData.ResourceChanges.Where(m => m.Value.Change != 0);
+
+            foreach (var resourceRequest in relevantResourceChanges)
             {
-                double fixedChange = resourceRequest.Value * TimeWarp.fixedDeltaTime;
+                double fixedChange = resourceRequest.Value.Change * TimeWarp.fixedDeltaTime;
 
                 vesselData.AvailableResources.TryGetValue(resourceRequest.Key, out double available);
                 vesselData.MaxAmountResources.TryGetValue(resourceRequest.Key, out double totalAmount);
@@ -231,7 +260,7 @@ namespace PersistentThrust
 
                             var fraction = partAvailableSpace > float.Epsilon ? partAvailableSpace / (totalAmount - available) : 1;
 
-                            protoPartResourceSnapshot.amount = Math.Max(protoPartResourceSnapshot.maxAmount, protoPartResourceSnapshot.amount + fixedChange * fraction);
+                            protoPartResourceSnapshot.amount = Math.Min(protoPartResourceSnapshot.maxAmount, protoPartResourceSnapshot.amount + fixedChange * fraction);
                         }
                     }
                 }
