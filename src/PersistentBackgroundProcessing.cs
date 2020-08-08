@@ -37,6 +37,8 @@ namespace PersistentThrust
 
         public double TotalVesselMassInKg { get; set; }
         public double TotalVesselMassInTon { get; set; }
+        public Vector3d Position { get; set; }
+
         public bool? HasAnyActivePersistentEngine { get; set; }
 
         public Dictionary<uint, EngineData> Engines { get; set; } = new Dictionary<uint, EngineData>();
@@ -168,19 +170,34 @@ namespace PersistentThrust
             if (!vesselData.SolarPanels.Any())
                 return;
 
-            foreach (var solarPanelData in vesselData.SolarPanels)
+            foreach (StarLight starlight in KopernicusHelper.Stars)
             {
-                foreach (var solarPanel in solarPanelData.Value.ModuleDeployableSolarPanels)
-                {
-                    if (solarPanel.deployState != ModuleDeployablePart.DeployState.EXTENDED)
-                        continue;
+                if (!KopernicusHelper.LineOfSightToSun(vesselData.Position, starlight.star))
+                    continue;
 
-                    vesselData.ResourceChange(solarPanel.resourceName, solarPanel.chargeRate);
-                
-                    // ToDo modify ChargeRate by distance from sun and orbital occlusion
+                double starlightRelativeLuminosity = 
+                    KopernicusHelper.GetSolarDistanceMultiplier(vesselData.Position, starlight.star, KopernicusHelper.AstronomicalUnit) * starlight.relativeLuminosity;
+
+                foreach (var solarPanelData in vesselData.SolarPanels)
+                {
+                    foreach (var solarPanel in solarPanelData.Value.ModuleDeployableSolarPanels)
+                    {
+                        if (solarPanel.chargeRate <= 0)
+                            continue;
+
+                        if (solarPanel.deployState != ModuleDeployablePart.DeployState.EXTENDED)
+                            continue;
+
+                        double starMaxSupply = solarPanel.chargeRate * starlightRelativeLuminosity * solarPanel.efficiencyMult;
+
+                        var trackingModifier = solarPanel.isTracking ? 1 : 0.25;
+
+                        vesselData.ResourceChange(solarPanel.resourceName, starMaxSupply * trackingModifier);
+                    }
                 }
             }
         }
+
 
         private static void UpdateAvailableResourcesWithResourceChanges(VesselData vesselData)
         {
@@ -269,6 +286,7 @@ namespace PersistentThrust
             vesselData.AvailableResources.Clear();
             vesselData.MaxAmountResources.Clear();
             vesselData.TotalVesselMassInTon = 0;
+            vesselData.Position = vesselData.Vessel.GetWorldPos3D();
 
             foreach (ProtoPartSnapshot protoPartSnapshot in vesselData.Vessel.protoVessel.protoPartSnapshots)
             {
