@@ -51,6 +51,19 @@ namespace PersistentThrust
         {
             Vessel = vessel;
         }
+
+        public void ResourceChange(string resourceName, double changeAmount)
+        {
+            ResourceChanges.TryGetValue(resourceName, out ResourceChange resourceChange);
+
+            if (resourceChange == null)
+            {
+                resourceChange = new ResourceChange { Name = resourceName };
+                ResourceChanges.Add(resourceName, resourceChange);
+            }
+
+            resourceChange.Change += changeAmount;
+        }
     }
 
 
@@ -162,16 +175,8 @@ namespace PersistentThrust
                     if (solarPanel.deployState != ModuleDeployablePart.DeployState.EXTENDED)
                         continue;
 
-                    vesselData.ResourceChanges.TryGetValue(solarPanel.resourceName, out ResourceChange resourceChange);
-
-                    if (resourceChange == null)
-                    {
-                        resourceChange = new ResourceChange{ Name = solarPanel.resourceName};
-                        vesselData.ResourceChanges.Add(solarPanel.resourceName, resourceChange);
-                    }
-
-                    resourceChange.Change += solarPanel.chargeRate;
-                 
+                    vesselData.ResourceChange(solarPanel.resourceName, solarPanel.chargeRate);
+                
                     // ToDo modify ChargeRate by distance from sun and orbital occlusion
                 }
             }
@@ -211,15 +216,7 @@ namespace PersistentThrust
 
                 foreach (var keyValuePair in resourceChangeRequest)
                 {
-                    vesselData.ResourceChanges.TryGetValue(keyValuePair.Key, out ResourceChange resourceChange);
-
-                    if (resourceChange == null)
-                    {
-                        resourceChange = new ResourceChange(){ Name = keyValuePair.Key };
-                        vesselData.ResourceChanges.Add(keyValuePair.Key,  resourceChange);
-                    }
-
-                    resourceChange.Change += keyValuePair.Value;
+                    vesselData.ResourceChange(keyValuePair.Key, keyValuePair.Value);
                 }
             }
         }
