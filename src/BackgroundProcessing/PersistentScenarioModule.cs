@@ -134,9 +134,9 @@ namespace PersistentThrust
     {
         public static readonly Dictionary<Guid, VesselData> VesselDataDict = new Dictionary<Guid, VesselData>();
 
-        public static int processCycleCounter;
+        //public static int processCycleCounter;
 
-        public static GameScenes lastGameScene;
+        //public static GameScenes lastGameScene;
 
         public override void OnLoad(ConfigNode node)
         {
@@ -150,12 +150,12 @@ namespace PersistentThrust
         /// </summary>
         void FixedUpdate()
         {
-            bool isSceneSwitch = lastGameScene != HighLogic.LoadedScene;
-            lastGameScene = HighLogic.LoadedScene;
+            //bool isSceneSwitch = lastGameScene != HighLogic.LoadedScene;
+            //lastGameScene = HighLogic.LoadedScene;
 
-            processCycleCounter++;
-            if (processCycleCounter > 100)
-                processCycleCounter = 0;
+            //processCycleCounter++;
+            //if (processCycleCounter > 100)
+            //    processCycleCounter = 0;
 
             foreach (Vessel vessel in FlightGlobals.Vessels)
             {
@@ -204,7 +204,7 @@ namespace PersistentThrust
                 }
 
                 // look for relevant modules in all vessel parts
-                LoadUnloadedParts(vesselData, isSceneSwitch);
+                LoadUnloadedParts(vesselData);
 
                 // determine available resources and total vessel mass
                 vesselData.UpdateUnloadedVesselData();
@@ -229,9 +229,6 @@ namespace PersistentThrust
         private static void ProcessUnloadedModuleGenerators(VesselData vesselData)
         {
             if (DetectKerbalism.Found())
-                return;
-
-            if (!vesselData.Generators.Any())
                 return;
 
             foreach (KeyValuePair<uint, ModuleGeneratorData> vesselDataGenerator in vesselData.Generators)
@@ -269,7 +266,7 @@ namespace PersistentThrust
                     // extract resource from available resources
                     foreach (ModuleResource inputResource in moduleGenerator.resHandler.inputResources)
                     {
-                        double resourceChange = moduleGenerator.throttle * inputResource.rate * finalFoundRatio;
+                        double resourceChange = -inputResource.rate * moduleGenerator.throttle * finalFoundRatio;
 
                         vesselData.UpdateAvailableResource(inputResource.name, resourceChange);
                         vesselData.ResourceChange(inputResource.name, resourceChange);
@@ -278,7 +275,7 @@ namespace PersistentThrust
                     // generate resources
                     foreach (ModuleResource outputResource in moduleGenerator.resHandler.outputResources)
                     {
-                        double resourceChange = moduleGenerator.throttle * outputResource.rate * finalFoundRatio;
+                        double resourceChange = outputResource.rate * moduleGenerator.throttle * finalFoundRatio;
 
                         vesselData.UpdateAvailableResource(outputResource.name, resourceChange);
                         vesselData.ResourceChange(outputResource.name, resourceChange);
@@ -290,9 +287,6 @@ namespace PersistentThrust
         private static void ProcessUnloadedResourceConverters(VesselData vesselData)
         {
             if (DetectKerbalism.Found())
-                return;
-
-            if (!vesselData.Generators.Any())
                 return;
 
             foreach (KeyValuePair<uint, ModuleResourceConverterData> vesselDataGenerator in vesselData.ResourceConverters)
@@ -365,7 +359,7 @@ namespace PersistentThrust
                     // extract resource from available resources
                     foreach (ResourceRatio inputResource in resourceConverter.Recipe.Inputs)
                     {
-                        double resourceChange = resourceConverter.EfficiencyBonus * inputResource.Ratio * processRatio;
+                        double resourceChange = -inputResource.Ratio * resourceConverter.EfficiencyBonus * processRatio;
 
                         vesselData.UpdateAvailableResource(inputResource.ResourceName, resourceChange);
                         vesselData.ResourceChange(inputResource.ResourceName, resourceChange);
@@ -374,7 +368,7 @@ namespace PersistentThrust
                     // generate resources
                     foreach (ResourceRatio outputResource in resourceConverter.Recipe.Outputs)
                     {
-                        double resourceChange = resourceConverter.EfficiencyBonus * outputResource.Ratio * processRatio;
+                        double resourceChange = outputResource.Ratio * resourceConverter.EfficiencyBonus * processRatio;
 
                         vesselData.UpdateAvailableResource(outputResource.ResourceName, resourceChange);
                         vesselData.ResourceChange(outputResource.ResourceName, resourceChange);
@@ -471,10 +465,10 @@ namespace PersistentThrust
             }
         }
 
-        private static void LoadUnloadedParts(VesselData vesselData, bool isSceneSwitch)
+        private static void LoadUnloadedParts(VesselData vesselData)
         {
             // check if initialized
-            if (!isSceneSwitch && vesselData.HasAnyActivePersistentEngine.HasValue)
+            if (vesselData.HasAnyActivePersistentEngine.HasValue)
                 return;
 
             // initially assume no active persistent engine present   
