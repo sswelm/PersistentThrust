@@ -7,6 +7,99 @@ namespace PersistentThrust
 {
     public static class EngineBackgroundProcessing
     {
+        public static EngineData LoadPersistentEngine(ProtoPartSnapshot protoPartSnapshot, VesselData vesselData, Part protoPart = null)
+        {
+            if (protoPart == null)
+                protoPart = PartLoader.getPartInfoByName(protoPartSnapshot.partName)?.partPrefab;
+
+            var persistentEngine = protoPart?.FindModuleImplementing<PersistentEngine>();
+
+            if (persistentEngine is null)
+                return null;
+
+            ProtoPartModuleSnapshot protoPartModuleSnapshot = protoPartSnapshot.FindModule(nameof(PersistentEngine));
+
+            if (protoPartModuleSnapshot == null)
+                return null;
+
+            // Load persistentThrust from ProtoPartModuleSnapshots
+            protoPartModuleSnapshot.moduleValues.TryGetValue(nameof(persistentEngine.persistentThrust), ref persistentEngine.persistentThrust);
+
+            var engineData = new EngineData
+            {
+                ProtoPart = protoPart,
+                ProtoPartSnapshot = protoPartSnapshot,
+                PersistentPartId = protoPartSnapshot.persistentId,
+                ProtoPartModuleSnapshot = protoPartModuleSnapshot,
+                PersistentEngine = persistentEngine
+            };
+
+            // store data
+            vesselData.Engines.Add(protoPartSnapshot.persistentId, engineData);
+
+            // check if there any active persistent engines that need to be processed
+            if (persistentEngine.persistentThrust > 0)
+                vesselData.HasAnyActivePersistentEngine = true;
+            else
+                return null;
+
+            return engineData;
+        }
+
+        public static void ProcessUnloadedPersistentEngines(VesselData vesselData)
+        {
+            if (DetectKerbalism.Found())
+                return;
+
+            if (!vesselData.Engines.Any())
+                return;
+
+            foreach (var engine in vesselData.Engines)
+            {
+                if (engine.Value.ProtoPartSnapshot == null)
+                {
+                    vesselData.HasAnyActivePersistentEngine = null;
+                    Debug.LogWarning("[PersistentThrust]: Fail to find protoPartSnapshot " + engine.Value.PersistentPartId);
+                    continue;
+                }
+
+                var resourceChangeRequest = new List<KeyValuePair<string, double>>();
+
+                ProcessUnloadedPersistentEngine(engine.Value.ProtoPartSnapshot, vesselData, resourceChangeRequest);
+
+                foreach (var keyValuePair in resourceChangeRequest)
+                {
+                    vesselData.ResourceChange(keyValuePair.Key, keyValuePair.Value);
+                }
+            }
+        }
+
+        private static void ProcessUnloadedPersistentEngine(
+            ProtoPartSnapshot protoPartSnapshot,
+            VesselData vesselData,
+            List<KeyValuePair<string, double>> resourceChangeRequest)
+        {
+            // lookup engine data
+            vesselData.Engines.TryGetValue(protoPartSnapshot.persistentId, out EngineData engineData);
+
+            if (engineData == null)
+            {
+                Debug.LogWarning("[PersistentThrust]: Fail to find Engine Data for persistentId " + protoPartSnapshot.persistentId);
+                return;
+            }
+
+            // execute persistent engine BackgroundUpdate
+            PersistentEngine.BackgroundUpdate(
+                vessel: vesselData.Vessel,
+                part_snapshot: protoPartSnapshot,
+                module_snapshot: engineData.ProtoPartModuleSnapshot,
+                proto_part_module: engineData.PersistentEngine,
+                proto_part: engineData.ProtoPart,
+                availableResources: vesselData.AvailableResources,
+                resourceChangeRequest: resourceChangeRequest,
+                elapsed_s: TimeWarp.fixedDeltaTime);
+        }
+
         public static string BackgroundUpdateExecution(
             Vessel vessel,
             ProtoPartSnapshot part_snapshot,
@@ -17,7 +110,7 @@ namespace PersistentThrust
             List<KeyValuePair<string, double>> resourceChangeRequest,
             double elapsed_s)
         {
-            PersistentBackgroundProcessing.VesselDataDict.TryGetValue(vessel.id, out VesselData vesselData);
+            PersistentScenarioModule.VesselDataDict.TryGetValue(vessel.id, out VesselData vesselData);
             if (vesselData == null)
                 return proto_part.partInfo.title;
 

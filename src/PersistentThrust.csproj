@@ -63,9 +63,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="EngineBackgroundProcessing.cs" />
+    <Compile Include="BackgroundProcessing\EngineBackgroundProcessing.cs" />
     <Compile Include="KopernicusHelper.cs" />
-    <Compile Include="PersistentBackgroundProcessing.cs" />
+    <Compile Include="BackgroundProcessing\PersistentScenarioModule.cs" />
     <Compile Include="DetectKerbalism.cs" />
     <Compile Include="DetectRealFuels.cs" />
     <Compile Include="OrbitExtensions.cs" />
@@ -77,6 +77,7 @@
     <Compile Include="Utils.cs" />
     <Compile Include="VesselExtension.cs" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>copy /Y "$(TargetDir)$(ProjectName).dll" "$(SolutionDir)\..\GameData\$(ProjectName)\Plugin\$(ProjectName).dll</PostBuildEvent>
