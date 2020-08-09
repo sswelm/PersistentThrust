@@ -271,7 +271,7 @@ namespace PersistentThrust
                     {
                         double resourceChange = moduleGenerator.throttle * inputResource.rate * finalFoundRatio;
 
-                        vesselData.UpdateAvailableResource(inputResource.name, resourceChange * TimeWarp.fixedDeltaTime);
+                        vesselData.UpdateAvailableResource(inputResource.name, resourceChange);
                         vesselData.ResourceChange(inputResource.name, resourceChange);
                     }
 
@@ -280,7 +280,7 @@ namespace PersistentThrust
                     {
                         double resourceChange = moduleGenerator.throttle * outputResource.rate * finalFoundRatio;
 
-                        vesselData.UpdateAvailableResource(outputResource.name, resourceChange * TimeWarp.fixedDeltaTime);
+                        vesselData.UpdateAvailableResource(outputResource.name, resourceChange);
                         vesselData.ResourceChange(outputResource.name, resourceChange);
                     }
                 }
@@ -367,7 +367,7 @@ namespace PersistentThrust
                     {
                         double resourceChange = resourceConverter.EfficiencyBonus * inputResource.Ratio * processRatio;
 
-                        vesselData.UpdateAvailableResource(inputResource.ResourceName, resourceChange * TimeWarp.fixedDeltaTime);
+                        vesselData.UpdateAvailableResource(inputResource.ResourceName, resourceChange);
                         vesselData.ResourceChange(inputResource.ResourceName, resourceChange);
                     }
 
@@ -376,7 +376,7 @@ namespace PersistentThrust
                     {
                         double resourceChange = resourceConverter.EfficiencyBonus * outputResource.Ratio * processRatio;
 
-                        vesselData.UpdateAvailableResource(outputResource.ResourceName, resourceChange * TimeWarp.fixedDeltaTime);
+                        vesselData.UpdateAvailableResource(outputResource.ResourceName, resourceChange);
                         vesselData.ResourceChange(outputResource.ResourceName, resourceChange);
                     }
                 }
@@ -421,7 +421,7 @@ namespace PersistentThrust
                         double trackingModifier = solarPanel.isTracking ? 1 : 0.25;
                         double powerChange = trackingModifier * solarPanel.chargeRate * starlightRelativeLuminosity * solarPanel.efficiencyMult;
 
-                        vesselData.UpdateAvailableResource(solarPanel.resourceName, powerChange * TimeWarp.fixedDeltaTime);
+                        vesselData.UpdateAvailableResource(solarPanel.resourceName, powerChange);
                         vesselData.ResourceChange(solarPanel.resourceName, powerChange);
                     }
                 }
@@ -545,7 +545,6 @@ namespace PersistentThrust
                 var moduleDeployableSolarPanel = moduleDeployableSolarPanels[i];
                 var protoPartModuleSnapshot = protoPartModuleSnapshots[i];
 
-                // Load ModuleGenerators from ProtoPartModuleSnapshots
                 moduleDeployableSolarPanel.deployState = (ModuleDeployablePart.DeployState)Enum.Parse(typeof(ModuleDeployablePart.DeployState), protoPartModuleSnapshot.moduleValues.GetValue(nameof(moduleDeployableSolarPanel.deployState)));
             }
 
@@ -601,7 +600,7 @@ namespace PersistentThrust
             if (moduleResourceConverter is null || moduleResourceConverter.Any() == false)
                 return null;
 
-            List<ProtoPartModuleSnapshot> protoPartModuleSnapshots = protoPartSnapshot.modules.Where(m => m.moduleName == nameof(ModuleGenerator)).ToList();
+            List<ProtoPartModuleSnapshot> protoPartModuleSnapshots = protoPartSnapshot.modules.Where(m => m.moduleName == nameof(ModuleResourceConverter)).ToList();
 
             var resourceConverterData = new ModuleResourceConverterData
             {
