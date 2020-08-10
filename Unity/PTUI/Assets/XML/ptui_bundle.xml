@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<KSPBundleDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" UrlName="ptui" Name="ptui" CreatedTime="-8586047270086751573">
+  <Author />
+  <Info />
+  <Assets>
+    <Asset Name="InfoPanel" Path="Assets/_MyKSPAssets/UI Export/InfoPanel.prefab" Type="GameObject" Url="_MyKSPAssets/UI Export/InfoPanel" AutoLoad="false" />
+    <Asset Name="PTUIPanel" Path="Assets/_MyKSPAssets/UI Export/PTUIPanel.prefab" Type="GameObject" Url="_MyKSPAssets/UI Export/PTUIPanel" AutoLoad="false" />
+    <Asset Name="VesselElement" Path="Assets/_MyKSPAssets/UI Export/VesselElement.prefab" Type="GameObject" Url="_MyKSPAssets/UI Export/VesselElement" AutoLoad="false" />
+  </Assets>
+  <Dependencies>
+    <Dependency>squadcore</Dependency>
+  </Dependencies>
+</KSPBundleDefinition>

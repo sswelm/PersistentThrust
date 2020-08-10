@@ -1,0 +1,5 @@
+sceneSetups:
+- path: Assets/_MyKSPAssets/UI Save/UI_scene_1.unity
+  isLoaded: 1
+  isActive: 1
+  isSubScene: 0
