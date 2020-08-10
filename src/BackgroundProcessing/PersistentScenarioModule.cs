@@ -4,139 +4,10 @@ using System.Linq;
 
 namespace PersistentThrust
 {
-    public class EngineData
-    {
-        public uint PersistentPartId { get; set; }
-        public Part ProtoPart { get; set; }
-        public ProtoPartSnapshot ProtoPartSnapshot { get; set; }
-        public PersistentEngine PersistentEngine { get; set; }
-        public ProtoPartModuleSnapshot ProtoPartModuleSnapshot { get; set; }
-    }
-
-    public class SolarPanelData
-    {
-        public uint PersistentPartId { get; set; }
-        public Part ProtoPart { get; set; }
-        public ProtoPartSnapshot ProtoPartSnapshot { get; set; }
-
-        public List<ModuleDeployableSolarPanel> ModuleDeployableSolarPanels { get; set; }
-        public List<ProtoPartModuleSnapshot> ProtoPartModuleSnapshots { get; set; }
-    }
-
-    public class ModuleGeneratorData
-    {
-        public uint PersistentPartId { get; set; }
-        public Part ProtoPart { get; set; }
-        public ProtoPartSnapshot ProtoPartSnapshot { get; set; }
-
-        public List<ModuleGenerator> ModuleGenerators { get; set; }
-        public List<ProtoPartModuleSnapshot> ProtoPartModuleSnapshots { get; set; }
-    }
-
-    public class ModuleResourceConverterData
-    {
-        public uint PersistentPartId { get; set; }
-        public Part ProtoPart { get; set; }
-        public ProtoPartSnapshot ProtoPartSnapshot { get; set; }
-
-        public List<ModuleResourceConverter> ModuleResourceConverters { get; set; }
-        public List<ProtoPartModuleSnapshot> ProtoPartModuleSnapshots { get; set; }
-    }
-
-    public class ResourceChange
-    {
-        public string Name { get; set; }
-        public double Change { get; set; }
-    }
-    
-
-    public class VesselData
-    {
-        public Vessel Vessel { get; set; }
-
-        public double TotalVesselMassInKg { get; set; }
-        public double TotalVesselMassInTon { get; set; }
-        public Vector3d Position { get; set; }
-
-        public bool? HasAnyActivePersistentEngine { get; set; }
-
-        public Dictionary<uint, EngineData> Engines { get; set; } = new Dictionary<uint, EngineData>();
-        public Dictionary<uint, ModuleGeneratorData> Generators { get; set; } = new Dictionary<uint, ModuleGeneratorData>();
-        public Dictionary<uint, ModuleResourceConverterData> ResourceConverters { get; set; } = new Dictionary<uint, ModuleResourceConverterData>();
-
-        public Dictionary<uint, SolarPanelData> SolarPanels { get; set; } = new Dictionary<uint, SolarPanelData>();
-        public Dictionary<string, ResourceChange> ResourceChanges { get; set; } = new Dictionary<string, ResourceChange>();
-
-        public Dictionary<string, double> AvailableResources { get; set; } = new Dictionary<string, double>();
-        public Dictionary<string, double> MaxAmountResources { get; set; } = new Dictionary<string, double>();
-        public Dictionary<string, double> AvailableStorage{ get; set; } = new Dictionary<string, double>();
-
-        public VesselData(Vessel vessel)
-        {
-            Vessel = vessel;
-        }
-
-
-        public void ResourceChange(string resourceName, double changeAmount)
-        {
-            ResourceChanges.TryGetValue(resourceName, out ResourceChange resourceChange);
-
-            if (resourceChange == null)
-            {
-                resourceChange = new ResourceChange { Name = resourceName };
-                ResourceChanges.Add(resourceName, resourceChange);
-            }
-
-            resourceChange.Change += changeAmount;
-        }
-
-        public void UpdateAvailableResource(string resourceName, double changeAmount)
-        {
-            AvailableResources.TryGetValue(resourceName, out double availableAmount);
-            AvailableResources[resourceName] = availableAmount + changeAmount;
-        }
-
-        public void UpdateUnloadedVesselData()
-        {
-            AvailableResources.Clear();
-            MaxAmountResources.Clear();
-            AvailableStorage.Clear();
-            TotalVesselMassInTon = 0;
-            Position = Vessel.GetWorldPos3D();
-
-            foreach (ProtoPartSnapshot protoPartSnapshot in Vessel.protoVessel.protoPartSnapshots)
-            {
-                TotalVesselMassInTon += protoPartSnapshot.mass;
-                foreach (ProtoPartResourceSnapshot protoPartResourceSnapshot in protoPartSnapshot.resources)
-                {
-                    TotalVesselMassInTon += protoPartResourceSnapshot.amount * protoPartResourceSnapshot.definition.density;
-
-                    UpdateAvailableResource(protoPartResourceSnapshot.resourceName, protoPartResourceSnapshot.amount);
-
-                    MaxAmountResources.TryGetValue(protoPartResourceSnapshot.resourceName, out double maxAmount);
-                    MaxAmountResources[protoPartResourceSnapshot.resourceName] = maxAmount + protoPartResourceSnapshot.maxAmount;
-                }
-            }
-            TotalVesselMassInKg = TotalVesselMassInTon * 1000;
-
-            foreach (KeyValuePair<string, double> availableResource in AvailableResources)
-            {
-                AvailableResources.TryGetValue(availableResource.Key, out double availableAmount);
-                MaxAmountResources.TryGetValue(availableResource.Key, out double maxAmount);
-                AvailableStorage[availableResource.Key] = maxAmount - availableAmount;
-            }
-        }
-    }
-
-
     [KSPScenario(ScenarioCreationOptions.AddToAllGames, new[] {GameScenes.SPACECENTER, GameScenes.TRACKSTATION, GameScenes.FLIGHT, GameScenes.EDITOR})]
     public sealed class PersistentScenarioModule : ScenarioModule
     {
         public static readonly Dictionary<Guid, VesselData> VesselDataDict = new Dictionary<Guid, VesselData>();
-
-        //public static int processCycleCounter;
-
-        //public static GameScenes lastGameScene;
 
         public override void OnLoad(ConfigNode node)
         {
@@ -150,21 +21,10 @@ namespace PersistentThrust
         /// </summary>
         void FixedUpdate()
         {
-            //bool isSceneSwitch = lastGameScene != HighLogic.LoadedScene;
-            //lastGameScene = HighLogic.LoadedScene;
-
-            //processCycleCounter++;
-            //if (processCycleCounter > 100)
-            //    processCycleCounter = 0;
-
             foreach (Vessel vessel in FlightGlobals.Vessels)
             {
                 // ignore Kerbals
                 if (vessel.isEVA)
-                    continue;
-
-                // ignore landed or floating vessels
-                if (vessel.LandedOrSplashed)
                     continue;
 
                 // ignore irrelevant vessel types
@@ -174,11 +34,6 @@ namespace PersistentThrust
                     || vessel.vesselType == VesselType.DeployedSciencePart
                     || vessel.vesselType == VesselType.DeployedScienceController
                 )
-                    continue;
-
-                // ignore irrelevant vessel situations
-                if ((vessel.situation & Vessel.Situations.PRELAUNCH) == Vessel.Situations.PRELAUNCH
-                    || (vessel.situation & Vessel.Situations.FLYING) == Vessel.Situations.FLYING)
                     continue;
 
                 // lookup cashed vessel data
@@ -619,5 +474,6 @@ namespace PersistentThrust
 
             return resourceConverterData;
         }
+
     }
 }

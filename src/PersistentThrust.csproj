@@ -64,6 +64,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BackgroundProcessing\EngineBackgroundProcessing.cs" />
+    <Compile Include="BackgroundProcessing\VesselData.cs" />
     <Compile Include="KopernicusHelper.cs" />
     <Compile Include="BackgroundProcessing\PersistentScenarioModule.cs" />
     <Compile Include="DetectKerbalism.cs" />

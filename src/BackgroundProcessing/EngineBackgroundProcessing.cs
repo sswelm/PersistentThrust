@@ -48,21 +48,15 @@ namespace PersistentThrust
 
         public static void ProcessUnloadedPersistentEngines(VesselData vesselData)
         {
-            if (DetectKerbalism.Found())
+            // ignore landed or floating vessels
+            if (vesselData.Vessel.LandedOrSplashed)
                 return;
 
-            if (!vesselData.Engines.Any())
+            if (DetectKerbalism.Found())
                 return;
 
             foreach (var engine in vesselData.Engines)
             {
-                if (engine.Value.ProtoPartSnapshot == null)
-                {
-                    vesselData.HasAnyActivePersistentEngine = null;
-                    Debug.LogWarning("[PersistentThrust]: Fail to find protoPartSnapshot " + engine.Value.PersistentPartId);
-                    continue;
-                }
-
                 var resourceChangeRequest = new List<KeyValuePair<string, double>>();
 
                 ProcessUnloadedPersistentEngine(engine.Value.ProtoPartSnapshot, vesselData, resourceChangeRequest);
@@ -110,10 +104,6 @@ namespace PersistentThrust
             List<KeyValuePair<string, double>> resourceChangeRequest,
             double elapsed_s)
         {
-            PersistentScenarioModule.VesselDataDict.TryGetValue(vessel.id, out VesselData vesselData);
-            if (vesselData == null)
-                return proto_part.partInfo.title;
-
             double persistentThrust = 0;
             if (!module_snapshot.moduleValues.TryGetValue(nameof(persistentThrust), ref persistentThrust))
                 return proto_part.partInfo.title;
@@ -147,52 +137,18 @@ namespace PersistentThrust
                 typeof(VesselAutopilot.AutopilotMode),
                 module_snapshot.moduleValues.GetValue(nameof(persistentAutopilotMode)));
 
-            Orbit orbit = vessel.GetOrbit();
+            //Orbit orbit = vessel.GetOrbit();
             double UT = Planetarium.GetUniversalTime();
-            Vector3d orbitalVelocityAtUt = orbit.getOrbitalVelocityAtUT(UT).xzy;
 
-            Vector3d thrustVector = Vector3d.zero;
-            switch (persistentAutopilotMode)
-            {
-                case VesselAutopilot.AutopilotMode.StabilityAssist:
-                    thrustVector = vessel.GetTransform().up.normalized;
-                    break;
-                case VesselAutopilot.AutopilotMode.Prograde:
-                    thrustVector = orbitalVelocityAtUt;
-                    break;
-                case VesselAutopilot.AutopilotMode.Retrograde:
-                    thrustVector = -orbitalVelocityAtUt;
-                    break;
-                case VesselAutopilot.AutopilotMode.Normal:
-                    thrustVector = Vector3.Cross(orbitalVelocityAtUt,
-                        orbit.getPositionAtUT(UT) - vessel.mainBody.getPositionAtUT(UT));
-                    break;
-                case VesselAutopilot.AutopilotMode.Antinormal:
-                    thrustVector = -Vector3.Cross(orbitalVelocityAtUt,
-                        orbit.getPositionAtUT(UT) - vessel.mainBody.getPositionAtUT(UT));
-                    break;
-                case VesselAutopilot.AutopilotMode.RadialIn:
-                    thrustVector = -Vector3.Cross(orbitalVelocityAtUt,
-                        Vector3.Cross(orbitalVelocityAtUt,
-                            vessel.orbit.getPositionAtUT(UT) - orbit.referenceBody.position));
-                    break;
-                case VesselAutopilot.AutopilotMode.RadialOut:
-                    thrustVector = Vector3.Cross(orbitalVelocityAtUt,
-                        Vector3.Cross(orbitalVelocityAtUt,
-                            vessel.orbit.getPositionAtUT(UT) - orbit.referenceBody.position));
-                    break;
-                case VesselAutopilot.AutopilotMode.Target:
-                    thrustVector = GetThrustVectorToTarget(vessel, module_snapshot, UT);
-                    break;
-                case VesselAutopilot.AutopilotMode.AntiTarget:
-                    thrustVector = -GetThrustVectorToTarget(vessel, module_snapshot, UT);
-                    break;
-                    //case VesselAutopilot.AutopilotMode.Maneuver:
-                    //    thrustVector = orbit.GetThrustVectorToManeuver(moduleSnapshot);
-                    //    break;
-            }
+            PersistentScenarioModule.VesselDataDict.TryGetValue(vessel.id, out VesselData vesselData);
+            if (vesselData == null)
+                return proto_part.partInfo.title;
 
-            if (thrustVector == Vector3d.zero)
+            // calculate thrust vector only once
+            if (vesselData.ThrustVector == Vector3d.zero)
+                vesselData.ThrustVector = GetThrustVectorForAutoPilot(vessel, module_snapshot, persistentAutopilotMode, vesselData, UT);
+
+            if (vesselData.ThrustVector == Vector3d.zero)
                 return proto_part.partInfo.title;
 
             double fuelRequirementMet = 1;
@@ -240,12 +196,65 @@ namespace PersistentThrust
             if (!module_snapshot.moduleValues.TryGetValue(nameof(persistentIsp), ref persistentIsp))
                 return proto_part.partInfo.title;
 
-            Vector3d deltaVVector = Utils.CalculateDeltaVVector(persistentAverageDensity, vesselData.TotalVesselMassInTon, elapsed_s,
-                persistentThrust * fuelRequirementMet, persistentIsp, thrustVector.normalized);
+            vesselData.Engines.TryGetValue(part_snapshot.persistentId, out EngineData engineData);
+            if (engineData == null)
+                return proto_part.partInfo.title;
 
-            orbit.Perturb(deltaVVector, UT);
+            engineData.DeltaVVector = Utils.CalculateDeltaVVector(persistentAverageDensity, vesselData.TotalVesselMassInTon, elapsed_s,
+                persistentThrust * fuelRequirementMet, persistentIsp, vesselData.ThrustVector.normalized);
 
             return proto_part.partInfo.title;
+        }
+
+        public static Vector3d GetThrustVectorForAutoPilot(
+            Vessel vessel, 
+            ProtoPartModuleSnapshot moduleSnapshot,
+            VesselAutopilot.AutopilotMode persistentAutopilotMode, 
+            VesselData vesselData, 
+            double UT)
+        {
+            Vector3d thrustVector = Vector3d.zero;
+            switch (persistentAutopilotMode)
+            {
+                case VesselAutopilot.AutopilotMode.StabilityAssist:
+                    thrustVector = vessel.GetTransform().up.normalized;
+                    break;
+                case VesselAutopilot.AutopilotMode.Prograde:
+                    thrustVector = vesselData.OrbitalVelocityAtUt;
+                    break;
+                case VesselAutopilot.AutopilotMode.Retrograde:
+                    thrustVector = -vesselData.OrbitalVelocityAtUt;
+                    break;
+                case VesselAutopilot.AutopilotMode.Normal:
+                    thrustVector = Vector3.Cross(vesselData.OrbitalVelocityAtUt,
+                        vesselData.Orbit.getPositionAtUT(UT) - vessel.mainBody.getPositionAtUT(UT));
+                    break;
+                case VesselAutopilot.AutopilotMode.Antinormal:
+                    thrustVector = -Vector3.Cross(vesselData.OrbitalVelocityAtUt,
+                        vesselData.Orbit.getPositionAtUT(UT) - vessel.mainBody.getPositionAtUT(UT));
+                    break;
+                case VesselAutopilot.AutopilotMode.RadialIn:
+                    thrustVector = -Vector3.Cross(vesselData.OrbitalVelocityAtUt,
+                        Vector3.Cross(vesselData.OrbitalVelocityAtUt,
+                            vessel.orbit.getPositionAtUT(UT) - vesselData.Orbit.referenceBody.position));
+                    break;
+                case VesselAutopilot.AutopilotMode.RadialOut:
+                    thrustVector = Vector3.Cross(vesselData.OrbitalVelocityAtUt,
+                        Vector3.Cross(vesselData.OrbitalVelocityAtUt,
+                            vessel.orbit.getPositionAtUT(UT) - vesselData.Orbit.referenceBody.position));
+                    break;
+                case VesselAutopilot.AutopilotMode.Target:
+                    thrustVector = GetThrustVectorToTarget(vessel, moduleSnapshot, UT);
+                    break;
+                case VesselAutopilot.AutopilotMode.AntiTarget:
+                    thrustVector = -GetThrustVectorToTarget(vessel, moduleSnapshot, UT);
+                    break;
+                //case VesselAutopilot.AutopilotMode.Maneuver:
+                //    thrustVector = orbit.GetThrustVectorToManeuver(moduleSnapshot);
+                //    break;
+            }
+
+            return thrustVector;
         }
 
         private static Vector3d GetThrustVectorToTarget(Vessel vessel, ProtoPartModuleSnapshot moduleSnapshot, double UT)
