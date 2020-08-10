@@ -48,5 +48,7 @@ namespace PersistentThrust.UI.Interface
         void OpenModeUnavailableDialog(AutoPilotModeEnum apMode);
 
         void OpenInfoWindow();
+
+        void CloseInfoWindow();
     }
 }

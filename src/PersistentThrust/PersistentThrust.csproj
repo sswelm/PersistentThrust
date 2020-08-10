@@ -82,17 +82,27 @@
     <Compile Include="DetectKerbalism.cs" />
     <Compile Include="DetectRealFuels.cs" />
     <Compile Include="GoToVessel.cs" />
-    <Compile Include="PTGUI.cs" />
+    <Compile Include="GUI\PTGUI.cs" />
     <Compile Include="OrbitExtensions.cs" />
     <Compile Include="GameEventSubscriber.cs" />
     <Compile Include="PersistentEngine.cs" />
     <Compile Include="Preferences.cs" />
     <Compile Include="Propellant.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="PTGUI_Info.cs" />
-    <Compile Include="PTGUI_Loader.cs" />
-    <Compile Include="PTGUI_Settings.cs" />
-    <Compile Include="PTGUI_Vessel.cs" />
+    <Compile Include="GUI\PTGUI_Info.cs" />
+    <Compile Include="GUI\PTGUI_Loader.cs" />
+    <Compile Include="GUI\PTGUI_Settings.cs" />
+    <Compile Include="GUI\PTGUI_Vessel.cs" />
+    <Compile Include="SituationModules\Acceleration.cs" />
+    <Compile Include="SituationModules\Altitude.cs" />
+    <Compile Include="SituationModules\Apoapsis.cs" />
+    <Compile Include="SituationModules\Eccentricity.cs" />
+    <Compile Include="SituationModules\Extensions.cs" />
+    <Compile Include="SituationModules\Inclination.cs" />
+    <Compile Include="SituationModules\Periapsis.cs" />
+    <Compile Include="SituationModules\SemiMajorAxis.cs" />
+    <Compile Include="SituationModules\SituationModule.cs" />
+    <Compile Include="SituationModules\Velocity.cs" />
     <Compile Include="Utils.cs" />
     <Compile Include="VesselExtension.cs" />
   </ItemGroup>
@@ -102,6 +112,7 @@
       <Name>PersistentThrust.UI</Name>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>copy /y "$(TargetDir)$(ProjectName).dll" "$(SolutionDir)\..\GameData\$(ProjectName)\Plugin\$(ProjectName).dll"

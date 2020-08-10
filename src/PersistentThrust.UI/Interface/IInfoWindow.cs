@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 namespace PersistentThrust.UI.Interface
@@ -18,7 +15,15 @@ namespace PersistentThrust.UI.Interface
 
         bool SituationVisible { get; set; }
 
+        string SituationTextString { get; }
+
+        List<IInfoModule> Modules { get; }
+
         bool ThrottleVisible { get; set; }
+
+        void UpdatePersistentThrottle(float value);
+
+        void SetInputLock(bool on);
 
         Vector2 Position { get; set; }
 

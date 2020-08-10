@@ -16,8 +16,10 @@ namespace PersistentThrust.UI
         public GameObject m_VesselElementPrefab = null;
         [SerializeField]
         public Transform m_VesselListTransform = null;
-        private bool dragging = false;
+        [SerializeField]
+        public ToggleGroup m_infoToggleGroup = null;
 
+        private bool dragging = false;
         private Vector2 mouseStart;
         private Vector3 windowStart;
         private RectTransform rect;
@@ -153,8 +155,8 @@ namespace PersistentThrust.UI
                 return;
 
             vElement.SetElement(elementInterface);
-
             vElement.gameObject.SetActive(mainWindowInterface.IsVisible);
+            vElement.m_infoToggle.group = m_infoToggleGroup;
 
             vesselElements.Add(elementInterface.VesselId, vElement);
         }

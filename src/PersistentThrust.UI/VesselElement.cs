@@ -42,7 +42,7 @@ namespace PersistentThrust.UI
         [SerializeField]
         private Button goToButton = null;
         [SerializeField]
-        private Toggle m_infoToggle = null;
+        public Toggle m_infoToggle = null;
 
         private IVesselElement vesselElementInterface;
         private AutoPilotModeEnum currentAutopilotMode;
@@ -57,7 +57,7 @@ namespace PersistentThrust.UI
             m_image.color = tempColor;
 
             goToButton = m_vesselIcon.gameObject.GetComponent<Button>();
-            m_infoToggle = gameObject.GetComponent<Toggle>();
+            //m_infoToggle = gameObject.GetComponent<Toggle>();
         }
 
         private void Start()
@@ -121,7 +121,7 @@ namespace PersistentThrust.UI
             if (m_infoToggle != null)
                 m_infoToggle.onValueChanged.AddListener(delegate
                 {
-                    vesselElementInterface.OpenInfoWindow();
+                    InfoWindowDelegate(m_infoToggle.isOn);
                 });
         }
 
@@ -314,6 +314,14 @@ namespace PersistentThrust.UI
         public void GoToVessel()
         {
             vesselElementInterface.GoToVessel();
+        }
+
+        private void InfoWindowDelegate(bool isOn)
+        {
+            if (isOn)
+                vesselElementInterface.OpenInfoWindow();
+            else
+                vesselElementInterface.CloseInfoWindow();
         }
         #endregion
     }

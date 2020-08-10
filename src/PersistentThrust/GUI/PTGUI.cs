@@ -100,33 +100,21 @@ namespace PersistentThrust
         /// </summary>
         private void CloseWindow()
         {
+            CloseInfoWindow();
+
             IsVisible = false;
 
             PTGUI_Settings.Instance.mainWindowPosition = Position;
 
             if (window != null)
                 window.gameObject.DestroyGameObject();
+            if (infoWindow != null)
+                infoWindow.gameObject.DestroyGameObject();
         }
 
-        // duplicate??
         public void OpenInfoWindow(Vessel vessel)
         {
-            if (PTGUI_Loader.InfoWindowPrefab == null)
-                return;
-
-            if (PTGUI_Info.Instance == null)
-            {
-                new PTGUI_Info(vessel);
-                infoWindow = Instantiate(PTGUI_Loader.InfoWindowPrefab).GetComponent<InfoWindow>();
-                infoWindow.SetInitialState(PTGUI_Info.Instance);
-            }
-            else
-                PTGUI_Info.Instance.DisplayInfoForVessel(vessel);
-
-            if (infoWindow == null)
-                return;
-
-            infoWindow.transform.SetParent(MainCanvasUtil.MainCanvas.transform);
+            infoWindow = PTGUI_Info.Instance.OperWindow(vessel);
         }
 
         public void CloseInfoWindow()

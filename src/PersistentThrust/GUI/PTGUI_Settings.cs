@@ -9,9 +9,25 @@ namespace PersistentThrust
     class PTGUI_Settings : MonoBehaviour
     {
         [Persistent]
-        public Vector2 mainWindowPosition = new Vector2(100, 100);
+        public Vector2 mainWindowPosition = new Vector2(100, -100);
         [Persistent]
-        public Vector2 infoWindowPosition = new Vector2(100, 400);
+        public Vector2 infoWindowPosition = new Vector2(800, -100);
+        [Persistent]
+        public bool showPeriapsis = true;
+        [Persistent]
+        public bool showApoapsis = true;
+        [Persistent]
+        public bool showSMA = true;
+        [Persistent]
+        public bool showEccentricity = true;
+        [Persistent]
+        public bool showInclination = true;
+        [Persistent]
+        public bool showAltitude = true;
+        [Persistent]
+        public bool showVelocity = true;
+        [Persistent]
+        public bool showAcceleration = true;
         [Persistent]
         public float UIScale = 1;
 

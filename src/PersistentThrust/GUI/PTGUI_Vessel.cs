@@ -360,6 +360,11 @@ namespace PersistentThrust
         {
             PTGUI.Instance.OpenInfoWindow(vessel);
         }
+
+        public void CloseInfoWindow()
+        {
+            PTGUI.Instance.CloseInfoWindow();
+        }
     }
 
     public static class AutopilotEnumExtensions

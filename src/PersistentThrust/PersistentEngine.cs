@@ -71,6 +71,8 @@ namespace PersistentThrust
         public double persistentManeuverUT;
         [KSPField(isPersistant = true)]
         public bool defaultsLoaded;
+        [KSPField(isPersistant = true)]
+        public double persistentAcceleration;   // only used in GUI display
 
         // GUI
         [KSPField(guiFormat = "F1", guiActive = true, guiName = "#autoLOC_6001378", guiUnits = "#autoLOC_7001400")]
@@ -184,9 +186,9 @@ namespace PersistentThrust
             node.SetValue(nameof(persistentAverageDensity), persistentAverageDensity, true);
 
             // serialize resource request
-            if (_resourceChangeRequest.Any())
+            if (persistentThrottle != 0)
             {
-                persistentResourceChange = string.Join(";", _resourceChangeRequest.Select(x => x.Key + "=" + x.Value).ToArray());
+                persistentResourceChange = string.Join(";", _resourceChangeRequest.Select(x => x.Key + "=" + x.Value / currentEngine.engine.currentThrottle).ToArray());
                 node.SetValue(nameof(persistentResourceChange), persistentResourceChange, true);
             }
 
@@ -516,6 +518,8 @@ namespace PersistentThrust
                         {
                             currentEngine.finalThrust = requestedThrust * currentEngine.propellantReqMetFactor;
                             vessel.orbit.Perturb(deltaVVector * currentEngine.propellantReqMetFactor, Planetarium.GetUniversalTime());
+
+                            persistentAcceleration = deltaVVector.magnitude / TimeWarp.fixedDeltaTime;
                         }
 
                         // Otherwise log warning and drop out of TimeWarp if throttle on & depleted
@@ -845,7 +849,7 @@ namespace PersistentThrust
         /// <summary>
         /// Adjusts the vessel's throttle and eventually returns to real time.
         /// </summary>
-        private void SetThrottle(float newSetting, bool returnToRealTime = false, bool reset = false)
+        public void SetThrottle(float newSetting, bool returnToRealTime = false, bool reset = false)
         {
             vessel.ctrlState.mainThrottle = newSetting;
             persistentThrottle = newSetting;
@@ -1266,37 +1270,76 @@ namespace PersistentThrust
             List<KeyValuePair<string, double>> resourceChangeRequest,
             double elapsed_s)
         {
+
+            double persistentAcceleration = 0;
+            module_snapshot.moduleValues.TryGetValue(nameof(persistentAcceleration), ref persistentAcceleration);
+
+            var SetAccelerationToZero = new Action(() => {
+                persistentAcceleration = 0;
+                module_snapshot.moduleValues.SetValue(nameof(persistentAcceleration), persistentAcceleration, true);
+            });
+
             bool HasPersistentThrust = bool.Parse(module_snapshot.moduleValues.GetValue(nameof(HasPersistentThrust)));
             if (!HasPersistentThrust)
+            {
+                SetAccelerationToZero();
                 return proto_part.partInfo.title;
+            }
 
             double persistentThrust = 0;
             if (!module_snapshot.moduleValues.TryGetValue(nameof(persistentThrust), ref persistentThrust))
+            {
+                SetAccelerationToZero();
                 return proto_part.partInfo.title;
+            }
+
+            double persistentThrottle = 0;
+            if (!module_snapshot.moduleValues.TryGetValue(nameof(persistentThrottle), ref persistentThrottle))
+            {
+                SetAccelerationToZero();
+                return proto_part.partInfo.title;
+            }
+
+            var requestedThrust = persistentThrust * persistentThrottle;
 
             // ignore background update when no thrust generated
-            if (persistentThrust <= 0)
+            if (requestedThrust <= 0)
+            {
+                SetAccelerationToZero();
                 return proto_part.partInfo.title;
+            }
 
             double vesselAlignmentWithAutopilotMode = 0;
             if (!module_snapshot.moduleValues.TryGetValue(nameof(vesselAlignmentWithAutopilotMode), ref vesselAlignmentWithAutopilotMode))
+            {
+                SetAccelerationToZero();
                 return proto_part.partInfo.title;
+            }
 
             // ignore background update when not aligned with autopilot mode
             if (vesselAlignmentWithAutopilotMode < 0.995)
+            {
+                SetAccelerationToZero();
                 return proto_part.partInfo.title;
+            }
 
             string persistentResourceChange = module_snapshot.moduleValues.GetValue(nameof(persistentResourceChange));
 
             if (string.IsNullOrEmpty(persistentResourceChange))
+            {
+                SetAccelerationToZero();
                 return proto_part.partInfo.title;
+            }
 
             Dictionary<string, double> resourceChanges = persistentResourceChange
                 .Split(';').Select(s => s.Trim().Split('='))
                 .ToDictionary(a => a[0], a => double.Parse(a[1]));
 
             if (resourceChanges.Any(m => m.Value == 0))
+            {
+                SetAccelerationToZero();
                 return proto_part.partInfo.title;
+            }
 
             VesselAutopilot.AutopilotMode persistentAutopilotMode = (VesselAutopilot.AutopilotMode)Enum.Parse(
                 typeof(VesselAutopilot.AutopilotMode), module_snapshot.moduleValues.GetValue(nameof(persistentAutopilotMode)));
@@ -1341,7 +1384,10 @@ namespace PersistentThrust
             }
 
             if (thrustVector == Vector3d.zero)
+            {
+                SetAccelerationToZero();
                 return proto_part.partInfo.title;
+            }
 
             double fuelRequirementMet = 1;
             foreach (var resourceChange in resourceChanges)
@@ -1358,26 +1404,41 @@ namespace PersistentThrust
             {
                 foreach (var resourceChange in resourceChanges)
                 {
-                    resourceChangeRequest.Add(new KeyValuePair<string, double>(resourceChange.Key, resourceChange.Value * fuelRequirementMet));
+                    resourceChangeRequest.Add(new KeyValuePair<string, double>(resourceChange.Key, resourceChange.Value * fuelRequirementMet * persistentThrottle));
                 }
 
                 double vesselDryMass = 0;
                 if (!module_snapshot.moduleValues.TryGetValue(nameof(vesselDryMass), ref vesselDryMass))
+                {
+                    SetAccelerationToZero();
                     return proto_part.partInfo.title;
+                }
 
                 double persistentAverageDensity = 0;
                 if (!module_snapshot.moduleValues.TryGetValue(nameof(persistentAverageDensity), ref persistentAverageDensity))
+                {
+                    SetAccelerationToZero();
                     return proto_part.partInfo.title;
+                }
 
                 float persistentIsp = 0;
                 if (!module_snapshot.moduleValues.TryGetValue(nameof(persistentIsp), ref persistentIsp))
+                {
+                    SetAccelerationToZero();
                     return proto_part.partInfo.title;
+                }
 
                 var vesselMass = vesselDryMass += Utils.GetResourceMass(availableResources);
 
-                Vector3d deltaVVector = Utils.CalculateDeltaVVector(persistentAverageDensity, vesselMass, elapsed_s, persistentThrust * fuelRequirementMet, persistentIsp, thrustVector.normalized);
+                Vector3d deltaVVector = Utils.CalculateDeltaVVector(persistentAverageDensity, vesselMass, elapsed_s, requestedThrust * fuelRequirementMet, persistentIsp, thrustVector.normalized);
 
                 orbit.Perturb(deltaVVector, UT);
+
+                if(Math.Abs(deltaVVector.magnitude / elapsed_s - persistentAcceleration) > Math.Abs(1e-4 * persistentAcceleration))
+                {
+                    persistentAcceleration = deltaVVector.magnitude / elapsed_s;
+                    module_snapshot.moduleValues.SetValue(nameof(persistentAcceleration), persistentAcceleration, true);
+                }
             }
 
             return proto_part.partInfo.title;

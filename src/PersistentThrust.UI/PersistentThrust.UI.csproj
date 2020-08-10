@@ -55,7 +55,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="InfoWindow.cs" />
+    <Compile Include="ThrottleInputField.cs" />
     <Compile Include="Interface\IInfoWindow.cs" />
+    <Compile Include="Interface\IInfoModule.cs" />
+    <Compile Include="InfoModule.cs" />
     <Compile Include="TooltipText.cs" />
     <Compile Include="Interface\IMainWindow.cs" />
     <Compile Include="Interface\IVesselElement.cs" />
