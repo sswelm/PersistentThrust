@@ -44,14 +44,6 @@ namespace PersistentThrust
                     vesselData = new VesselData(vessel);
                     VesselDataDict.Add(vessel.id, vesselData);
                 }
-                else
-                {
-                    // reset change
-                    foreach (var vesselDataResourceChange in vesselData.ResourceChanges)
-                    {
-                        vesselDataResourceChange.Value.Change = 0;
-                    }
-                }
 
                 // update vessel data when loaded
                 if (vessel.loaded)
@@ -60,11 +52,11 @@ namespace PersistentThrust
                     continue;
                 }
 
-                // look for relevant modules in all vessel parts
-                LoadUnloadedParts(vesselData);
-
                 // determine available resources and total vessel mass
                 vesselData.UpdateUnloadedVesselData();
+
+                // look for relevant modules in all vessel parts
+                LoadUnloadedParts(vesselData);
 
                 // extract resources from Solar Panels
                 ProcessUnloadedSolarPanels(vesselData);
@@ -158,11 +150,11 @@ namespace PersistentThrust
                     ProtoPartModuleSnapshot protoPartModuleSnapshot = resourceConverterData.ProtoPartModuleSnapshots[i];
 
                     // read persistent settings
-                    resourceConverter.IsActivated = bool.Parse(protoPartModuleSnapshot.moduleValues.GetValue(nameof(resourceConverter.IsActivated)));
+                    bool.TryParse(protoPartModuleSnapshot.moduleValues.GetValue(nameof(resourceConverter.IsActivated)), out resourceConverter.IsActivated);
                     if (resourceConverter.IsActivated == false)
                         continue;
 
-                    resourceConverter.EfficiencyBonus = float.Parse(protoPartModuleSnapshot.moduleValues.GetValue(nameof(resourceConverter.EfficiencyBonus)));
+                    float.TryParse(protoPartModuleSnapshot.moduleValues.GetValue(nameof(resourceConverter.EfficiencyBonus)), out resourceConverter.EfficiencyBonus);
                     if (resourceConverter.EfficiencyBonus <= 0)
                         continue;
 

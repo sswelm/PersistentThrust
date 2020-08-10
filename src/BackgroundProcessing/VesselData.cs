@@ -57,7 +57,7 @@ namespace PersistentThrust
     public class VesselData
     {
         public Vessel Vessel { get; set; }
-        
+        public double PersistentThrust { get; set; }
         public double TotalVesselMassInKg { get; set; }
         public double TotalVesselMassInTon { get; set; }
         public Vector3d Position { get; set; }
@@ -110,10 +110,17 @@ namespace PersistentThrust
 
         public void UpdateUnloadedVesselData()
         {
+            // clear reference dictionaries
+            foreach (var vesselDataResourceChange in ResourceChanges)
+            {
+                vesselDataResourceChange.Value.Change = 0;
+            }
+
+            // clear value dictionaries
             AvailableResources.Clear();
             MaxAmountResources.Clear();
             AvailableStorage.Clear();
-            
+
             Position = Vessel.GetWorldPos3D();
             Orbit = Vessel.GetOrbit();
             OrbitalVelocityAtUt = Orbit.getOrbitalVelocityAtUT(Planetarium.GetUniversalTime()).xzy;

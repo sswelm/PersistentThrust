@@ -52,18 +52,25 @@ namespace PersistentThrust
             if (vesselData.Vessel.LandedOrSplashed)
                 return;
 
-            if (DetectKerbalism.Found())
-                return;
+            vesselData.PersistentThrust = 0;
 
-            foreach (var engine in vesselData.Engines)
+            foreach (KeyValuePair<uint, EngineData> keyValuePair in vesselData.Engines)
             {
-                var resourceChangeRequest = new List<KeyValuePair<string, double>>();
+                EngineData engineData = keyValuePair.Value;
 
-                ProcessUnloadedPersistentEngine(engine.Value.ProtoPartSnapshot, vesselData, resourceChangeRequest);
+                double.TryParse(engineData.ProtoPartModuleSnapshot.moduleValues.GetValue(nameof(engineData.PersistentEngine.persistentThrust)), out engineData.PersistentEngine.persistentThrust);
+                if (engineData.PersistentEngine.persistentThrust <= 0)
+                    continue;
 
-                foreach (var keyValuePair in resourceChangeRequest)
+                vesselData.PersistentThrust += engineData.PersistentEngine.persistentThrust;
+
+                var resourceChangeRequests = new List<KeyValuePair<string, double>>();
+
+                ProcessUnloadedPersistentEngine(engineData.ProtoPartSnapshot, vesselData, resourceChangeRequests);
+
+                foreach (KeyValuePair<string, double> resourceChangeRequest in resourceChangeRequests)
                 {
-                    vesselData.ResourceChange(keyValuePair.Key, keyValuePair.Value);
+                    vesselData.ResourceChange(resourceChangeRequest.Key, resourceChangeRequest.Value);
                 }
             }
         }
@@ -73,6 +80,9 @@ namespace PersistentThrust
             VesselData vesselData,
             List<KeyValuePair<string, double>> resourceChangeRequest)
         {
+            if (DetectKerbalism.Found())
+                return;
+
             // lookup engine data
             vesselData.Engines.TryGetValue(protoPartSnapshot.persistentId, out EngineData engineData);
 
