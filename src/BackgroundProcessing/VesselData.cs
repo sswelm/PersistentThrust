@@ -17,6 +17,7 @@ namespace PersistentThrust
         public uint PersistentPartId { get; set; }
         public Part ProtoPart { get; set; }
         public ProtoPartSnapshot ProtoPartSnapshot { get; set; }
+        public double ChargeRateMultiplier { get; set; } = 1;
 
         public List<ModuleDeployableSolarPanel> ModuleDeployableSolarPanels { get; set; }
         public List<ProtoPartModuleSnapshot> ProtoPartModuleSnapshots { get; set; }
@@ -27,6 +28,8 @@ namespace PersistentThrust
         public uint PersistentPartId { get; set; }
         public Part ProtoPart { get; set; }
         public ProtoPartSnapshot ProtoPartSnapshot { get; set; }
+        public double OutputMultiplier { get; set; } = 1;
+        public double InputMultiplier { get; set; } = 1;
 
         public List<ModuleGenerator> ModuleGenerators { get; set; }
         public List<ProtoPartModuleSnapshot> ProtoPartModuleSnapshots { get; set; }
@@ -37,6 +40,9 @@ namespace PersistentThrust
         public uint PersistentPartId { get; set; }
         public Part ProtoPart { get; set; }
         public ProtoPartSnapshot ProtoPartSnapshot { get; set; }
+        public double InputMultiplier { get; set; } = 1;
+        public double OutputMultiplier { get; set; } = 1;
+        public double ReqMultiplier { get; set; } = 1;
 
         public List<ModuleResourceConverter> ModuleResourceConverters { get; set; }
         public List<ProtoPartModuleSnapshot> ProtoPartModuleSnapshots { get; set; }
@@ -51,7 +57,7 @@ namespace PersistentThrust
     public class VesselData
     {
         public Vessel Vessel { get; set; }
-
+        
         public double TotalVesselMassInKg { get; set; }
         public double TotalVesselMassInTon { get; set; }
         public Vector3d Position { get; set; }
@@ -64,6 +70,7 @@ namespace PersistentThrust
 
         public bool? HasAnyActivePersistentEngine { get; set; }
 
+        public Dictionary<uint, double> PartSizeMultipliers { get; set; } = new Dictionary<uint, double>();
         public Dictionary<uint, EngineData> Engines { get; set; } = new Dictionary<uint, EngineData>();
         public Dictionary<uint, ModuleGeneratorData> Generators { get; set; } = new Dictionary<uint, ModuleGeneratorData>();
         public Dictionary<uint, ModuleResourceConverterData> ResourceConverters { get; set; } = new Dictionary<uint, ModuleResourceConverterData>();
@@ -74,6 +81,7 @@ namespace PersistentThrust
         public Dictionary<string, double> AvailableResources { get; set; } = new Dictionary<string, double>();
         public Dictionary<string, double> MaxAmountResources { get; set; } = new Dictionary<string, double>();
         public Dictionary<string, double> AvailableStorage{ get; set; } = new Dictionary<string, double>();
+
 
         public VesselData(Vessel vessel)
         {

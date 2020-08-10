@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
+using PersistentThrust.Helpers;
 
 namespace PersistentThrust
 {
@@ -86,12 +88,14 @@ namespace PersistentThrust
             if (DetectKerbalism.Found())
                 return;
 
-            foreach (KeyValuePair<uint, ModuleGeneratorData> vesselDataGenerator in vesselData.Generators)
+            foreach (KeyValuePair<uint, ModuleGeneratorData> keyValuePair in vesselData.Generators)
             {
-                for (var i = 0; i < vesselDataGenerator.Value.ModuleGenerators.Count; i++)
+                ModuleGeneratorData generatorData = keyValuePair.Value;
+
+                for (var i = 0; i < generatorData.ModuleGenerators.Count; i++)
                 {
-                    ModuleGenerator moduleGenerator = vesselDataGenerator.Value.ModuleGenerators[i];
-                    ProtoPartModuleSnapshot protoPartModuleSnapshot = vesselDataGenerator.Value.ProtoPartModuleSnapshots[i];
+                    ModuleGenerator moduleGenerator = generatorData.ModuleGenerators[i];
+                    ProtoPartModuleSnapshot protoPartModuleSnapshot = generatorData.ProtoPartModuleSnapshots[i];
 
                     // read persistent settings
                     moduleGenerator.generatorIsActive = bool.Parse(protoPartModuleSnapshot.moduleValues.GetValue(nameof(moduleGenerator.generatorIsActive)));
@@ -108,7 +112,7 @@ namespace PersistentThrust
                     {
                         vesselData.AvailableResources.TryGetValue(moduleResource.name, out double availableAmount);
 
-                        double requestedRate = moduleGenerator.throttle * moduleResource.rate * TimeWarp.fixedDeltaTime;
+                        double requestedRate = moduleGenerator.throttle * moduleResource.rate * TimeWarp.fixedDeltaTime * generatorData.InputMultiplier;
                         double foundRatio = requestedRate > 0 ? Math.Min(1, availableAmount / requestedRate) : 1;
 
                         if (foundRatio < finalFoundRatio)
@@ -121,7 +125,7 @@ namespace PersistentThrust
                     // extract resource from available resources
                     foreach (ModuleResource inputResource in moduleGenerator.resHandler.inputResources)
                     {
-                        double resourceChange = -inputResource.rate * moduleGenerator.throttle * finalFoundRatio;
+                        double resourceChange = -inputResource.rate * moduleGenerator.throttle * finalFoundRatio * generatorData.InputMultiplier;
 
                         vesselData.UpdateAvailableResource(inputResource.name, resourceChange);
                         vesselData.ResourceChange(inputResource.name, resourceChange);
@@ -130,7 +134,7 @@ namespace PersistentThrust
                     // generate resources
                     foreach (ModuleResource outputResource in moduleGenerator.resHandler.outputResources)
                     {
-                        double resourceChange = outputResource.rate * moduleGenerator.throttle * finalFoundRatio;
+                        double resourceChange = outputResource.rate * moduleGenerator.throttle * finalFoundRatio * generatorData.OutputMultiplier;
 
                         vesselData.UpdateAvailableResource(outputResource.name, resourceChange);
                         vesselData.ResourceChange(outputResource.name, resourceChange);
@@ -144,12 +148,14 @@ namespace PersistentThrust
             if (DetectKerbalism.Found())
                 return;
 
-            foreach (KeyValuePair<uint, ModuleResourceConverterData> vesselDataGenerator in vesselData.ResourceConverters)
+            foreach (KeyValuePair<uint, ModuleResourceConverterData> keyValuePair in vesselData.ResourceConverters)
             {
-                for (var i = 0; i < vesselDataGenerator.Value.ModuleResourceConverters.Count; i++)
+                ModuleResourceConverterData resourceConverterData = keyValuePair.Value;
+
+                for (var i = 0; i < resourceConverterData.ModuleResourceConverters.Count; i++)
                 {
-                    ModuleResourceConverter resourceConverter = vesselDataGenerator.Value.ModuleResourceConverters[i];
-                    ProtoPartModuleSnapshot protoPartModuleSnapshot = vesselDataGenerator.Value.ProtoPartModuleSnapshots[i];
+                    ModuleResourceConverter resourceConverter = resourceConverterData.ModuleResourceConverters[i];
+                    ProtoPartModuleSnapshot protoPartModuleSnapshot = resourceConverterData.ProtoPartModuleSnapshots[i];
 
                     // read persistent settings
                     resourceConverter.IsActivated = bool.Parse(protoPartModuleSnapshot.moduleValues.GetValue(nameof(resourceConverter.IsActivated)));
@@ -168,7 +174,7 @@ namespace PersistentThrust
                     {
                         vesselData.AvailableResources.TryGetValue(resourceRatio.ResourceName, out double availableAmount);
 
-                        if (availableAmount < resourceRatio.Ratio)
+                        if (availableAmount < resourceRatio.Ratio * resourceConverterData.ReqMultiplier)
                         {
                             processRatio = 0;
                             break;
@@ -186,7 +192,7 @@ namespace PersistentThrust
 
                         vesselData.AvailableStorage.TryGetValue(resourceRatio.ResourceName, out double availableStorage);
 
-                        double requestedRate = resourceConverter.EfficiencyBonus * resourceRatio.Ratio * TimeWarp.fixedDeltaTime;
+                        double requestedRate = resourceConverter.EfficiencyBonus * resourceRatio.Ratio * TimeWarp.fixedDeltaTime * resourceConverterData.OutputMultiplier;
                         double spaceRatio = resourceRatio.Ratio > 0 ? Math.Min(1, availableStorage / requestedRate): 1;
 
                         if (spaceRatio < processRatio)
@@ -201,7 +207,7 @@ namespace PersistentThrust
                     {
                         vesselData.AvailableResources.TryGetValue(resourceRatio.ResourceName, out double availableAmount);
 
-                        double requestedRate = resourceConverter.EfficiencyBonus * resourceRatio.Ratio * TimeWarp.fixedDeltaTime;
+                        double requestedRate = resourceConverter.EfficiencyBonus * resourceRatio.Ratio * TimeWarp.fixedDeltaTime * resourceConverterData.InputMultiplier;
                         double foundRatio = requestedRate > 0 ? Math.Min(1, availableAmount / requestedRate) : 1;
 
                         if (foundRatio < processRatio)
@@ -257,9 +263,11 @@ namespace PersistentThrust
                 if (!KopernicusHelper.LineOfSightToSun(vesselData.Position, starlight.star))
                     continue;
 
-                foreach (var solarPanelData in vesselData.SolarPanels)
+                foreach (KeyValuePair<uint, SolarPanelData> keyValuePair in vesselData.SolarPanels)
                 {
-                    foreach (ModuleDeployableSolarPanel solarPanel in solarPanelData.Value.ModuleDeployableSolarPanels)
+                    SolarPanelData solarPanelData = keyValuePair.Value;
+
+                    foreach (ModuleDeployableSolarPanel solarPanel in solarPanelData.ModuleDeployableSolarPanels)
                     {
                         if (solarPanel.chargeRate <= 0)
                             continue;
@@ -268,7 +276,7 @@ namespace PersistentThrust
                             continue;
 
                         double trackingModifier = solarPanel.isTracking ? 1 : 0.25;
-                        double powerChange = trackingModifier * solarPanel.chargeRate * starlightRelativeLuminosity * solarPanel.efficiencyMult;
+                        double powerChange = trackingModifier * solarPanel.chargeRate * starlightRelativeLuminosity * solarPanel.efficiencyMult * solarPanelData.ChargeRateMultiplier;
 
                         vesselData.UpdateAvailableResource(solarPanel.resourceName, powerChange);
                         vesselData.ResourceChange(solarPanel.resourceName, powerChange);
@@ -359,6 +367,8 @@ namespace PersistentThrust
             if (protoPart == null)
                 return;
 
+            LoadTweakScalePartModules(protoPartSnapshot, vesselData);
+
             LoadModuleDeployableSolarPanel(protoPartSnapshot, vesselData, protoPart);
 
             LoadModuleGenerator(protoPartSnapshot, vesselData, protoPart);
@@ -368,11 +378,23 @@ namespace PersistentThrust
             EngineBackgroundProcessing.LoadPersistentEngine(protoPartSnapshot, vesselData, protoPart);
         }
 
-        private static SolarPanelData LoadModuleDeployableSolarPanel(ProtoPartSnapshot protoPartSnapshot, VesselData vesselData, Part protoPart = null)
+        private static void LoadTweakScalePartModules(ProtoPartSnapshot protoPartSnapshot, VesselData vesselData)
         {
-            if (protoPart == null)
-                protoPart = PartLoader.getPartInfoByName(protoPartSnapshot.partName)?.partPrefab;
+            ProtoPartModuleSnapshot protoPartModuleSnapshot = protoPartSnapshot.FindModule("TweakScale");
 
+            if (protoPartModuleSnapshot == null)
+                return;
+
+            double.TryParse(protoPartModuleSnapshot.moduleValues.GetValue("currentScale"), out double currentScale);
+            double.TryParse(protoPartModuleSnapshot.moduleValues.GetValue("defaultScale"), out double defaultScale);
+
+            double tweakScalePartMultiplier = defaultScale > 0 && currentScale > 0 ? currentScale / defaultScale : 1;
+
+            vesselData.PartSizeMultipliers.Add(protoPartSnapshot.persistentId, tweakScalePartMultiplier);
+        }
+
+        private static SolarPanelData LoadModuleDeployableSolarPanel(ProtoPartSnapshot protoPartSnapshot, VesselData vesselData, Part protoPart)
+        {
             var moduleDeployableSolarPanels = protoPart?.FindModulesImplementing<ModuleDeployableSolarPanel>();
 
             if (moduleDeployableSolarPanels is null || moduleDeployableSolarPanels.Any() == false)
@@ -389,6 +411,15 @@ namespace PersistentThrust
                 ModuleDeployableSolarPanels = moduleDeployableSolarPanels
             };
 
+            // calculate tweakScale multiplier
+            if (vesselData.PartSizeMultipliers.TryGetValue(protoPartSnapshot.persistentId, out double partSizeMultiplier))
+            {
+                double? tweakScaleExponent = TweaksSaleHelper.GetTweakScaleExponent(nameof(ModuleDeployableSolarPanel), "chargeRate");
+
+                if (tweakScaleExponent != null)
+                    solarPanelData.ChargeRateMultiplier = Math.Pow(partSizeMultiplier, tweakScaleExponent.Value);
+            }
+
             for (int i = 0; i  < moduleDeployableSolarPanels.Count; i++)
             {
                 var moduleDeployableSolarPanel = moduleDeployableSolarPanels[i];
@@ -403,11 +434,8 @@ namespace PersistentThrust
             return solarPanelData;
         }
 
-        private static ModuleGeneratorData LoadModuleGenerator(ProtoPartSnapshot protoPartSnapshot, VesselData vesselData, Part protoPart = null)
+        private static ModuleGeneratorData LoadModuleGenerator(ProtoPartSnapshot protoPartSnapshot, VesselData vesselData, Part protoPart)
         {
-            if (protoPart == null)
-                protoPart = PartLoader.getPartInfoByName(protoPartSnapshot.partName)?.partPrefab;
-
             var moduleGenerators = protoPart?.FindModulesImplementing<ModuleGenerator>();
 
             if (moduleGenerators is null || moduleGenerators.Any() == false)
@@ -424,6 +452,18 @@ namespace PersistentThrust
                 ModuleGenerators = moduleGenerators
             };
 
+            // calculate tweakScale multiplier
+            if (vesselData.PartSizeMultipliers.TryGetValue(protoPartSnapshot.persistentId, out double partSizeMultiplier))
+            {
+                var tweakScaleExponents = TweaksSaleHelper.GetTweakScaleExponents(nameof(ModuleGenerator));
+
+                if (tweakScaleExponents.Exponents.TryGetValue("outputResources.rate", out double outputExponent))
+                    moduleGeneratorData.OutputMultiplier = Math.Pow(partSizeMultiplier, outputExponent);
+
+                if (tweakScaleExponents.Exponents.TryGetValue("inputResources.rate", out double inputExponent))
+                    moduleGeneratorData.InputMultiplier = Math.Pow(partSizeMultiplier, inputExponent);
+            }
+
             // readout persistent data
             for (int i = 0; i < moduleGenerators.Count; i++)
             {
@@ -439,11 +479,8 @@ namespace PersistentThrust
             return moduleGeneratorData;
         }
 
-        private static ModuleResourceConverterData LoadModuleResourceConverters(ProtoPartSnapshot protoPartSnapshot, VesselData vesselData, Part protoPart = null)
+        private static ModuleResourceConverterData LoadModuleResourceConverters(ProtoPartSnapshot protoPartSnapshot, VesselData vesselData, Part protoPart)
         {
-            if (protoPart == null)
-                protoPart = PartLoader.getPartInfoByName(protoPartSnapshot.partName)?.partPrefab;
-
             var moduleResourceConverter = protoPart?.FindModulesImplementing<ModuleResourceConverter>();
 
             if (moduleResourceConverter is null || moduleResourceConverter.Any() == false)
@@ -459,6 +496,21 @@ namespace PersistentThrust
                 ProtoPartModuleSnapshots = protoPartModuleSnapshots,
                 ModuleResourceConverters = moduleResourceConverter
             };
+
+            // calculate tweakScale multipliers
+            if (vesselData.PartSizeMultipliers.TryGetValue(protoPartSnapshot.persistentId, out double partSizeMultiplier))
+            {
+                var tweakScaleExponents = TweaksSaleHelper.GetTweakScaleExponents(nameof(ModuleResourceConverter));
+
+                if (tweakScaleExponents.Exponents.TryGetValue("inputList", out double inputExponent))
+                    resourceConverterData.InputMultiplier = Math.Pow(partSizeMultiplier, inputExponent);
+
+                if (tweakScaleExponents.Exponents.TryGetValue("outputList", out double outExponent))
+                    resourceConverterData.OutputMultiplier = Math.Pow(partSizeMultiplier, outExponent);
+
+                if (tweakScaleExponents.Exponents.TryGetValue("reqList", out double reqExponent))
+                    resourceConverterData.ReqMultiplier = Math.Pow(partSizeMultiplier, reqExponent);
+            }
 
             // readout persistent data
             for (int i = 0; i < moduleResourceConverter.Count; i++)

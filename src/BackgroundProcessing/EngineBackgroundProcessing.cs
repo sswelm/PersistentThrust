@@ -236,12 +236,12 @@ namespace PersistentThrust
                 case VesselAutopilot.AutopilotMode.RadialIn:
                     thrustVector = -Vector3.Cross(vesselData.OrbitalVelocityAtUt,
                         Vector3.Cross(vesselData.OrbitalVelocityAtUt,
-                            vessel.orbit.getPositionAtUT(UT) - vesselData.Orbit.referenceBody.position));
+                            vesselData.Orbit.getPositionAtUT(UT) - vesselData.Orbit.referenceBody.position));
                     break;
                 case VesselAutopilot.AutopilotMode.RadialOut:
                     thrustVector = Vector3.Cross(vesselData.OrbitalVelocityAtUt,
                         Vector3.Cross(vesselData.OrbitalVelocityAtUt,
-                            vessel.orbit.getPositionAtUT(UT) - vesselData.Orbit.referenceBody.position));
+                            vesselData.Orbit.getPositionAtUT(UT) - vesselData.Orbit.referenceBody.position));
                     break;
                 case VesselAutopilot.AutopilotMode.Target:
                     thrustVector = GetThrustVectorToTarget(vessel, moduleSnapshot, UT);
@@ -249,9 +249,9 @@ namespace PersistentThrust
                 case VesselAutopilot.AutopilotMode.AntiTarget:
                     thrustVector = -GetThrustVectorToTarget(vessel, moduleSnapshot, UT);
                     break;
-                //case VesselAutopilot.AutopilotMode.Maneuver:
-                //    thrustVector = orbit.GetThrustVectorToManeuver(moduleSnapshot);
-                //    break;
+                case VesselAutopilot.AutopilotMode.Maneuver:
+                    thrustVector = vesselData.Orbit.GetThrustVectorToManeuver(moduleSnapshot);
+                    break;
             }
 
             return thrustVector;
