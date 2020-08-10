@@ -116,9 +116,11 @@ namespace PersistentThrust
             foreach (KeyValuePair<uint, EngineData> engineData in Engines)
             {
                 DeltaVVector += engineData.Value.DeltaVVector;
+                engineData.Value.DeltaVVector = Vector3d.zero;
             }
             Orbit.Perturb(DeltaVVector, Planetarium.GetUniversalTime());
 
+            // calculate vessel mass and total resource amounts
             TotalVesselMassInTon = 0;
             foreach (ProtoPartSnapshot protoPartSnapshot in Vessel.protoVessel.protoPartSnapshots)
             {
@@ -135,6 +137,7 @@ namespace PersistentThrust
             }
             TotalVesselMassInKg = TotalVesselMassInTon * 1000;
 
+            // calculate storage room for resources
             foreach (KeyValuePair<string, double> availableResource in AvailableResources)
             {
                 AvailableResources.TryGetValue(availableResource.Key, out double availableAmount);
