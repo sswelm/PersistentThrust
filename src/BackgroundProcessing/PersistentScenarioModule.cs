@@ -1,10 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices;
 using PersistentThrust.Helpers;
 
-namespace PersistentThrust
+namespace PersistentThrust.BackgroundProcessing
 {
     [KSPScenario(ScenarioCreationOptions.AddToAllGames, new[] {GameScenes.SPACECENTER, GameScenes.TRACKSTATION, GameScenes.FLIGHT, GameScenes.EDITOR})]
     public sealed class PersistentScenarioModule : ScenarioModule
@@ -341,7 +340,7 @@ namespace PersistentThrust
 
             foreach (PersistentEngine persistentEngine in persistentEngines)
             {
-                vesselData.Engines.TryGetValue(persistentEngine.part.persistentId, out EngineData engineData);
+                vesselData.Engines.TryGetValue(persistentEngine.part.persistentId, out PersistentEngineData engineData);
 
                 if (engineData != null)
                     engineData.PersistentEngine.persistentThrust = persistentEngine.persistentThrust;

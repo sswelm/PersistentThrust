@@ -2,6 +2,7 @@ using KSP.Localization;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using PersistentThrust.BackgroundProcessing;
 using UniLinq;
 using UnityEngine;
 

@@ -2,7 +2,7 @@
 
 namespace PersistentThrust
 {
-    public class EngineData
+    public class PersistentEngineData
     {
         public uint PersistentPartId { get; set; }
         public Part ProtoPart { get; set; }
@@ -71,7 +71,7 @@ namespace PersistentThrust
         public bool? HasAnyActivePersistentEngine { get; set; }
 
         public Dictionary<uint, double> PartSizeMultipliers { get; set; } = new Dictionary<uint, double>();
-        public Dictionary<uint, EngineData> Engines { get; set; } = new Dictionary<uint, EngineData>();
+        public Dictionary<uint, PersistentEngineData> Engines { get; set; } = new Dictionary<uint, PersistentEngineData>();
         public Dictionary<uint, ModuleGeneratorData> Generators { get; set; } = new Dictionary<uint, ModuleGeneratorData>();
         public Dictionary<uint, ModuleResourceConverterData> ResourceConverters { get; set; } = new Dictionary<uint, ModuleResourceConverterData>();
 
@@ -128,7 +128,7 @@ namespace PersistentThrust
 
             // apply Perturb only once per frame per vessel
             DeltaVVector = Vector3d.zero;
-            foreach (KeyValuePair<uint, EngineData> engineData in Engines)
+            foreach (KeyValuePair<uint, PersistentEngineData> engineData in Engines)
             {
                 DeltaVVector += engineData.Value.DeltaVVector;
                 engineData.Value.DeltaVVector = Vector3d.zero;

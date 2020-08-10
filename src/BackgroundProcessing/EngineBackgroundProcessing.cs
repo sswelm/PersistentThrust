@@ -3,39 +3,64 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-namespace PersistentThrust
+namespace PersistentThrust.BackgroundProcessing
 {
     public static class EngineBackgroundProcessing
     {
-        public static EngineData LoadPersistentEngine(ProtoPartSnapshot protoPartSnapshot, VesselData vesselData, Part protoPart = null)
+        public static PersistentEngineData LoadPersistentEngine(ProtoPartSnapshot protoPartSnapshot, VesselData vesselData, Part protoPart)
         {
-            if (protoPart == null)
-                protoPart = PartLoader.getPartInfoByName(protoPartSnapshot.partName)?.partPrefab;
-
             var persistentEngine = protoPart?.FindModuleImplementing<PersistentEngine>();
 
             if (persistentEngine is null)
                 return null;
 
-            ProtoPartModuleSnapshot protoPartModuleSnapshot = protoPartSnapshot.FindModule(nameof(PersistentEngine));
+            ProtoPartModuleSnapshot persistentEngineModuleSnapshot = protoPartSnapshot.FindModule(nameof(PersistentEngine));
 
-            if (protoPartModuleSnapshot == null)
+            if (persistentEngineModuleSnapshot == null)
                 return null;
 
-            // Load persistentThrust from ProtoPartModuleSnapshots
-            protoPartModuleSnapshot.moduleValues.TryGetValue(nameof(persistentEngine.persistentThrust), ref persistentEngine.persistentThrust);
-
-            var engineData = new EngineData
+            var engineData = new PersistentEngineData
             {
                 ProtoPart = protoPart,
                 ProtoPartSnapshot = protoPartSnapshot,
                 PersistentPartId = protoPartSnapshot.persistentId,
-                ProtoPartModuleSnapshot = protoPartModuleSnapshot,
+                ProtoPartModuleSnapshot = persistentEngineModuleSnapshot,
                 PersistentEngine = persistentEngine
             };
 
             // store data
             vesselData.Engines.Add(protoPartSnapshot.persistentId, engineData);
+
+            // Load persistentThrust from ProtoPartModuleSnapshots
+            persistentEngineModuleSnapshot.moduleValues.TryGetValue(nameof(persistentEngine.persistentThrust), ref persistentEngine.persistentThrust);
+
+            var moduleEngines = protoPart.FindModulesImplementing<ModuleEngines>();
+
+            if (moduleEngines == null || moduleEngines.Any() == false)
+                return null;
+
+            // assume all engine modules are of the same partModule
+            var engineModuleName = moduleEngines.First().moduleName;
+
+            List<ProtoPartModuleSnapshot> moduleEngineSnapshots = protoPartSnapshot.modules.Where(m => m.moduleName == engineModuleName).ToList();
+
+            var persistentEngineModules = new List<PersistentEngineModule>();
+            for (int i = 0; i < moduleEngines.Count; i++)
+            {
+                ModuleEngines moduleEngine = moduleEngines[i];
+                ProtoPartModuleSnapshot moduleEngineSnapshot = moduleEngineSnapshots[i];
+
+                List<PersistentPropellant> persistentPropellants = PersistentPropellant.MakeList(moduleEngine.propellants);
+
+                var persistentEngineModule = new PersistentEngineModule
+                {
+                    propellants = persistentPropellants,
+                    averageDensity = persistentPropellants.AverageDensity()
+                };
+                persistentEngineModules.Add(persistentEngineModule);
+            }
+
+            persistentEngine.moduleEngines = persistentEngineModules.ToArray();
 
             // check if there any active persistent engines that need to be processed
             if (persistentEngine.persistentThrust > 0)
@@ -54,19 +79,19 @@ namespace PersistentThrust
 
             vesselData.PersistentThrust = 0;
 
-            foreach (KeyValuePair<uint, EngineData> keyValuePair in vesselData.Engines)
+            foreach (KeyValuePair<uint, PersistentEngineData> keyValuePair in vesselData.Engines)
             {
-                EngineData engineData = keyValuePair.Value;
+                PersistentEngineData persistentEngineData = keyValuePair.Value;
 
-                double.TryParse(engineData.ProtoPartModuleSnapshot.moduleValues.GetValue(nameof(engineData.PersistentEngine.persistentThrust)), out engineData.PersistentEngine.persistentThrust);
-                if (engineData.PersistentEngine.persistentThrust <= 0)
+                double.TryParse(persistentEngineData.ProtoPartModuleSnapshot.moduleValues.GetValue(nameof(persistentEngineData.PersistentEngine.persistentThrust)), out persistentEngineData.PersistentEngine.persistentThrust);
+                if (persistentEngineData.PersistentEngine.persistentThrust <= 0)
                     continue;
 
-                vesselData.PersistentThrust += engineData.PersistentEngine.persistentThrust;
+                vesselData.PersistentThrust += persistentEngineData.PersistentEngine.persistentThrust;
 
                 var resourceChangeRequests = new List<KeyValuePair<string, double>>();
 
-                ProcessUnloadedPersistentEngine(engineData.ProtoPartSnapshot, vesselData, resourceChangeRequests);
+                ProcessUnloadedPersistentEngine(persistentEngineData.ProtoPartSnapshot, vesselData, resourceChangeRequests);
 
                 foreach (KeyValuePair<string, double> resourceChangeRequest in resourceChangeRequests)
                 {
@@ -84,7 +109,7 @@ namespace PersistentThrust
                 return;
 
             // lookup engine data
-            vesselData.Engines.TryGetValue(protoPartSnapshot.persistentId, out EngineData engineData);
+            vesselData.Engines.TryGetValue(protoPartSnapshot.persistentId, out PersistentEngineData engineData);
 
             if (engineData == null)
             {
@@ -206,7 +231,7 @@ namespace PersistentThrust
             if (!module_snapshot.moduleValues.TryGetValue(nameof(persistentIsp), ref persistentIsp))
                 return proto_part.partInfo.title;
 
-            vesselData.Engines.TryGetValue(part_snapshot.persistentId, out EngineData engineData);
+            vesselData.Engines.TryGetValue(part_snapshot.persistentId, out PersistentEngineData engineData);
             if (engineData == null)
                 return proto_part.partInfo.title;
 
