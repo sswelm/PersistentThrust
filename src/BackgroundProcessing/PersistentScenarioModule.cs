@@ -10,18 +10,31 @@ namespace PersistentThrust.BackgroundProcessing
     {
         public static readonly Dictionary<Guid, VesselData> VesselDataDict = new Dictionary<Guid, VesselData>();
 
+        public static string Title { get; set; }
+
+        public static double UniversalTime { get; set; }
+
+
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
+            if (Title != HighLogic.CurrentGame.Title)
+            {
+                VesselDataDict.Clear();
+            }
 
-            VesselDataDict.Clear();
+            if (Math.Abs(Planetarium.GetUniversalTime() - UniversalTime) > 1)
+            {
+                VesselDataDict.Clear();
+            }
+
+            Title = HighLogic.CurrentGame.Title;
         }
 
-        /// <summary>
-        /// Called by the part every refresh frame where it is active, which can be less frequent than FixedUpdate which is called every processing frame
-        /// </summary>
         void FixedUpdate()
         {
+            UniversalTime = Planetarium.GetUniversalTime();
+
             foreach (Vessel vessel in FlightGlobals.Vessels)
             {
                 // ignore Kerbals

@@ -73,6 +73,7 @@
     <Compile Include="GameEventSubscriber.cs" />
     <Compile Include="Helpers\TweaksSaleHelper.cs" />
     <Compile Include="PersistentEngine.cs" />
+    <Compile Include="BackgroundProcessing\PersistentProcessingVesselModule.cs" />
     <Compile Include="Preferences.cs" />
     <Compile Include="Propellant.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
