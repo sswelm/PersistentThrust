@@ -10,25 +10,13 @@ namespace PersistentThrust.BackgroundProcessing
     {
         public static readonly Dictionary<Guid, VesselData> VesselDataDict = new Dictionary<Guid, VesselData>();
 
-        public static string Title { get; set; }
-
         public static double UniversalTime { get; set; }
 
 
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
-            if (Title != HighLogic.CurrentGame.Title)
-            {
-                VesselDataDict.Clear();
-            }
-
-            if (Math.Abs(Planetarium.GetUniversalTime() - UniversalTime) > 1)
-            {
-                VesselDataDict.Clear();
-            }
-
-            Title = HighLogic.CurrentGame.Title;
+            VesselDataDict.Clear();
         }
 
         void FixedUpdate()
@@ -289,6 +277,10 @@ namespace PersistentThrust.BackgroundProcessing
             }
         }
 
+        /// <summary>
+        /// RequestResource doesn't work when a vesel isn't unloaded, so we have to realize it ourselves
+        /// </summary>
+        /// <param name="vesselData"></param>
         private static void UpdatePersistentResources(VesselData vesselData)
         {
             var relevantResourceChanges = vesselData.ResourceChanges.Where(m => m.Value.Change != 0);
@@ -315,7 +307,7 @@ namespace PersistentThrust.BackgroundProcessing
                             var fraction = available < float.Epsilon ? 1 : protoPartResourceSnapshot.amount / available;
 
                             if (protoPartResourceSnapshot.amount > float.Epsilon)
-                                protoPartResourceSnapshot.amount = Math.Max(0, protoPartResourceSnapshot.amount + fixedChange * fraction);
+                                protoPartResourceSnapshot.amount = Math.Max(0, Math.Min(protoPartResourceSnapshot.maxAmount, protoPartResourceSnapshot.amount + fixedChange * fraction));
                             else
                                 protoPartResourceSnapshot.amount = 0;
                         }
@@ -323,9 +315,11 @@ namespace PersistentThrust.BackgroundProcessing
                         {
                             var partAvailableSpace = protoPartResourceSnapshot.maxAmount - protoPartResourceSnapshot.amount;
 
-                            var fraction = partAvailableSpace > float.Epsilon ? partAvailableSpace / (totalAmount - available) : 1;
+                            var totalAvailableSpace = Math.Min(0, totalAmount - available);
 
-                            protoPartResourceSnapshot.amount = Math.Min(protoPartResourceSnapshot.maxAmount, protoPartResourceSnapshot.amount + fixedChange * fraction);
+                            var fraction = partAvailableSpace > float.Epsilon && totalAvailableSpace > float.Epsilon ? partAvailableSpace / totalAvailableSpace : 1;
+
+                            protoPartResourceSnapshot.amount = Math.Max(0, Math.Min(protoPartResourceSnapshot.maxAmount, protoPartResourceSnapshot.amount + fixedChange * fraction));
                         }
                     }
                 }

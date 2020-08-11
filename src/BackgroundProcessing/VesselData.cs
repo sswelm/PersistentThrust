@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace PersistentThrust
 {
@@ -144,10 +145,10 @@ namespace PersistentThrust
                 {
                     TotalVesselMassInTon += protoPartResourceSnapshot.amount * protoPartResourceSnapshot.definition.density;
 
-                    UpdateAvailableResource(protoPartResourceSnapshot.resourceName, protoPartResourceSnapshot.amount);
-
                     MaxAmountResources.TryGetValue(protoPartResourceSnapshot.resourceName, out double maxAmount);
                     MaxAmountResources[protoPartResourceSnapshot.resourceName] = maxAmount + protoPartResourceSnapshot.maxAmount;
+
+                    UpdateAvailableResource(protoPartResourceSnapshot.resourceName, Math.Min(protoPartResourceSnapshot.maxAmount, protoPartResourceSnapshot.amount));
                 }
             }
             TotalVesselMassInKg = TotalVesselMassInTon * 1000;
