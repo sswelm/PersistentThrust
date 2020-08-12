@@ -42,9 +42,9 @@ namespace PersistentThrust
             if (!_initialized)
             {
                 GameEvents.onVesselSOIChanged.Add(OmVesselSOIChanged);
-                GameEvents.onGameStateLoad.Add(onGameStateLoadEvent);
-                GameEvents.onGameSceneLoadRequested.Add(GameSceneLoadEvent);
-                GameEvents.onVesselWillDestroy.Add(VesselDestroyEvent);
+                //GameEvents.onGameStateLoad.Add(onGameStateLoadEvent);
+                //GameEvents.onGameSceneLoadRequested.Add(GameSceneLoadEvent);
+                //GameEvents.onVesselWillDestroy.Add(VesselDestroyEvent);
 
                 _initialized = true;
             }
@@ -110,20 +110,20 @@ namespace PersistentThrust
             gameEvent.host.FindPartModulesImplementing<PersistentEngine>().ForEach(e => e.VesselChangedSOI());
         }
 
-        public void onGameStateLoadEvent(ConfigNode newScene)
-        {
+        //public void onGameStateLoadEvent(ConfigNode newScene)
+        //{
 
-        }
+        //}
 
-        public void GameSceneLoadEvent(GameScenes newScene)
-        {
+        //public void GameSceneLoadEvent(GameScenes newScene)
+        //{
 
-        }
+        //}
 
-        //The main show. The VesselDestroyEvent is activated whenever KSP destroys a vessel. We only care about it in a specific set of circumstances
-        private void VesselDestroyEvent(Vessel v)
-        {
+        ////The main show. The VesselDestroyEvent is activated whenever KSP destroys a vessel. We only care about it in a specific set of circumstances
+        //private void VesselDestroyEvent(Vessel v)
+        //{
 
-        }
+        //}
     }
 }

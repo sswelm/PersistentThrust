@@ -16,7 +16,7 @@ namespace PersistentThrust.BackgroundProcessing
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
-            VesselDataDict.Clear();
+            //VesselDataDict.Clear();
         }
 
         void FixedUpdate()
@@ -25,6 +25,10 @@ namespace PersistentThrust.BackgroundProcessing
 
             foreach (Vessel vessel in FlightGlobals.Vessels)
             {
+                // don't process a vessel until unloaded
+                if (vessel.loaded)
+                    continue;
+
                 // ignore Kerbals
                 if (vessel.isEVA)
                     continue;
@@ -44,13 +48,8 @@ namespace PersistentThrust.BackgroundProcessing
                     vesselData = new VesselData(vessel);
                     VesselDataDict.Add(vessel.id, vesselData);
                 }
-
-                // update vessel data when loaded
-                if (vessel.loaded)
-                {
-                    ProcessesLoadedVessel(vessel, vesselData);
-                    continue;
-                }
+                else
+                    vesselData.Vessel = vessel;
 
                 // determine available resources and total vessel mass
                 vesselData.UpdateUnloadedVesselData();
@@ -83,17 +82,22 @@ namespace PersistentThrust.BackgroundProcessing
             foreach (KeyValuePair<uint, ModuleGeneratorData> keyValuePair in vesselData.Generators)
             {
                 ModuleGeneratorData generatorData = keyValuePair.Value;
+                generatorData.ProtoPartSnapshot = vesselData.Vessel.protoVessel.protoPartSnapshots[generatorData.PartIndex];
 
                 for (var i = 0; i < generatorData.ModuleGenerators.Count; i++)
                 {
                     ModuleGenerator moduleGenerator = generatorData.ModuleGenerators[i];
-                    ProtoPartModuleSnapshot protoPartModuleSnapshot = generatorData.ProtoPartModuleSnapshots[i];
 
-                    // read persistent settings
+                    // load protoPartModuleSnapshot
+                    var moduleIndex = generatorData.ProtoPartModuleSnapshotIndexes[i];
+                    ProtoPartModuleSnapshot protoPartModuleSnapshot = generatorData.ProtoPartSnapshot.modules[moduleIndex];
+
+                    // refresh persistent setting generatorIsActive
                     moduleGenerator.generatorIsActive = bool.Parse(protoPartModuleSnapshot.moduleValues.GetValue(nameof(moduleGenerator.generatorIsActive)));
                     if (moduleGenerator.generatorIsActive == false)
                         continue;
 
+                    // refresh persistent setting throttle
                     moduleGenerator.throttle = float.Parse(protoPartModuleSnapshot.moduleValues.GetValue(nameof(moduleGenerator.throttle)));
                     if (moduleGenerator.throttle <= 0)
                         continue;
@@ -143,17 +147,22 @@ namespace PersistentThrust.BackgroundProcessing
             foreach (KeyValuePair<uint, ModuleResourceConverterData> keyValuePair in vesselData.ResourceConverters)
             {
                 ModuleResourceConverterData resourceConverterData = keyValuePair.Value;
+                resourceConverterData.ProtoPartSnapshot = vesselData.Vessel.protoVessel.protoPartSnapshots[resourceConverterData.PartIndex];
 
                 for (var i = 0; i < resourceConverterData.ModuleResourceConverters.Count; i++)
                 {
                     ModuleResourceConverter resourceConverter = resourceConverterData.ModuleResourceConverters[i];
-                    ProtoPartModuleSnapshot protoPartModuleSnapshot = resourceConverterData.ProtoPartModuleSnapshots[i];
 
-                    // read persistent settings
+                    // load protoPartModuleSnapshot
+                    var moduleIndex = resourceConverterData.ProtoPartModuleSnapshotIndexes[i];
+                    ProtoPartModuleSnapshot protoPartModuleSnapshot = resourceConverterData.ProtoPartSnapshot.modules[moduleIndex];
+
+                    // read persistent IsActivated setting
                     bool.TryParse(protoPartModuleSnapshot.moduleValues.GetValue(nameof(resourceConverter.IsActivated)), out resourceConverter.IsActivated);
                     if (resourceConverter.IsActivated == false)
                         continue;
 
+                    // read persistent EfficiencyBonus setting
                     float.TryParse(protoPartModuleSnapshot.moduleValues.GetValue(nameof(resourceConverter.EfficiencyBonus)), out resourceConverter.EfficiencyBonus);
                     if (resourceConverter.EfficiencyBonus <= 0)
                         continue;
@@ -278,7 +287,7 @@ namespace PersistentThrust.BackgroundProcessing
         }
 
         /// <summary>
-        /// RequestResource doesn't work when a vesel isn't unloaded, so we have to realize it ourselves
+        /// RequestResource doesn't work when a vessel isn't unloaded, so we have to realize it ourselves
         /// </summary>
         /// <param name="vesselData"></param>
         private static void UpdatePersistentResources(VesselData vesselData)
@@ -328,52 +337,36 @@ namespace PersistentThrust.BackgroundProcessing
 
         private static void LoadUnloadedParts(VesselData vesselData)
         {
-            // check if initialized
+            // check if vessel is initialized for background processing
             if (vesselData.HasAnyActivePersistentEngine.HasValue)
                 return;
 
             // initially assume no active persistent engine present   
             vesselData.HasAnyActivePersistentEngine = false;
 
-            foreach (ProtoPartSnapshot protoPartSnapshot in vesselData.Vessel.protoVessel.protoPartSnapshots)
+            for (int partIndex = 0; partIndex < vesselData.Vessel.protoVessel.protoPartSnapshots.Count ; partIndex++)
             {
-                LoadUnloadedPart(protoPartSnapshot, vesselData);
+                ProtoPartSnapshot protoPartSnapshot = vesselData.Vessel.protoVessel.protoPartSnapshots[partIndex];
+
+                LoadUnloadedPart(partIndex, protoPartSnapshot, vesselData);
             }
         }
 
-        private static void ProcessesLoadedVessel(Vessel vessel, VesselData vesselData)
+        private static void LoadUnloadedPart(int partIndex, ProtoPartSnapshot protoPartSnapshot, VesselData vesselData)
         {
-            var persistentEngines = vessel.FindPartModulesImplementing<PersistentEngine>().ToList();
+            LoadTweakScalePartModules(protoPartSnapshot, vesselData);
 
-            foreach (PersistentEngine persistentEngine in persistentEngines)
-            {
-                vesselData.Engines.TryGetValue(persistentEngine.part.persistentId, out PersistentEngineData engineData);
-
-                if (engineData != null)
-                    engineData.PersistentEngine.persistentThrust = persistentEngine.persistentThrust;
-            }
-
-            vesselData.HasAnyActivePersistentEngine = persistentEngines.Any(m => m.persistentThrust > 0);
-        }
-
-        private static void LoadUnloadedPart(ProtoPartSnapshot protoPartSnapshot, VesselData vesselData)
-        {
-            AvailablePart availablePart = PartLoader.getPartInfoByName(protoPartSnapshot.partName);
-
-            Part protoPart = availablePart?.partPrefab;
-
+            Part protoPart = PartLoader.getPartInfoByName(protoPartSnapshot.partName)?.partPrefab;
             if (protoPart == null)
                 return;
 
-            LoadTweakScalePartModules(protoPartSnapshot, vesselData);
+            LoadModuleDeployableSolarPanel(partIndex, protoPartSnapshot, vesselData, protoPart);
 
-            LoadModuleDeployableSolarPanel(protoPartSnapshot, vesselData, protoPart);
+            LoadModuleGenerator(partIndex, protoPartSnapshot, vesselData, protoPart);
 
-            LoadModuleGenerator(protoPartSnapshot, vesselData, protoPart);
+            LoadModuleResourceConverters(partIndex, protoPartSnapshot, vesselData, protoPart);
 
-            LoadModuleResourceConverters(protoPartSnapshot, vesselData, protoPart);
-
-            EngineBackgroundProcessing.LoadPersistentEngine(protoPartSnapshot, vesselData, protoPart);
+            EngineBackgroundProcessing.LoadPersistentEngine(partIndex, protoPartSnapshot, vesselData, protoPart);
         }
 
         private static void LoadTweakScalePartModules(ProtoPartSnapshot protoPartSnapshot, VesselData vesselData)
@@ -391,7 +384,7 @@ namespace PersistentThrust.BackgroundProcessing
             vesselData.PartSizeMultipliers.Add(protoPartSnapshot.persistentId, tweakScalePartMultiplier);
         }
 
-        private static SolarPanelData LoadModuleDeployableSolarPanel(ProtoPartSnapshot protoPartSnapshot, VesselData vesselData, Part protoPart)
+        private static SolarPanelData LoadModuleDeployableSolarPanel(int partIndex, ProtoPartSnapshot protoPartSnapshot, VesselData vesselData, Part protoPart)
         {
             var moduleDeployableSolarPanels = protoPart?.FindModulesImplementing<ModuleDeployableSolarPanel>();
 
@@ -402,6 +395,7 @@ namespace PersistentThrust.BackgroundProcessing
 
             var solarPanelData = new SolarPanelData
             {
+                PartIndex = partIndex,
                 ProtoPart = protoPart, 
                 ProtoPartSnapshot = protoPartSnapshot,
                 PersistentPartId = protoPartSnapshot.persistentId,
@@ -432,21 +426,34 @@ namespace PersistentThrust.BackgroundProcessing
             return solarPanelData;
         }
 
-        private static ModuleGeneratorData LoadModuleGenerator(ProtoPartSnapshot protoPartSnapshot, VesselData vesselData, Part protoPart)
+        private static ModuleGeneratorData LoadModuleGenerator(int partIndex, ProtoPartSnapshot protoPartSnapshot, VesselData vesselData, Part protoPart)
         {
             var moduleGenerators = protoPart?.FindModulesImplementing<ModuleGenerator>();
 
             if (moduleGenerators is null || moduleGenerators.Any() == false)
                 return null;
 
-            List<ProtoPartModuleSnapshot> protoPartModuleSnapshots = protoPartSnapshot.modules.Where(m => m.moduleName == nameof(ModuleGenerator)).ToList();
+            List<int> protoPartModuleSnapshotIndexes = new List<int>();
+            List<ProtoPartModuleSnapshot> protoPartModuleSnapshots = new List<ProtoPartModuleSnapshot>();
+
+            for (int i = 0; i < protoPartSnapshot.modules.Count; i++)
+            {
+                ProtoPartModuleSnapshot protoPartModuleSnapshot = protoPartSnapshot.modules[i];
+
+                if (protoPartModuleSnapshot.moduleName == nameof(ModuleGenerator))
+                {
+                    protoPartModuleSnapshotIndexes.Add(i);
+                    protoPartModuleSnapshots.Add(protoPartModuleSnapshot);
+                }
+            }
 
             var moduleGeneratorData = new ModuleGeneratorData
             {
+                PartIndex = partIndex,
                 ProtoPart = protoPart, 
                 ProtoPartSnapshot = protoPartSnapshot,
                 PersistentPartId = protoPartSnapshot.persistentId,
-                ProtoPartModuleSnapshots = protoPartModuleSnapshots,
+                ProtoPartModuleSnapshotIndexes = protoPartModuleSnapshotIndexes,
                 ModuleGenerators = moduleGenerators
             };
 
@@ -477,22 +484,35 @@ namespace PersistentThrust.BackgroundProcessing
             return moduleGeneratorData;
         }
 
-        private static ModuleResourceConverterData LoadModuleResourceConverters(ProtoPartSnapshot protoPartSnapshot, VesselData vesselData, Part protoPart)
+        private static ModuleResourceConverterData LoadModuleResourceConverters(int partIndex, ProtoPartSnapshot protoPartSnapshot, VesselData vesselData, Part protoPart)
         {
             var moduleResourceConverter = protoPart?.FindModulesImplementing<ModuleResourceConverter>();
 
             if (moduleResourceConverter is null || moduleResourceConverter.Any() == false)
                 return null;
 
-            List<ProtoPartModuleSnapshot> protoPartModuleSnapshots = protoPartSnapshot.modules.Where(m => m.moduleName == nameof(ModuleResourceConverter)).ToList();
+            List<int> protoPartModuleSnapshotIndexes = new List<int>();
+            List<ProtoPartModuleSnapshot> protoPartModuleSnapshots = new List<ProtoPartModuleSnapshot>();
+
+            for (int i = 0; i < protoPartSnapshot.modules.Count; i++)
+            {
+                ProtoPartModuleSnapshot protoPartModuleSnapshot = protoPartSnapshot.modules[i];
+
+                if (protoPartModuleSnapshot.moduleName == nameof(ModuleResourceConverter))
+                {
+                    protoPartModuleSnapshotIndexes.Add(i);
+                    protoPartModuleSnapshots.Add(protoPartModuleSnapshot);
+                }
+            }
 
             var resourceConverterData = new ModuleResourceConverterData
             {
+                PartIndex = partIndex,
                 ProtoPart = protoPart,
                 ProtoPartSnapshot = protoPartSnapshot,
                 PersistentPartId = protoPartSnapshot.persistentId,
-                ProtoPartModuleSnapshots = protoPartModuleSnapshots,
-                ModuleResourceConverters = moduleResourceConverter
+                ModuleResourceConverters = moduleResourceConverter, 
+                ProtoPartModuleSnapshotIndexes = protoPartModuleSnapshotIndexes
             };
 
             // calculate tweakScale multipliers

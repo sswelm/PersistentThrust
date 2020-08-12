@@ -5,16 +5,21 @@ namespace PersistentThrust
 {
     public class PersistentEngineData
     {
+        public int PartIndex { get; set; }
+        public int ModuleIndex { get; set; }
         public uint PersistentPartId { get; set; }
         public Part ProtoPart { get; set; }
         public ProtoPartSnapshot ProtoPartSnapshot { get; set; }
         public PersistentEngine PersistentEngine { get; set; }
         public ProtoPartModuleSnapshot ProtoPartModuleSnapshot { get; set; }
         public Vector3d DeltaVVector { get; set; }
+        public float MaxThrust { get; set; }
     }
 
     public class SolarPanelData
     {
+        public int PartIndex { get; set; }
+        public int ModuleIndex { get; set; }
         public uint PersistentPartId { get; set; }
         public Part ProtoPart { get; set; }
         public ProtoPartSnapshot ProtoPartSnapshot { get; set; }
@@ -26,6 +31,7 @@ namespace PersistentThrust
 
     public class ModuleGeneratorData
     {
+        public int PartIndex { get; set; }
         public uint PersistentPartId { get; set; }
         public Part ProtoPart { get; set; }
         public ProtoPartSnapshot ProtoPartSnapshot { get; set; }
@@ -33,11 +39,12 @@ namespace PersistentThrust
         public double InputMultiplier { get; set; } = 1;
 
         public List<ModuleGenerator> ModuleGenerators { get; set; }
-        public List<ProtoPartModuleSnapshot> ProtoPartModuleSnapshots { get; set; }
+        public List<int> ProtoPartModuleSnapshotIndexes { get; set; }
     }
 
     public class ModuleResourceConverterData
     {
+        public int PartIndex { get; set; }
         public uint PersistentPartId { get; set; }
         public Part ProtoPart { get; set; }
         public ProtoPartSnapshot ProtoPartSnapshot { get; set; }
@@ -46,7 +53,8 @@ namespace PersistentThrust
         public double ReqMultiplier { get; set; } = 1;
 
         public List<ModuleResourceConverter> ModuleResourceConverters { get; set; }
-        public List<ProtoPartModuleSnapshot> ProtoPartModuleSnapshots { get; set; }
+        //public List<ProtoPartModuleSnapshot> ProtoPartModuleSnapshots { get; set; }
+        public List<int> ProtoPartModuleSnapshotIndexes { get; set; }
     }
 
     public class ResourceChange
@@ -83,10 +91,13 @@ namespace PersistentThrust
         public Dictionary<string, double> MaxAmountResources { get; set; } = new Dictionary<string, double>();
         public Dictionary<string, double> AvailableStorage{ get; set; } = new Dictionary<string, double>();
 
+        public PersistentProcessingVesselModule VesselModule { get; set; }
+
 
         public VesselData(Vessel vessel)
         {
             Vessel = vessel;
+            VesselModule = vessel.GetComponent<PersistentProcessingVesselModule>();
         }
 
 

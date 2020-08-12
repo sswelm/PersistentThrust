@@ -49,6 +49,8 @@ namespace PersistentThrust
         [KSPField(isPersistant = true)]
         public double persistentThrust;
         [KSPField(isPersistant = true)]
+        public float maxThrust;
+        [KSPField(isPersistant = true)]
         public float persistentIsp;
         [KSPField(isPersistant = true)]
         public float persistentThrottle;
@@ -479,7 +481,6 @@ namespace PersistentThrust
                         var requestedThrust = vesselHeadingVersusManeuverInDegree <= (maneuverToleranceInDegree + (persistentThrust > 0 ? 1 : 0))
                             ? currentEngine.engine.thrustPercentage * 0.01f * persistentThrottle * currentEngine.engine.maxThrust
                             : 0;
-
                         // Calculate deltaV vector & resource demand from propellants with mass
                         Vector3d deltaVVector = Utils.CalculateDeltaVVector(currentEngine.averageDensity, vessel.GetTotalMass(), TimeWarp.fixedDeltaTime, requestedThrust, currentEngine.persistentIsp, part.transform.up, out currentEngine.demandMass);
                         // Calculate resource demands
@@ -1189,14 +1190,26 @@ namespace PersistentThrust
 
         private void CollectStatistics()
         {
-            // display final thrust in a user friendly way
-            persistentThrust = isMultiMode ? currentEngine.finalThrust : moduleEngines.Sum(m => m.finalThrust);
+            if (isMultiMode)
+            {
+                maxThrust = currentEngine.engine.maxThrust;
+                persistentThrust = currentEngine.finalThrust;
+                persistentIsp = currentEngine.persistentIsp;
+            }
+            else
+            {
+                maxThrust = 0;
+                persistentThrust = 0;
+                float persistentIspThrustSum = 0;
+                foreach (var persistentEngineModule in moduleEngines)
+                {
+                    maxThrust += persistentEngineModule.engine.maxThrust;
+                    persistentThrust += persistentEngineModule.finalThrust;
+                    persistentIspThrustSum += persistentEngineModule.persistentIsp * persistentEngineModule.engine.maxThrust;
+                }
 
-            persistentIsp = isMultiMode
-                ? currentEngine.persistentIsp
-                : persistentThrust > 0
-                    ? (float)(moduleEngines.Sum(m => m.finalThrust * m.persistentIsp) / persistentThrust)
-                    : persistentIsp;
+                persistentIsp = persistentIspThrustSum / maxThrust;
+            }
 
             // store current fixedDeltaTime for comparison
             previousFixedDeltaTime = TimeWarp.fixedDeltaTime;
