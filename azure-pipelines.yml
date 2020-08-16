@@ -49,11 +49,18 @@ steps:
     archiveFile: '$(Build.ArtifactStagingDirectory)/PersistentThrust.zip'
     replaceExistingArchive: true
 
+- task: AzureKeyVault@1
+  inputs:
+    azureSubscription: 'Azure subscription 1(62eb2201-a6cc-4ac2-a0a2-824d2bc1778b)'
+    KeyVaultName: 'Secrets179'
+    SecretsFilter: '*'
+    RunAsPreJob: true
+
 - task: PowerShell@2
   displayName: add dll version to zip file name
   inputs:
     filePath: '$(Build.SourcesDirectory)\create-release-with-assets-and-rename.ps1'
-    arguments: '$(Build.SourcesDirectory)\GameData\PersistentThrust\Plugin\PersistentThrust.dll $(Build.ArtifactStagingDirectory)/PersistentThrust.zip'
+    arguments: '$(AccessToken) $(Build.SourcesDirectory)\GameData\PersistentThrust\Plugin\PersistentThrust.dll $(Build.ArtifactStagingDirectory)/PersistentThrust.zip'
 
 
 - task: PublishBuildArtifacts@1
@@ -62,5 +69,3 @@ steps:
     PathtoPublish: $(build.artifactstagingdirectory)\
     ArtifactName: 'PublishBuildArtifacts'
     
-
-
