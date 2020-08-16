@@ -38,38 +38,38 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Assembly-CSharp">
-      <HintPath>..\Unity\8.1\Assembly-CSharp.dll</HintPath>
+      <HintPath>Unity\8.1\Assembly-CSharp.dll</HintPath>
     </Reference>
     <Reference Include="Assembly-CSharp-firstpass">
-      <HintPath>..\Unity\8.1\Assembly-CSharp-firstpass.dll</HintPath>
+      <HintPath>Unity\8.1\Assembly-CSharp-firstpass.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="UnityEngine">
-      <HintPath>..\Unity\8.1\UnityEngine.dll</HintPath>
+      <HintPath>Unity\8.1\UnityEngine.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.AnimationModule">
-      <HintPath>..\Unity\8.1\UnityEngine.AnimationModule.dll</HintPath>
+      <HintPath>Unity\8.1\UnityEngine.AnimationModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.AssetBundleModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Unity\8.1\UnityEngine.AssetBundleModule.dll</HintPath>
+      <HintPath>Unity\8.1\UnityEngine.AssetBundleModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.CoreModule">
-      <HintPath>..\Unity\8.1\UnityEngine.CoreModule.dll</HintPath>
+      <HintPath>Unity\8.1\UnityEngine.CoreModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.InputLegacyModule">
-      <HintPath>..\Unity\8.1\UnityEngine.InputLegacyModule.dll</HintPath>
+      <HintPath>Unity\8.1\UnityEngine.InputLegacyModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.JSONSerializeModule">
-      <HintPath>..\Unity\8.1\UnityEngine.JSONSerializeModule.dll</HintPath>
+      <HintPath>Unity\8.1\UnityEngine.JSONSerializeModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UI, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Unity\8.1\UnityEngine.UI.dll</HintPath>
+      <HintPath>Unity\8.1\UnityEngine.UI.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UIModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Unity\8.1\UnityEngine.UIModule.dll</HintPath>
+      <HintPath>Unity\8.1\UnityEngine.UIModule.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
