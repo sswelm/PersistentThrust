@@ -27,6 +27,8 @@ namespace PersistentThrust.UI.Interface
 
         bool IsActiveVessel { get; }
 
+        bool IsVesselCommandable { get; }
+
         bool HasPersistentThrustActive { get; set; }
 
         bool HasInfoWindowActive { get; set; }

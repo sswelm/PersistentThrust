@@ -1,4 +1,5 @@
-﻿using System;
+﻿using PersistentThrust.BackgroundProcessing;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -53,7 +54,7 @@ namespace PersistentThrust
             }
             else
             {
-                hasPersistentEngineModules = BackgroundProcessing.VesselDataDict[vessel.persistentId].PersistentEngines.Any();
+                hasPersistentEngineModules = FindPersistentEngineModuleSnapshots(vessel).Any();
             }
 
             return hasPersistentEngineModules;
@@ -65,20 +66,9 @@ namespace PersistentThrust
             {
                 return vessel.Autopilot.Mode;
             }
-            else
+            else if(PersistentScenarioModule.VesselDataDict?[vessel.id]?.VesselModule.persistentAutopilotMode != null)
             {
-                foreach (var protoPart in vessel.protoVessel.protoPartSnapshots)
-                {
-                    ProtoPartModuleSnapshot moduleSnapshot = protoPart.FindModule(nameof(PersistentEngine));
-
-                    if (moduleSnapshot is null)
-                        continue;
-
-                    VesselAutopilot.AutopilotMode apMode = (VesselAutopilot.AutopilotMode)Enum.Parse(
-                typeof(VesselAutopilot.AutopilotMode), moduleSnapshot.moduleValues.GetValue(nameof(PersistentEngine.persistentAutopilotMode)));
-
-                    return apMode;
-                }
+                return PersistentScenarioModule.VesselDataDict[vessel.id].VesselModule.persistentAutopilotMode;
             }
 
             return VesselAutopilot.AutopilotMode.StabilityAssist;

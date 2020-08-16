@@ -4,8 +4,7 @@ namespace PersistentThrust.SituationModules
 {
     public class Periapsis : SituationModule
     {
-        public Vessel Vessel { private get; set; } = null;
-        public Periapsis(string t) : base(t) { }
+        public Periapsis(string t, Vessel v) : base(t, v) { }
 
         protected override void UpdateVisible()
         {
@@ -14,16 +13,16 @@ namespace PersistentThrust.SituationModules
 
         protected override string FieldUpdate()
         {
-            if (Vessel == null)
+            if (vessel == null)
                 return "---";
 
-            if (Vessel.orbit == null)
+            if (vessel.orbit == null)
                 return "---";
 
-            if (Vessel.orbit.eccentricity >= 1 && Vessel.orbit.timeToPe < 0)
+            if (vessel.orbit.eccentricity >= 1 && vessel.orbit.timeToPe < 0)
                 return "---";
 
-            return Result(Vessel.orbit.PeA, Vessel.orbit.timeToPe);
+            return Result(vessel.orbit.PeA, vessel.orbit.timeToPe);
         }
 
         private string Result(double d, double t)

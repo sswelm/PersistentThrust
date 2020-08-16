@@ -1,33 +1,33 @@
 ﻿using PersistentThrust.UI.Interface;
+using System.Diagnostics.Eventing.Reader;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 namespace PersistentThrust.UI
 {
-    public class ThrottleInputField : MonoBehaviour, ISelectHandler
+    [RequireComponent(typeof(InputField))]
+    public class ThrottleInputField : MonoBehaviour, IPointerClickHandler
     {
-        IInfoWindow main;
+        IInfoWindow window;
+        private InputField inputField;
 
-        public void SetInterface(IInfoWindow inputField)
+        public void SetInterface(IInfoWindow i)
         {
-            main = inputField;
+            window = i;
+            inputField = gameObject.GetComponent<InputField>();
         }
 
-        public void OnSelect(BaseEventData eventData)
+        public void OnPointerClick(PointerEventData eventData)
         {
             SetInputLocks(true);
-            main.ThrottleVisible = false;
-        }
-
-        public void OnDeselect(BaseEventData eventData)
-        {
-            SetInputLocks(false);
-            main.ThrottleVisible = true;
+            inputField.Select();
+            window.ThrottleVisible = false;
         }
 
         private void SetInputLocks(bool on)
         {
-            main.SetInputLock(on);
+            window.SetInputLock(on);
         }
     }
 }

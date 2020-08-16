@@ -41,12 +41,20 @@ steps:
     configuration: '$(buildConfiguration)'
 
 - task: ArchiveFiles@2
+  displayName: compress artifacts into zip file
   inputs:
     rootFolderOrFile: '$(Build.SourcesDirectory)\GameData'
     includeRootFolder: true
     archiveType: 'zip'
-    archiveFile: '$(Build.ArtifactStagingDirectory)/Persistent Thrust $(Build.BuildId).zip'
+    archiveFile: '$(Build.ArtifactStagingDirectory)/PersistentThrust.zip'
     replaceExistingArchive: true
+
+- task: PowerShell@2
+  displayName: add dll version to zip file name
+  inputs:
+    filePath: '$(Build.SourcesDirectory)\renameWithDllVersion.ps1'
+    arguments: '$(Build.SourcesDirectory)\GameData\PersistentThrust\Plugin\PersistentThrust.dll $(Build.ArtifactStagingDirectory)/PersistentThrust.zip'
+
 
 - task: PublishBuildArtifacts@1
   displayName: 'Publish artifacts $(buildConfiguration)'
@@ -54,3 +62,5 @@ steps:
     PathtoPublish: $(build.artifactstagingdirectory)\
     ArtifactName: 'PublishBuildArtifacts'
     
+
+

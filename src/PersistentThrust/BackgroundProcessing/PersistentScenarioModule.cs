@@ -1,30 +1,43 @@
-﻿using System;
+﻿using PersistentThrust.Helpers;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices;
-using PersistentThrust.Helpers;
 
-namespace PersistentThrust
+namespace PersistentThrust.BackgroundProcessing
 {
-    [KSPScenario(ScenarioCreationOptions.AddToAllGames, new[] {GameScenes.SPACECENTER, GameScenes.TRACKSTATION, GameScenes.FLIGHT, GameScenes.EDITOR})]
+    [KSPScenario(ScenarioCreationOptions.AddToAllGames, new[] { GameScenes.SPACECENTER, GameScenes.TRACKSTATION, GameScenes.FLIGHT, GameScenes.EDITOR })]
     public sealed class PersistentScenarioModule : ScenarioModule
     {
         public static readonly Dictionary<Guid, VesselData> VesselDataDict = new Dictionary<Guid, VesselData>();
 
+        public static double UniversalTime { get; set; }
+
+
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
-
-            VesselDataDict.Clear();
+            //VesselDataDict.Clear();
         }
 
-        /// <summary>
-        /// Called by the part every refresh frame where it is active, which can be less frequent than FixedUpdate which is called every processing frame
-        /// </summary>
         void FixedUpdate()
         {
+            // store info for oldest unloaded vessel
+            double last_time = 0.0;
+            VesselData last_vd = null;
+
+            UniversalTime = Planetarium.GetUniversalTime();
+
             foreach (Vessel vessel in FlightGlobals.Vessels)
             {
+                // don't process a vessel until unloaded, but add it to vesselDataDict
+                if (vessel.loaded)
+                {
+                    if (!VesselDataDict.ContainsKey(vessel.id))
+                        VesselDataDict.Add(vessel.id, new VesselData(vessel));
+
+                    continue;
+                }
+
                 // ignore Kerbals
                 if (vessel.isEVA)
                     continue;
@@ -44,38 +57,64 @@ namespace PersistentThrust
                     vesselData = new VesselData(vessel);
                     VesselDataDict.Add(vessel.id, vesselData);
                 }
+                else
+                    vesselData.Vessel = vessel;
 
-                // update vessel data when loaded
-                if (vessel.loaded)
+                vesselData.Time += TimeWarp.fixedDeltaTime;
+
+                // maintain oldest entry
+                if (vesselData.Time > last_time)
                 {
-                    ProcessesLoadedVessel(vessel, vesselData);
-                    continue;
+                    last_time = vesselData.Time;
+                    last_vd = vesselData;
                 }
+            }
 
+            // at most one vessel gets background processing per physics tick :
+            // if there is a vessel that is not the currently loaded vessel, then
+            // we will update the vessel whose most recent background update is the oldest
+            if (last_vd != null)
+            {
                 // determine available resources and total vessel mass
-                vesselData.UpdateUnloadedVesselData();
+                UnityEngine.Profiling.Profiler.BeginSample("PersistentThrust.PersistentScenarioModule.FixedUpdate.UpdateUnloadedVesselData");
+                last_vd.UpdateUnloadedVesselData(last_time);
+                UnityEngine.Profiling.Profiler.EndSample();
 
                 // look for relevant modules in all vessel parts
-                LoadUnloadedParts(vesselData);
+                UnityEngine.Profiling.Profiler.BeginSample("PersistentThrust.PersistentScenarioModule.FixedUpdate.LoadUnloadedParts");
+                LoadUnloadedParts(last_vd);
+                UnityEngine.Profiling.Profiler.EndSample();
 
                 // extract resources from Solar Panels
-                ProcessUnloadedSolarPanels(vesselData);
+                UnityEngine.Profiling.Profiler.BeginSample("PersistentThrust.PersistentScenarioModule.FixedUpdate.ProcessUnloadedSolarPanels");
+                ProcessUnloadedSolarPanels(last_vd);
+                UnityEngine.Profiling.Profiler.EndSample();
 
                 // extract resources from generators (RTG etc)
-                ProcessUnloadedModuleGenerators(vesselData);
+                UnityEngine.Profiling.Profiler.BeginSample("PersistentThrust.PersistentScenarioModule.FixedUpdate.ProcessUnloadedModuleGenerators");
+                ProcessUnloadedModuleGenerators(last_vd, last_time);
+                UnityEngine.Profiling.Profiler.EndSample();
 
                 // extract resources from generators (Fuel Cells etc)
-                ProcessUnloadedResourceConverters(vesselData);
+                UnityEngine.Profiling.Profiler.BeginSample("PersistentThrust.PersistentScenarioModule.FixedUpdate.ProcessUnloadedResourceConverters");
+                ProcessUnloadedResourceConverters(last_vd, last_time);
+                UnityEngine.Profiling.Profiler.EndSample();
 
                 // process persistent engines
-                EngineBackgroundProcessing.ProcessUnloadedPersistentEngines(vesselData);
+                UnityEngine.Profiling.Profiler.BeginSample("PersistentThrust.PersistentScenarioModule.FixedUpdate.ProcessUnloadedPersistentEngines");
+                EngineBackgroundProcessing.ProcessUnloadedPersistentEngines(last_vd, last_time);
+                UnityEngine.Profiling.Profiler.EndSample();
 
                 // update resources on vessel
-                UpdatePersistentResources(vesselData);
+                UnityEngine.Profiling.Profiler.BeginSample("PersistentThrust.PersistentScenarioModule.FixedUpdate.UpdatePersistentResources");
+                UpdatePersistentResources(last_vd, last_time);
+                UnityEngine.Profiling.Profiler.EndSample();
+
+                last_vd.Time = 0.0;
             }
         }
 
-        private static void ProcessUnloadedModuleGenerators(VesselData vesselData)
+        private static void ProcessUnloadedModuleGenerators(VesselData vesselData, double elapsedTime)
         {
             if (DetectKerbalism.Found())
                 return;
@@ -83,17 +122,22 @@ namespace PersistentThrust
             foreach (KeyValuePair<uint, ModuleGeneratorData> keyValuePair in vesselData.Generators)
             {
                 ModuleGeneratorData generatorData = keyValuePair.Value;
+                generatorData.ProtoPartSnapshot = vesselData.Vessel.protoVessel.protoPartSnapshots[generatorData.PartIndex];
 
                 for (var i = 0; i < generatorData.ModuleGenerators.Count; i++)
                 {
                     ModuleGenerator moduleGenerator = generatorData.ModuleGenerators[i];
-                    ProtoPartModuleSnapshot protoPartModuleSnapshot = generatorData.ProtoPartModuleSnapshots[i];
 
-                    // read persistent settings
+                    // load protoPartModuleSnapshot
+                    var moduleIndex = generatorData.ProtoPartModuleSnapshotIndexes[i];
+                    ProtoPartModuleSnapshot protoPartModuleSnapshot = generatorData.ProtoPartSnapshot.modules[moduleIndex];
+
+                    // refresh persistent setting generatorIsActive
                     moduleGenerator.generatorIsActive = bool.Parse(protoPartModuleSnapshot.moduleValues.GetValue(nameof(moduleGenerator.generatorIsActive)));
                     if (moduleGenerator.generatorIsActive == false)
                         continue;
 
+                    // refresh persistent setting throttle
                     moduleGenerator.throttle = float.Parse(protoPartModuleSnapshot.moduleValues.GetValue(nameof(moduleGenerator.throttle)));
                     if (moduleGenerator.throttle <= 0)
                         continue;
@@ -104,7 +148,7 @@ namespace PersistentThrust
                     {
                         vesselData.AvailableResources.TryGetValue(moduleResource.name, out double availableAmount);
 
-                        double requestedRate = moduleGenerator.throttle * moduleResource.rate * TimeWarp.fixedDeltaTime * generatorData.InputMultiplier;
+                        double requestedRate = moduleGenerator.throttle * moduleResource.rate * elapsedTime * generatorData.InputMultiplier;
                         double foundRatio = requestedRate > 0 ? Math.Min(1, availableAmount / requestedRate) : 1;
 
                         if (foundRatio < finalFoundRatio)
@@ -135,7 +179,7 @@ namespace PersistentThrust
             }
         }
 
-        private static void ProcessUnloadedResourceConverters(VesselData vesselData)
+        private static void ProcessUnloadedResourceConverters(VesselData vesselData, double elapsedTime)
         {
             if (DetectKerbalism.Found())
                 return;
@@ -143,17 +187,22 @@ namespace PersistentThrust
             foreach (KeyValuePair<uint, ModuleResourceConverterData> keyValuePair in vesselData.ResourceConverters)
             {
                 ModuleResourceConverterData resourceConverterData = keyValuePair.Value;
+                resourceConverterData.ProtoPartSnapshot = vesselData.Vessel.protoVessel.protoPartSnapshots[resourceConverterData.PartIndex];
 
                 for (var i = 0; i < resourceConverterData.ModuleResourceConverters.Count; i++)
                 {
                     ModuleResourceConverter resourceConverter = resourceConverterData.ModuleResourceConverters[i];
-                    ProtoPartModuleSnapshot protoPartModuleSnapshot = resourceConverterData.ProtoPartModuleSnapshots[i];
 
-                    // read persistent settings
+                    // load protoPartModuleSnapshot
+                    var moduleIndex = resourceConverterData.ProtoPartModuleSnapshotIndexes[i];
+                    ProtoPartModuleSnapshot protoPartModuleSnapshot = resourceConverterData.ProtoPartSnapshot.modules[moduleIndex];
+
+                    // read persistent IsActivated setting
                     bool.TryParse(protoPartModuleSnapshot.moduleValues.GetValue(nameof(resourceConverter.IsActivated)), out resourceConverter.IsActivated);
                     if (resourceConverter.IsActivated == false)
                         continue;
 
+                    // read persistent EfficiencyBonus setting
                     float.TryParse(protoPartModuleSnapshot.moduleValues.GetValue(nameof(resourceConverter.EfficiencyBonus)), out resourceConverter.EfficiencyBonus);
                     if (resourceConverter.EfficiencyBonus <= 0)
                         continue;
@@ -184,8 +233,8 @@ namespace PersistentThrust
 
                         vesselData.AvailableStorage.TryGetValue(resourceRatio.ResourceName, out double availableStorage);
 
-                        double requestedRate = resourceConverter.EfficiencyBonus * resourceRatio.Ratio * TimeWarp.fixedDeltaTime * resourceConverterData.OutputMultiplier;
-                        double spaceRatio = resourceRatio.Ratio > 0 ? Math.Min(1, availableStorage / requestedRate): 1;
+                        double requestedRate = resourceConverter.EfficiencyBonus * resourceRatio.Ratio * elapsedTime * resourceConverterData.OutputMultiplier;
+                        double spaceRatio = resourceRatio.Ratio > 0 ? Math.Min(1, availableStorage / requestedRate) : 1;
 
                         if (spaceRatio < processRatio)
                             processRatio = spaceRatio;
@@ -199,7 +248,7 @@ namespace PersistentThrust
                     {
                         vesselData.AvailableResources.TryGetValue(resourceRatio.ResourceName, out double availableAmount);
 
-                        double requestedRate = resourceConverter.EfficiencyBonus * resourceRatio.Ratio * TimeWarp.fixedDeltaTime * resourceConverterData.InputMultiplier;
+                        double requestedRate = resourceConverter.EfficiencyBonus * resourceRatio.Ratio * elapsedTime * resourceConverterData.InputMultiplier;
                         double foundRatio = requestedRate > 0 ? Math.Min(1, availableAmount / requestedRate) : 1;
 
                         if (foundRatio < processRatio)
@@ -241,8 +290,8 @@ namespace PersistentThrust
             foreach (StarLight starlight in KopernicusHelper.Stars)
             {
                 double starlightRelativeLuminosity = KopernicusHelper.GetSolarDistanceMultiplier(
-                    vesselPosition: vesselData.Position, 
-                    star: starlight.star, 
+                    vesselPosition: vesselData.Position,
+                    star: starlight.star,
                     astronomicalUnit: KopernicusHelper.AstronomicalUnit);
 
                 starlightRelativeLuminosity *= starlight.relativeLuminosity;
@@ -277,13 +326,17 @@ namespace PersistentThrust
             }
         }
 
-        private static void UpdatePersistentResources(VesselData vesselData)
+        /// <summary>
+        /// RequestResource doesn't work when a vessel isn't unloaded, so we have to realize it ourselves
+        /// </summary>
+        /// <param name="vesselData"></param>
+        private static void UpdatePersistentResources(VesselData vesselData, double elapsedTime)
         {
             var relevantResourceChanges = vesselData.ResourceChanges.Where(m => m.Value.Change != 0);
 
             foreach (var resourceRequest in relevantResourceChanges)
             {
-                double fixedChange = resourceRequest.Value.Change * TimeWarp.fixedDeltaTime;
+                double fixedChange = resourceRequest.Value.Change * elapsedTime;
 
                 vesselData.AvailableResources.TryGetValue(resourceRequest.Key, out double available);
                 vesselData.MaxAmountResources.TryGetValue(resourceRequest.Key, out double totalAmount);
@@ -303,7 +356,7 @@ namespace PersistentThrust
                             var fraction = available < float.Epsilon ? 1 : protoPartResourceSnapshot.amount / available;
 
                             if (protoPartResourceSnapshot.amount > float.Epsilon)
-                                protoPartResourceSnapshot.amount = Math.Max(0, protoPartResourceSnapshot.amount + fixedChange * fraction);
+                                protoPartResourceSnapshot.amount = Math.Max(0, Math.Min(protoPartResourceSnapshot.maxAmount, protoPartResourceSnapshot.amount + fixedChange * fraction));
                             else
                                 protoPartResourceSnapshot.amount = 0;
                         }
@@ -311,9 +364,11 @@ namespace PersistentThrust
                         {
                             var partAvailableSpace = protoPartResourceSnapshot.maxAmount - protoPartResourceSnapshot.amount;
 
-                            var fraction = partAvailableSpace > float.Epsilon ? partAvailableSpace / (totalAmount - available) : 1;
+                            var totalAvailableSpace = Math.Min(0, totalAmount - available);
 
-                            protoPartResourceSnapshot.amount = Math.Min(protoPartResourceSnapshot.maxAmount, protoPartResourceSnapshot.amount + fixedChange * fraction);
+                            var fraction = partAvailableSpace > float.Epsilon && totalAvailableSpace > float.Epsilon ? partAvailableSpace / totalAvailableSpace : 1;
+
+                            protoPartResourceSnapshot.amount = Math.Max(0, Math.Min(protoPartResourceSnapshot.maxAmount, protoPartResourceSnapshot.amount + fixedChange * fraction));
                         }
                     }
                 }
@@ -322,52 +377,36 @@ namespace PersistentThrust
 
         private static void LoadUnloadedParts(VesselData vesselData)
         {
-            // check if initialized
+            // check if vessel is initialized for background processing
             if (vesselData.HasAnyActivePersistentEngine.HasValue)
                 return;
 
-            // initially assume no active persistent engine present   
+            // initially assume no active persistent engine present
             vesselData.HasAnyActivePersistentEngine = false;
 
-            foreach (ProtoPartSnapshot protoPartSnapshot in vesselData.Vessel.protoVessel.protoPartSnapshots)
+            for (int partIndex = 0; partIndex < vesselData.Vessel.protoVessel.protoPartSnapshots.Count; partIndex++)
             {
-                LoadUnloadedPart(protoPartSnapshot, vesselData);
+                ProtoPartSnapshot protoPartSnapshot = vesselData.Vessel.protoVessel.protoPartSnapshots[partIndex];
+
+                LoadUnloadedPart(partIndex, protoPartSnapshot, vesselData);
             }
         }
 
-        private static void ProcessesLoadedVessel(Vessel vessel, VesselData vesselData)
+        private static void LoadUnloadedPart(int partIndex, ProtoPartSnapshot protoPartSnapshot, VesselData vesselData)
         {
-            var persistentEngines = vessel.FindPartModulesImplementing<PersistentEngine>().ToList();
+            LoadTweakScalePartModules(protoPartSnapshot, vesselData);
 
-            foreach (PersistentEngine persistentEngine in persistentEngines)
-            {
-                vesselData.Engines.TryGetValue(persistentEngine.part.persistentId, out EngineData engineData);
-
-                if (engineData != null)
-                    engineData.PersistentEngine.persistentThrust = persistentEngine.persistentThrust;
-            }
-
-            vesselData.HasAnyActivePersistentEngine = persistentEngines.Any(m => m.persistentThrust > 0);
-        }
-
-        private static void LoadUnloadedPart(ProtoPartSnapshot protoPartSnapshot, VesselData vesselData)
-        {
-            AvailablePart availablePart = PartLoader.getPartInfoByName(protoPartSnapshot.partName);
-
-            Part protoPart = availablePart?.partPrefab;
-
+            Part protoPart = PartLoader.getPartInfoByName(protoPartSnapshot.partName)?.partPrefab;
             if (protoPart == null)
                 return;
 
-            LoadTweakScalePartModules(protoPartSnapshot, vesselData);
+            LoadModuleDeployableSolarPanel(partIndex, protoPartSnapshot, vesselData, protoPart);
 
-            LoadModuleDeployableSolarPanel(protoPartSnapshot, vesselData, protoPart);
+            LoadModuleGenerator(partIndex, protoPartSnapshot, vesselData, protoPart);
 
-            LoadModuleGenerator(protoPartSnapshot, vesselData, protoPart);
+            LoadModuleResourceConverters(partIndex, protoPartSnapshot, vesselData, protoPart);
 
-            LoadModuleResourceConverters(protoPartSnapshot, vesselData, protoPart);
-
-            EngineBackgroundProcessing.LoadPersistentEngine(protoPartSnapshot, vesselData, protoPart);
+            EngineBackgroundProcessing.LoadPersistentEngine(partIndex, protoPartSnapshot, vesselData, protoPart);
         }
 
         private static void LoadTweakScalePartModules(ProtoPartSnapshot protoPartSnapshot, VesselData vesselData)
@@ -385,7 +424,7 @@ namespace PersistentThrust
             vesselData.PartSizeMultipliers.Add(protoPartSnapshot.persistentId, tweakScalePartMultiplier);
         }
 
-        private static SolarPanelData LoadModuleDeployableSolarPanel(ProtoPartSnapshot protoPartSnapshot, VesselData vesselData, Part protoPart)
+        private static SolarPanelData LoadModuleDeployableSolarPanel(int partIndex, ProtoPartSnapshot protoPartSnapshot, VesselData vesselData, Part protoPart)
         {
             var moduleDeployableSolarPanels = protoPart?.FindModulesImplementing<ModuleDeployableSolarPanel>();
 
@@ -396,7 +435,8 @@ namespace PersistentThrust
 
             var solarPanelData = new SolarPanelData
             {
-                ProtoPart = protoPart, 
+                PartIndex = partIndex,
+                ProtoPart = protoPart,
                 ProtoPartSnapshot = protoPartSnapshot,
                 PersistentPartId = protoPartSnapshot.persistentId,
                 ProtoPartModuleSnapshots = protoPartModuleSnapshots,
@@ -412,7 +452,7 @@ namespace PersistentThrust
                     solarPanelData.ChargeRateMultiplier = Math.Pow(partSizeMultiplier, tweakScaleExponent.Value);
             }
 
-            for (int i = 0; i  < moduleDeployableSolarPanels.Count; i++)
+            for (int i = 0; i < moduleDeployableSolarPanels.Count; i++)
             {
                 var moduleDeployableSolarPanel = moduleDeployableSolarPanels[i];
                 var protoPartModuleSnapshot = protoPartModuleSnapshots[i];
@@ -426,21 +466,34 @@ namespace PersistentThrust
             return solarPanelData;
         }
 
-        private static ModuleGeneratorData LoadModuleGenerator(ProtoPartSnapshot protoPartSnapshot, VesselData vesselData, Part protoPart)
+        private static ModuleGeneratorData LoadModuleGenerator(int partIndex, ProtoPartSnapshot protoPartSnapshot, VesselData vesselData, Part protoPart)
         {
             var moduleGenerators = protoPart?.FindModulesImplementing<ModuleGenerator>();
 
             if (moduleGenerators is null || moduleGenerators.Any() == false)
                 return null;
 
-            List<ProtoPartModuleSnapshot> protoPartModuleSnapshots = protoPartSnapshot.modules.Where(m => m.moduleName == nameof(ModuleGenerator)).ToList();
+            List<int> protoPartModuleSnapshotIndexes = new List<int>();
+            List<ProtoPartModuleSnapshot> protoPartModuleSnapshots = new List<ProtoPartModuleSnapshot>();
+
+            for (int i = 0; i < protoPartSnapshot.modules.Count; i++)
+            {
+                ProtoPartModuleSnapshot protoPartModuleSnapshot = protoPartSnapshot.modules[i];
+
+                if (protoPartModuleSnapshot.moduleName == nameof(ModuleGenerator))
+                {
+                    protoPartModuleSnapshotIndexes.Add(i);
+                    protoPartModuleSnapshots.Add(protoPartModuleSnapshot);
+                }
+            }
 
             var moduleGeneratorData = new ModuleGeneratorData
             {
-                ProtoPart = protoPart, 
+                PartIndex = partIndex,
+                ProtoPart = protoPart,
                 ProtoPartSnapshot = protoPartSnapshot,
                 PersistentPartId = protoPartSnapshot.persistentId,
-                ProtoPartModuleSnapshots = protoPartModuleSnapshots,
+                ProtoPartModuleSnapshotIndexes = protoPartModuleSnapshotIndexes,
                 ModuleGenerators = moduleGenerators
             };
 
@@ -471,22 +524,35 @@ namespace PersistentThrust
             return moduleGeneratorData;
         }
 
-        private static ModuleResourceConverterData LoadModuleResourceConverters(ProtoPartSnapshot protoPartSnapshot, VesselData vesselData, Part protoPart)
+        private static ModuleResourceConverterData LoadModuleResourceConverters(int partIndex, ProtoPartSnapshot protoPartSnapshot, VesselData vesselData, Part protoPart)
         {
             var moduleResourceConverter = protoPart?.FindModulesImplementing<ModuleResourceConverter>();
 
             if (moduleResourceConverter is null || moduleResourceConverter.Any() == false)
                 return null;
 
-            List<ProtoPartModuleSnapshot> protoPartModuleSnapshots = protoPartSnapshot.modules.Where(m => m.moduleName == nameof(ModuleResourceConverter)).ToList();
+            List<int> protoPartModuleSnapshotIndexes = new List<int>();
+            List<ProtoPartModuleSnapshot> protoPartModuleSnapshots = new List<ProtoPartModuleSnapshot>();
+
+            for (int i = 0; i < protoPartSnapshot.modules.Count; i++)
+            {
+                ProtoPartModuleSnapshot protoPartModuleSnapshot = protoPartSnapshot.modules[i];
+
+                if (protoPartModuleSnapshot.moduleName == nameof(ModuleResourceConverter))
+                {
+                    protoPartModuleSnapshotIndexes.Add(i);
+                    protoPartModuleSnapshots.Add(protoPartModuleSnapshot);
+                }
+            }
 
             var resourceConverterData = new ModuleResourceConverterData
             {
+                PartIndex = partIndex,
                 ProtoPart = protoPart,
                 ProtoPartSnapshot = protoPartSnapshot,
                 PersistentPartId = protoPartSnapshot.persistentId,
-                ProtoPartModuleSnapshots = protoPartModuleSnapshots,
-                ModuleResourceConverters = moduleResourceConverter
+                ModuleResourceConverters = moduleResourceConverter,
+                ProtoPartModuleSnapshotIndexes = protoPartModuleSnapshotIndexes
             };
 
             // calculate tweakScale multipliers
@@ -508,7 +574,7 @@ namespace PersistentThrust
             for (int i = 0; i < moduleResourceConverter.Count; i++)
             {
                 ModuleResourceConverter resourceConverter = moduleResourceConverter[i];
-                ProtoPartModuleSnapshot protoPartModuleSnapshot = protoPartModuleSnapshots[i];
+                ProtoPartModuleSnapshot protoPartModuleSnapshot = protoPartModuleSnapshots[protoPartModuleSnapshotIndexes[i]];
 
                 resourceConverter.IsActivated = bool.Parse(protoPartModuleSnapshot.moduleValues.GetValue(nameof(resourceConverter.IsActivated)));
                 resourceConverter.EfficiencyBonus = float.Parse(protoPartModuleSnapshot.moduleValues.GetValue(nameof(resourceConverter.EfficiencyBonus)));

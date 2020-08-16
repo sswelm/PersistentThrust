@@ -1,9 +1,9 @@
-﻿using System;
+﻿using PersistentThrust.UI.Interface;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UI;
 using UnityEngine.EventSystems;
-using PersistentThrust.UI.Interface;
+using UnityEngine.UI;
 
 namespace PersistentThrust.UI
 {
@@ -43,17 +43,21 @@ namespace PersistentThrust.UI
         {
             m_throttleInput.text = "0";
             rect = GetComponent<RectTransform>();
-            //m_throttleInput.onValidateInput += delegate (string input, int charIndex, char addedChar) { return ValidateThrottleInputChar(addedChar); };
+            m_throttleInput.onValidateInput += delegate (string input, int charIndex, char addedChar) { return ValidateThrottleInputChar(addedChar); };
             m_throttleInput.onEndEdit.AddListener(delegate
             {
                 ValidateThrottle(m_throttleInput.text);
+
                 infoWindowInterface.SetInputLock(false);
                 m_throttleInput.DeactivateInputField();
+
                 m_throttleSlider.value = float.Parse(m_throttleInput.text);
+
+                infoWindowInterface.ThrottleVisible = true;
             });
             m_throttleSlider.onValueChanged.AddListener(delegate
             {
-                if(m_throttleSlider.value != float.Parse(m_throttleInput.text))
+                if (m_throttleSlider.value != float.Parse(m_throttleInput.text))
                     UpdateInputField(m_throttleSlider.value);
 
                 UpdatePersistentThrottle(m_throttleSlider.value);
@@ -94,7 +98,7 @@ namespace PersistentThrust.UI
 
         private void UpdateInfo()
         {
-            if(infoWindowInterface.ThrottleVisible && !throttleWasChanged)
+            if (infoWindowInterface.ThrottleVisible && !throttleWasChanged)
             {
                 m_throttleSlider.value = infoWindowInterface.Throttle;
                 m_throttleInput.text = infoWindowInterface.Throttle.ToString("G4");
@@ -204,12 +208,12 @@ namespace PersistentThrust.UI
 
         private void ValidateThrottle(string input)
         {
-            if (string.IsNullOrEmpty(input))
-                m_throttleInput.text = m_throttleSlider.value.ToString();
+            float throttleNum;
 
-            float throttleNum = float.Parse(input);
-
-            Mathf.Clamp(throttleNum, 0, 1);
+            if (string.IsNullOrEmpty(input) || !float.TryParse(input, out throttleNum))
+                throttleNum = m_throttleSlider.value;
+            else
+                throttleNum = Mathf.Clamp(throttleNum, 0, 1);
 
             m_throttleInput.text = throttleNum.ToString();
         }

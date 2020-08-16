@@ -4,8 +4,7 @@ namespace PersistentThrust.SituationModules
 {
     public class Apoapsis : SituationModule
     {
-        public Vessel Vessel { private get; set; } = null;
-        public Apoapsis(string t) : base(t) { }
+        public Apoapsis(string t, Vessel v) : base(t, v) { }
 
         protected override void UpdateVisible()
         {
@@ -14,16 +13,16 @@ namespace PersistentThrust.SituationModules
 
         protected override string FieldUpdate()
         {
-            if (Vessel == null)
+            if (vessel == null)
                 return "---";
 
-            if (Vessel.orbit == null)
+            if (vessel.orbit == null)
                 return "---";
 
-            if (Vessel.orbit.eccentricity >= 1)
+            if (vessel.orbit.eccentricity >= 1)
                 return "---";
 
-            return Result(Vessel.orbit.ApA, Vessel.orbit.timeToAp);
+            return Result(vessel.orbit.ApA, vessel.orbit.timeToAp);
         }
 
         private string Result(double d, double t)

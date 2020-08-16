@@ -1,4 +1,5 @@
-﻿using PersistentThrust.UI.Interface;
+﻿using PersistentThrust.BackgroundProcessing;
+using PersistentThrust.UI.Interface;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -10,6 +11,7 @@ namespace PersistentThrust
         public GameObject GameObj { get; set; }
         public Guid VesselId { get; set; }
         public bool IsActiveVessel { get; set; }
+        public bool IsVesselCommandable { get; set; }
         public string VesselName { get; set; }
         public bool HasPersistentThrustActive { get; set; }
         public bool HasInfoWindowActive { get; set; }
@@ -44,6 +46,7 @@ namespace PersistentThrust
             x.vessel = v;
             x.VesselId = v.id;
             x.IsActiveVessel = v.isActiveVessel;
+            x.IsVesselCommandable = v.IsVesselSituationValid();
             x.VesselName = v.vesselName;
             x.VesselIcon = GetVesselIcon(v.vesselType);
             x.HasInfoWindowActive = false;
@@ -69,11 +72,7 @@ namespace PersistentThrust
             }
             else
             {
-                foreach (var x in vessel.FindPersistentEngineModuleSnapshots())
-                {
-                    x.moduleValues.values.SetValue(nameof(PersistentEngine.HasPersistentHeadingEnabled), VesselAutopilotActive.ToString());
-                    x.moduleValues.values.SetValue(nameof(PersistentEngine.persistentAutopilotMode), VesselAutopilotMode.ToKSPEnum().ToString());
-                }
+                PersistentScenarioModule.VesselDataDict[vessel.id].VesselModule.persistentAutopilotMode = VesselAutopilotMode.ToKSPEnum();
             }
         }
 

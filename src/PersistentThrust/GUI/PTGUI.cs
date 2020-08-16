@@ -171,9 +171,9 @@ namespace PersistentThrust
             bool remove;
 
             if (IvesselElements.ContainsKey(v.id))
-                remove = !v.IsVesselValid() || !v.IsVesselSituationValid();
+                remove = !v.IsVesselValid();
             else
-                remove = !v.IsVesselValid() || !v.IsVesselSituationValid() || !v.HasPersistentEngineModules();
+                remove = !v.IsVesselValid() || !v.HasPersistentEngineModules();
 
             // If not in the dictionary and valid, add it
             if (!IvesselElements.ContainsKey(v.id) && !remove)

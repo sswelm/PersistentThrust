@@ -96,6 +96,12 @@ namespace PersistentThrust
                 case Style.ElementTypes.Slider:
                     style.SetSlider(skin.horizontalSlider.normal.background, skin.horizontalSliderThumb.normal.background, skin.horizontalSliderThumb.highlight.background, skin.horizontalSliderThumb.active.background, skin.horizontalSliderThumb.disabled.background);
                     break;
+                case Style.ElementTypes.Scrollbar:
+                    style.SetScrollbar(skin.verticalScrollbar.normal.background, skin.verticalScrollbarThumb.normal.background, skin.verticalScrollbarThumb.highlight.background, skin.verticalScrollbar.active.background, skin.verticalScrollbarThumb.disabled.background);
+                    break;
+                case Style.ElementTypes.Scrollview:
+                    style.SetImage(skin.scrollView.normal.background, Image.Type.Sliced);
+                    break;
                 default:
                     break;
             }

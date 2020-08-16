@@ -4,8 +4,7 @@ namespace PersistentThrust.SituationModules
 {
     public class Altitude : SituationModule
     {
-        public Vessel Vessel { private get; set; } = null;
-        public Altitude(string t) : base(t) { }
+        public Altitude(string t, Vessel v) : base(t, v) { }
 
         protected override void UpdateVisible()
         {
@@ -14,13 +13,13 @@ namespace PersistentThrust.SituationModules
 
         protected override string FieldUpdate()
         {
-            if (Vessel == null)
+            if (vessel == null)
                 return "---";
 
-            if (Vessel.orbit == null)
+            if (vessel.orbit == null)
                 return "---";
 
-            return Result(Vessel.orbit.altitude);
+            return Result(vessel.orbit.altitude);
         }
 
         private string Result(double d)

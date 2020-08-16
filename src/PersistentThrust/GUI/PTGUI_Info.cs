@@ -1,4 +1,5 @@
 ﻿using KSP.UI;
+using PersistentThrust.BackgroundProcessing;
 using PersistentThrust.SituationModules;
 using PersistentThrust.UI;
 using PersistentThrust.UI.Interface;
@@ -160,14 +161,14 @@ namespace PersistentThrust
         {
             modules = new List<IInfoModule>();
 
-            peri = new Periapsis("Periapsis");
-            apo = new Apoapsis("Apoapsis");
-            sma = new SemiMajorAxis("Semi-Major Axis");
-            ecc = new Eccentricity("Eccentricity");
-            inc = new Inclination("Inclination");
-            alt = new Altitude("Current Altitude");
-            vel = new Velocity("Current Speed");
-            acc = new Acceleration("Current Acceleration");
+            peri = new Periapsis("Periapsis", currentVessel);
+            apo = new Apoapsis("Apoapsis", currentVessel);
+            sma = new SemiMajorAxis("Semi-Major Axis", currentVessel);
+            ecc = new Eccentricity("Eccentricity", currentVessel);
+            inc = new Inclination("Inclination", currentVessel);
+            alt = new Altitude("Current Altitude", currentVessel);
+            vel = new Velocity("Current Speed", currentVessel);
+            acc = new Acceleration("Current Acceleration", currentVessel);
 
             peri.IsVisible = PTGUI_Settings.Instance.showPeriapsis;
             apo.IsVisible = PTGUI_Settings.Instance.showApoapsis;
@@ -177,15 +178,6 @@ namespace PersistentThrust
             alt.IsVisible = PTGUI_Settings.Instance.showAltitude;
             vel.IsVisible = PTGUI_Settings.Instance.showVelocity;
             acc.IsVisible = PTGUI_Settings.Instance.showAcceleration;
-
-            peri.Vessel = currentVessel;
-            apo.Vessel = currentVessel;
-            sma.Vessel = currentVessel;
-            ecc.Vessel = currentVessel;
-            inc.Vessel = currentVessel;
-            alt.Vessel = currentVessel;
-            vel.Vessel = currentVessel;
-            acc.Vessel = currentVessel;
 
             modules.Add(peri);
             modules.Add(apo);

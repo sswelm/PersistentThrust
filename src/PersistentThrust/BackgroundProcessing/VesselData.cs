@@ -1,19 +1,25 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace PersistentThrust
 {
-    public class EngineData
+    public class PersistentEngineData
     {
+        public int PartIndex { get; set; }
+        public int ModuleIndex { get; set; }
         public uint PersistentPartId { get; set; }
         public Part ProtoPart { get; set; }
         public ProtoPartSnapshot ProtoPartSnapshot { get; set; }
         public PersistentEngine PersistentEngine { get; set; }
         public ProtoPartModuleSnapshot ProtoPartModuleSnapshot { get; set; }
         public Vector3d DeltaVVector { get; set; }
+        public float MaxThrust { get; set; }
     }
 
     public class SolarPanelData
     {
+        public int PartIndex { get; set; }
+        public int ModuleIndex { get; set; }
         public uint PersistentPartId { get; set; }
         public Part ProtoPart { get; set; }
         public ProtoPartSnapshot ProtoPartSnapshot { get; set; }
@@ -25,6 +31,7 @@ namespace PersistentThrust
 
     public class ModuleGeneratorData
     {
+        public int PartIndex { get; set; }
         public uint PersistentPartId { get; set; }
         public Part ProtoPart { get; set; }
         public ProtoPartSnapshot ProtoPartSnapshot { get; set; }
@@ -32,11 +39,12 @@ namespace PersistentThrust
         public double InputMultiplier { get; set; } = 1;
 
         public List<ModuleGenerator> ModuleGenerators { get; set; }
-        public List<ProtoPartModuleSnapshot> ProtoPartModuleSnapshots { get; set; }
+        public List<int> ProtoPartModuleSnapshotIndexes { get; set; }
     }
 
     public class ModuleResourceConverterData
     {
+        public int PartIndex { get; set; }
         public uint PersistentPartId { get; set; }
         public Part ProtoPart { get; set; }
         public ProtoPartSnapshot ProtoPartSnapshot { get; set; }
@@ -45,7 +53,7 @@ namespace PersistentThrust
         public double ReqMultiplier { get; set; } = 1;
 
         public List<ModuleResourceConverter> ModuleResourceConverters { get; set; }
-        public List<ProtoPartModuleSnapshot> ProtoPartModuleSnapshots { get; set; }
+        public List<int> ProtoPartModuleSnapshotIndexes { get; set; }
     }
 
     public class ResourceChange
@@ -61,17 +69,20 @@ namespace PersistentThrust
         public double TotalVesselMassInKg { get; set; }
         public double TotalVesselMassInTon { get; set; }
         public Vector3d Position { get; set; }
+        public double Time { get; set; } = 0;
         public Orbit Orbit  { get; set; }
         public Vector3d OrbitalVelocityAtUt { get; set; }
 
         public Vector3d ThrustVector { get; set; }
+
+        public Vector3d AccelerationVector { get; private set; }
 
         public Vector3d DeltaVVector { get; set; }
 
         public bool? HasAnyActivePersistentEngine { get; set; }
 
         public Dictionary<uint, double> PartSizeMultipliers { get; set; } = new Dictionary<uint, double>();
-        public Dictionary<uint, EngineData> Engines { get; set; } = new Dictionary<uint, EngineData>();
+        public Dictionary<uint, PersistentEngineData> Engines { get; set; } = new Dictionary<uint, PersistentEngineData>();
         public Dictionary<uint, ModuleGeneratorData> Generators { get; set; } = new Dictionary<uint, ModuleGeneratorData>();
         public Dictionary<uint, ModuleResourceConverterData> ResourceConverters { get; set; } = new Dictionary<uint, ModuleResourceConverterData>();
 
@@ -82,10 +93,13 @@ namespace PersistentThrust
         public Dictionary<string, double> MaxAmountResources { get; set; } = new Dictionary<string, double>();
         public Dictionary<string, double> AvailableStorage{ get; set; } = new Dictionary<string, double>();
 
+        public PersistentProcessingVesselModule VesselModule { get; set; }
+
 
         public VesselData(Vessel vessel)
         {
             Vessel = vessel;
+            VesselModule = vessel.GetComponent<PersistentProcessingVesselModule>();
         }
 
 
@@ -108,7 +122,7 @@ namespace PersistentThrust
             AvailableResources[resourceName] = availableAmount + changeAmount;
         }
 
-        public void UpdateUnloadedVesselData()
+        public void UpdateUnloadedVesselData(double elapsed_s)
         {
             // clear reference dictionaries
             foreach (var vesselDataResourceChange in ResourceChanges)
@@ -128,12 +142,13 @@ namespace PersistentThrust
 
             // apply Perturb only once per frame per vessel
             DeltaVVector = Vector3d.zero;
-            foreach (KeyValuePair<uint, EngineData> engineData in Engines)
+            foreach (KeyValuePair<uint, PersistentEngineData> engineData in Engines)
             {
                 DeltaVVector += engineData.Value.DeltaVVector;
                 engineData.Value.DeltaVVector = Vector3d.zero;
             }
             Orbit.Perturb(DeltaVVector, Planetarium.GetUniversalTime());
+            AccelerationVector = DeltaVVector / elapsed_s;
 
             // calculate vessel mass and total resource amounts
             TotalVesselMassInTon = 0;
@@ -144,10 +159,10 @@ namespace PersistentThrust
                 {
                     TotalVesselMassInTon += protoPartResourceSnapshot.amount * protoPartResourceSnapshot.definition.density;
 
-                    UpdateAvailableResource(protoPartResourceSnapshot.resourceName, protoPartResourceSnapshot.amount);
-
                     MaxAmountResources.TryGetValue(protoPartResourceSnapshot.resourceName, out double maxAmount);
                     MaxAmountResources[protoPartResourceSnapshot.resourceName] = maxAmount + protoPartResourceSnapshot.maxAmount;
+
+                    UpdateAvailableResource(protoPartResourceSnapshot.resourceName, Math.Min(protoPartResourceSnapshot.maxAmount, protoPartResourceSnapshot.amount));
                 }
             }
             TotalVesselMassInKg = TotalVesselMassInTon * 1000;

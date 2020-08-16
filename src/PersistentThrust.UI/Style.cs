@@ -12,7 +12,9 @@ namespace PersistentThrust.UI
             Box,
             Button,
             Toggle,
-            Slider
+            Slider,
+            Scrollbar,
+            Scrollview
         }
 
         [SerializeField]
@@ -76,10 +78,10 @@ namespace PersistentThrust.UI
             toggleImage.type = Image.Type.Sliced;
         }
 
-        public void SetSlider(Sprite background, Sprite thumb, Sprite thumbHighlight, Sprite thumbActive, Sprite thumbInactive)
+        public void SetSlider(Sprite background, Sprite thumbNormal, Sprite thumbHighlight, Sprite thumbActive, Sprite thumbInactive)
         {
             //The slider thumb is the selectable component
-            SetSelectable(thumb, thumbHighlight, thumbActive, thumbInactive);
+            SetSelectable(thumbNormal, thumbHighlight, thumbActive, thumbInactive);
 
             if (background == null)
                 return;
@@ -90,6 +92,28 @@ namespace PersistentThrust.UI
                 return;
 
             Image back = slider.GetComponentInChildren<Image>();
+
+            if (back == null)
+                return;
+
+            back.sprite = background;
+            back.type = Image.Type.Sliced;
+        }
+
+        public void SetScrollbar(Sprite background, Sprite handleNormal, Sprite handleHighlight, Sprite handleActive, Sprite handleInactive)
+        {
+            //The scrollbar handle is the selectable component
+            SetSelectable(handleNormal, handleHighlight, handleActive, handleInactive);
+
+            if (background == null)
+                return;
+
+            Scrollbar scrollbar = GetComponent<Scrollbar>();
+
+            if (scrollbar == null)
+                return;
+
+            Image back = scrollbar.GetComponent<Image>();
 
             if (back == null)
                 return;

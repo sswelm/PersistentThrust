@@ -4,8 +4,7 @@ namespace PersistentThrust.SituationModules
 {
     public class Eccentricity : SituationModule
     {
-        public Vessel Vessel { private get; set; } = null;
-        public Eccentricity(string t) : base(t) { }
+        public Eccentricity(string t, Vessel v) : base(t, v) { }
 
         protected override void UpdateVisible()
         {
@@ -14,13 +13,13 @@ namespace PersistentThrust.SituationModules
 
         protected override string FieldUpdate()
         {
-            if (Vessel == null)
+            if (vessel == null)
                 return "---";
 
-            if (Vessel.orbit == null)
+            if (vessel.orbit == null)
                 return "---";
 
-            return Result(Vessel.orbit.eccentricity);
+            return Result(vessel.orbit.eccentricity);
         }
 
         private string Result(double e)

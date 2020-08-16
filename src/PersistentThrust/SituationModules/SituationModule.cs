@@ -19,9 +19,12 @@ namespace PersistentThrust.UI.SituationModules
             }
         }
 
-        public SituationModule(string t)
+        protected readonly Vessel vessel;
+
+        public SituationModule(string t, Vessel v)
         {
             ModuleTitle = t;
+            vessel = v;
         }
 
         protected abstract void UpdateVisible();

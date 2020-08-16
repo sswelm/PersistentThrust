@@ -1,4 +1,5 @@
 using KSP.Localization;
+using PersistentThrust.BackgroundProcessing;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -44,9 +45,9 @@ namespace PersistentThrust
 
         // Persistent values to use during TimeWarp and offline processing
         [KSPField(isPersistant = true)]
-        public VesselAutopilot.AutopilotMode persistentAutopilotMode;
-        [KSPField(isPersistant = true)]
         public double persistentThrust;
+        [KSPField(isPersistant = true)]
+        public float maxThrust;
         [KSPField(isPersistant = true)]
         public float persistentIsp;
         [KSPField(isPersistant = true)]
@@ -57,8 +58,6 @@ namespace PersistentThrust
         public double vesselAlignmentWithAutopilotMode;
         [KSPField(isPersistant = true)]
         public string persistentResourceChange;
-        [KSPField(isPersistant = true)]
-        public float vesselDryMass;
         [KSPField(isPersistant = true)]
         public Guid persistentVesselTargetId;
         [KSPField(isPersistant = true)]
@@ -71,8 +70,6 @@ namespace PersistentThrust
         public double persistentManeuverUT;
         [KSPField(isPersistant = true)]
         public bool defaultsLoaded;
-        [KSPField(isPersistant = true)]
-        public double persistentAcceleration;   // only used in GUI display
 
         // GUI
         [KSPField(guiFormat = "F1", guiActive = true, guiName = "#autoLOC_6001378", guiUnits = "#autoLOC_7001400")]
@@ -150,8 +147,6 @@ namespace PersistentThrust
             base.OnSave(node);
 
             if (!HighLogic.LoadedSceneIsFlight || vessel is null) return;
-
-            node.SetValue(nameof(vesselDryMass), vessel.GetDryMass(), true);
 
             persistentAverageDensity = isMultiMode
                 ? currentEngine.averageDensity
@@ -488,9 +483,12 @@ namespace PersistentThrust
 
                     if (persistentThrottle > 0 && currentEngine.persistentIsp > 0 && isPersistentEngine && HasPersistentThrust)
                     {
+                        float minThrottle = currentEngine.engine.minFuelFlow / currentEngine.engine.maxFuelFlow;
+                        float actualThrottle = Mathf.Lerp(minThrottle, 1f, persistentThrottle * currentEngine.engine.thrustPercentage * 0.01f);
+
                         // Calculated requested thrust
                         var requestedThrust = vesselHeadingVersusManeuverInDegree <= (maneuverToleranceInDegree + (persistentThrust > 0 ? 1 : 0))
-                            ? currentEngine.engine.thrustPercentage * 0.01f * persistentThrottle * currentEngine.engine.maxThrust
+                            ? actualThrottle * currentEngine.engine.maxThrust
                             : 0;
 
                         // Calculate deltaV vector & resource demand from propellants with mass
@@ -505,8 +503,6 @@ namespace PersistentThrust
                         {
                             currentEngine.finalThrust = requestedThrust * currentEngine.propellantReqMetFactor;
                             vessel.orbit.Perturb(deltaVVector * currentEngine.propellantReqMetFactor, Planetarium.GetUniversalTime());
-
-                            persistentAcceleration = deltaVVector.magnitude / TimeWarp.fixedDeltaTime;
                         }
 
                         // Otherwise log warning and drop out of TimeWarp if throttle on & depleted
@@ -836,7 +832,7 @@ namespace PersistentThrust
         /// <summary>
         /// Adjusts the vessel's throttle and eventually returns to real time.
         /// </summary>
-        public void SetThrottle(float newSetting, bool returnToRealTime = false, bool reset = false)
+        private void SetThrottle(float newSetting, bool returnToRealTime = false, bool reset = false)
         {
             vessel.ctrlState.mainThrottle = newSetting;
             persistentThrottle = newSetting;
@@ -1191,14 +1187,17 @@ namespace PersistentThrust
 
         private void RestoreHeadingAtLoad()
         {
+            var persistentAutopilotMode = PersistentScenarioModule.VesselDataDict?[vessel.id].VesselModule.persistentAutopilotMode;
+
+            if (persistentAutopilotMode is null)
+                return;
+
             // restore heading at load
             if (HasPersistentHeadingEnabled && fixedUpdateCount++ <= 60 && vesselAlignmentWithAutopilotMode > 0.995)
             {
-                vessel.Autopilot.SetMode(persistentAutopilotMode);
+                vessel.Autopilot.SetMode((VesselAutopilot.AutopilotMode)persistentAutopilotMode);
                 vessel.PersistHeading(TimeWarp.fixedDeltaTime, headingTolerance, vesselChangedSoiCountdown > 0);
             }
-            else
-                persistentAutopilotMode = vessel.Autopilot.Mode;
         }
 
         private void ResetMonitoringVariables()
@@ -1217,14 +1216,26 @@ namespace PersistentThrust
 
         private void CollectStatistics()
         {
-            // display final thrust in a user friendly way
-            persistentThrust = isMultiMode ? currentEngine.finalThrust : moduleEngines.Sum(m => m.finalThrust);
+            if (isMultiMode)
+            {
+                maxThrust = currentEngine.engine.maxThrust;
+                persistentThrust = currentEngine.finalThrust;
+                persistentIsp = currentEngine.persistentIsp;
+            }
+            else
+            {
+                maxThrust = 0;
+                persistentThrust = 0;
+                float persistentIspThrustSum = 0;
+                foreach (var persistentEngineModule in moduleEngines)
+                {
+                    maxThrust += persistentEngineModule.engine.maxThrust;
+                    persistentThrust += persistentEngineModule.finalThrust;
+                    persistentIspThrustSum += persistentEngineModule.persistentIsp * persistentEngineModule.engine.maxThrust;
+                }
 
-            persistentIsp = isMultiMode
-                ? currentEngine.persistentIsp
-                : persistentThrust > 0
-                    ? (float)(moduleEngines.Sum(m => m.finalThrust * m.persistentIsp) / persistentThrust)
-                    : persistentIsp;
+                persistentIsp = persistentIspThrustSum / maxThrust;
+            }
 
             // store current fixedDeltaTime for comparison
             previousFixedDeltaTime = TimeWarp.fixedDeltaTime;
@@ -1257,206 +1268,15 @@ namespace PersistentThrust
             List<KeyValuePair<string, double>> resourceChangeRequest,
             double elapsed_s)
         {
+            UnityEngine.Profiling.Profiler.BeginSample("PersistentThrust.PersistentEngine.BackgroundUpdate");
 
-            double persistentAcceleration = 0;
-            module_snapshot.moduleValues.TryGetValue(nameof(persistentAcceleration), ref persistentAcceleration);
+            var title = EngineBackgroundProcessing.BackgroundUpdateExecution(vessel, part_snapshot, module_snapshot, proto_part_module, proto_part, availableResources, resourceChangeRequest, elapsed_s);
 
-            var SetAccelerationToZero = new Action(() => {
-                persistentAcceleration = 0;
-                module_snapshot.moduleValues.SetValue(nameof(persistentAcceleration), persistentAcceleration, true);
-            });
+            UnityEngine.Profiling.Profiler.EndSample();
 
-            bool HasPersistentThrust = bool.Parse(module_snapshot.moduleValues.GetValue(nameof(HasPersistentThrust)));
-            if (!HasPersistentThrust)
-            {
-                SetAccelerationToZero();
-                return proto_part.partInfo.title;
-            }
-
-            double persistentThrust = 0;
-            if (!module_snapshot.moduleValues.TryGetValue(nameof(persistentThrust), ref persistentThrust))
-            {
-                SetAccelerationToZero();
-                return proto_part.partInfo.title;
-            }
-
-            double persistentThrottle = 0;
-            if (!module_snapshot.moduleValues.TryGetValue(nameof(persistentThrottle), ref persistentThrottle))
-            {
-                SetAccelerationToZero();
-                return proto_part.partInfo.title;
-            }
-
-            var requestedThrust = persistentThrust * persistentThrottle;
-
-            // ignore background update when no thrust generated
-            if (requestedThrust <= 0)
-            {
-                SetAccelerationToZero();
-                return proto_part.partInfo.title;
-            }
-
-            double vesselAlignmentWithAutopilotMode = 0;
-            if (!module_snapshot.moduleValues.TryGetValue(nameof(vesselAlignmentWithAutopilotMode), ref vesselAlignmentWithAutopilotMode))
-            {
-                SetAccelerationToZero();
-                return proto_part.partInfo.title;
-            }
-
-            // ignore background update when not aligned with autopilot mode
-            if (vesselAlignmentWithAutopilotMode < 0.995)
-            {
-                SetAccelerationToZero();
-                return proto_part.partInfo.title;
-            }
-
-            string persistentResourceChange = module_snapshot.moduleValues.GetValue(nameof(persistentResourceChange));
-
-            if (string.IsNullOrEmpty(persistentResourceChange))
-            {
-                SetAccelerationToZero();
-                return proto_part.partInfo.title;
-            }
-
-            Dictionary<string, double> resourceChanges = persistentResourceChange
-                .Split(';').Select(s => s.Trim().Split('='))
-                .ToDictionary(a => a[0], a => double.Parse(a[1]));
-
-            if (resourceChanges.Any(m => m.Value == 0))
-            {
-                SetAccelerationToZero();
-                return proto_part.partInfo.title;
-            }
-
-            VesselAutopilot.AutopilotMode persistentAutopilotMode = (VesselAutopilot.AutopilotMode)Enum.Parse(
-                typeof(VesselAutopilot.AutopilotMode), module_snapshot.moduleValues.GetValue(nameof(persistentAutopilotMode)));
-
-            Orbit orbit = vessel.GetOrbit();
-            double UT = Planetarium.GetUniversalTime();
-            Vector3d orbitalVelocityAtUt = orbit.getOrbitalVelocityAtUT(UT).xzy;
-
-            Vector3d thrustVector = Vector3d.zero;
-            switch (persistentAutopilotMode)
-            {
-                case VesselAutopilot.AutopilotMode.StabilityAssist:
-                    thrustVector = vessel.GetTransform().up.normalized;
-                    break;
-                case VesselAutopilot.AutopilotMode.Prograde:
-                    thrustVector = orbitalVelocityAtUt;
-                    break;
-                case VesselAutopilot.AutopilotMode.Retrograde:
-                    thrustVector = -orbitalVelocityAtUt;
-                    break;
-                case VesselAutopilot.AutopilotMode.Normal:
-                    thrustVector = Vector3.Cross(orbitalVelocityAtUt, orbit.getPositionAtUT(UT) - vessel.mainBody.getPositionAtUT(UT));
-                    break;
-                case VesselAutopilot.AutopilotMode.Antinormal:
-                    thrustVector = -Vector3.Cross(orbitalVelocityAtUt, orbit.getPositionAtUT(UT) - vessel.mainBody.getPositionAtUT(UT));
-                    break;
-                case VesselAutopilot.AutopilotMode.RadialIn:
-                    thrustVector = -Vector3.Cross(orbitalVelocityAtUt, Vector3.Cross(orbitalVelocityAtUt, vessel.orbit.getPositionAtUT(UT) - orbit.referenceBody.position));
-                    break;
-                case VesselAutopilot.AutopilotMode.RadialOut:
-                    thrustVector = Vector3.Cross(orbitalVelocityAtUt, Vector3.Cross(orbitalVelocityAtUt, vessel.orbit.getPositionAtUT(UT) - orbit.referenceBody.position));
-                    break;
-                case VesselAutopilot.AutopilotMode.Target:
-                    thrustVector = GetThrustVectorToTarget(vessel, module_snapshot, UT);
-                    break;
-                case VesselAutopilot.AutopilotMode.AntiTarget:
-                    thrustVector = -GetThrustVectorToTarget(vessel, module_snapshot, UT);
-                    break;
-                    //case VesselAutopilot.AutopilotMode.Maneuver:
-                    //    thrustVector = orbit.GetThrustVectorToManeuver(moduleSnapshot);
-                    //    break;
-            }
-
-            if (thrustVector == Vector3d.zero)
-            {
-                SetAccelerationToZero();
-                return proto_part.partInfo.title;
-            }
-
-            double fuelRequirementMet = 1;
-            foreach (var resourceChange in resourceChanges)
-            {
-                var fixedRequirement = -resourceChange.Value * elapsed_s;
-
-                if (availableResources.TryGetValue(resourceChange.Key, out double availableAmount))
-                    fuelRequirementMet = availableAmount > 0 && fixedRequirement > 0 ? Math.Min(fuelRequirementMet, availableAmount / fixedRequirement) : 0;
-                else
-                    fuelRequirementMet = 0;
-            }
-
-            if (fuelRequirementMet > 0)
-            {
-                foreach (var resourceChange in resourceChanges)
-                {
-                    resourceChangeRequest.Add(new KeyValuePair<string, double>(resourceChange.Key, resourceChange.Value * fuelRequirementMet * persistentThrottle));
-                }
-
-                double vesselDryMass = 0;
-                if (!module_snapshot.moduleValues.TryGetValue(nameof(vesselDryMass), ref vesselDryMass))
-                {
-                    SetAccelerationToZero();
-                    return proto_part.partInfo.title;
-                }
-
-                double persistentAverageDensity = 0;
-                if (!module_snapshot.moduleValues.TryGetValue(nameof(persistentAverageDensity), ref persistentAverageDensity))
-                {
-                    SetAccelerationToZero();
-                    return proto_part.partInfo.title;
-                }
-
-                float persistentIsp = 0;
-                if (!module_snapshot.moduleValues.TryGetValue(nameof(persistentIsp), ref persistentIsp))
-                {
-                    SetAccelerationToZero();
-                    return proto_part.partInfo.title;
-                }
-
-                var vesselMass = vesselDryMass += Utils.GetResourceMass(availableResources);
-
-                Vector3d deltaVVector = Utils.CalculateDeltaVVector(persistentAverageDensity, vesselMass, elapsed_s, requestedThrust * fuelRequirementMet, persistentIsp, thrustVector.normalized);
-
-                orbit.Perturb(deltaVVector, UT);
-
-                if(Math.Abs(deltaVVector.magnitude / elapsed_s - persistentAcceleration) > Math.Abs(1e-4 * persistentAcceleration))
-                {
-                    persistentAcceleration = deltaVVector.magnitude / elapsed_s;
-                    module_snapshot.moduleValues.SetValue(nameof(persistentAcceleration), persistentAcceleration, true);
-                }
-            }
-
-            return proto_part.partInfo.title;
+            return title;
         }
 
-        private static Vector3d GetThrustVectorToTarget(Vessel vessel, ProtoPartModuleSnapshot moduleSnapshot, double UT)
-        {
-            string persistentVesselTargetBodyName = string.Empty;
-            moduleSnapshot.moduleValues.TryGetValue(nameof(persistentVesselTargetBodyName), ref persistentVesselTargetBodyName);
-
-            string persistentVesselTargetId = Guid.Empty.ToString();
-            moduleSnapshot.moduleValues.TryGetValue(nameof(persistentVesselTargetId), ref persistentVesselTargetId);
-
-            Guid persistentVesselTargetGuid = new Guid(persistentVesselTargetId);
-
-            Orbit targetOrbit = null;
-            if (persistentVesselTargetGuid != Guid.Empty)
-            {
-                Vessel targetVessel = FlightGlobals.Vessels.SingleOrDefault(m => m.id == persistentVesselTargetGuid);
-                if (targetVessel != null)
-                    targetOrbit = targetVessel.GetOrbit();
-            }
-            else if (!string.IsNullOrEmpty(persistentVesselTargetBodyName))
-            {
-                CelestialBody body = FlightGlobals.Bodies.SingleOrDefault(m => m.bodyName == persistentVesselTargetBodyName);
-                if (body != null)
-                    targetOrbit = body.GetOrbit();
-            }
-
-            return targetOrbit != null ? targetOrbit.getPositionAtUT(UT) - vessel.orbit.getPositionAtUT(UT) : Vector3d.zero;
-        }
 
         /// <summary>
         /// Called by Kerbalism every frame. Uses their resource system when Kerbalism is installed.

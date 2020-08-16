@@ -156,6 +156,8 @@ namespace PersistentThrust.UI
             if (goToButton != null && element.IsActiveVessel)
                 goToButton.enabled = false;
 
+            m_vesselName.color = vesselElementInterface.IsVesselCommandable ? Color.white : Color.yellow;
+
             UpdateElementAutopilotInfo(element.VesselAutopilotMode);
         }
 
@@ -175,7 +177,9 @@ namespace PersistentThrust.UI
             m_persistentThrustToggle.isOn = element.HasPersistentThrustActive;
             m_vesselInfoToggle.isOn = element.HasInfoWindowActive;
 
-            if(currentAutopilotMode != element.VesselAutopilotMode)
+            m_vesselName.color = vesselElementInterface.IsVesselCommandable ? Color.white : Color.yellow;
+
+            if (currentAutopilotMode != element.VesselAutopilotMode)
             {
                 UpdateElementAutopilotInfo(element.VesselAutopilotMode);
                 currentAutopilotMode = element.VesselAutopilotMode;

@@ -3,39 +3,71 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-namespace PersistentThrust
+namespace PersistentThrust.BackgroundProcessing
 {
     public static class EngineBackgroundProcessing
     {
-        public static EngineData LoadPersistentEngine(ProtoPartSnapshot protoPartSnapshot, VesselData vesselData, Part protoPart = null)
+        public static PersistentEngineData LoadPersistentEngine(int partIndex, ProtoPartSnapshot protoPartSnapshot,
+            VesselData vesselData, Part protoPart)
         {
-            if (protoPart == null)
-                protoPart = PartLoader.getPartInfoByName(protoPartSnapshot.partName)?.partPrefab;
-
             var persistentEngine = protoPart?.FindModuleImplementing<PersistentEngine>();
 
             if (persistentEngine is null)
                 return null;
 
-            ProtoPartModuleSnapshot protoPartModuleSnapshot = protoPartSnapshot.FindModule(nameof(PersistentEngine));
+            // find ProtoPartModuleSnapshot and moduleIndex
+            int moduleIndex;
+            ProtoPartModuleSnapshot persistentEngineModuleSnapshot = null;
+            for (moduleIndex = 0; moduleIndex < protoPartSnapshot.modules.Count; moduleIndex++)
+            {
+                persistentEngineModuleSnapshot = protoPartSnapshot.modules[moduleIndex];
+                if (persistentEngineModuleSnapshot.moduleName == nameof(PersistentEngine))
+                    break;
+            }
 
-            if (protoPartModuleSnapshot == null)
+            if (persistentEngineModuleSnapshot == null)
                 return null;
 
-            // Load persistentThrust from ProtoPartModuleSnapshots
-            protoPartModuleSnapshot.moduleValues.TryGetValue(nameof(persistentEngine.persistentThrust), ref persistentEngine.persistentThrust);
-
-            var engineData = new EngineData
+            var engineData = new PersistentEngineData
             {
+                PartIndex = partIndex,
+                ModuleIndex = moduleIndex,
                 ProtoPart = protoPart,
                 ProtoPartSnapshot = protoPartSnapshot,
                 PersistentPartId = protoPartSnapshot.persistentId,
-                ProtoPartModuleSnapshot = protoPartModuleSnapshot,
+                ProtoPartModuleSnapshot = persistentEngineModuleSnapshot,
                 PersistentEngine = persistentEngine
             };
 
             // store data
             vesselData.Engines.Add(protoPartSnapshot.persistentId, engineData);
+
+            // Load persistentThrust from ProtoPartModuleSnapshots
+            persistentEngineModuleSnapshot.moduleValues.TryGetValue(nameof(persistentEngine.persistentThrust),
+                ref persistentEngine.persistentThrust);
+
+            var moduleEngines = protoPart.FindModulesImplementing<ModuleEngines>();
+
+            if (moduleEngines == null || moduleEngines.Any() == false)
+                return null;
+
+            // collect propellant configurations
+            var persistentEngineModules = new List<PersistentEngineModule>();
+            foreach (var moduleEngine in moduleEngines)
+            {
+                engineData.MaxThrust += moduleEngine.maxThrust;
+
+                List<PersistentPropellant> persistentPropellants = PersistentPropellant.MakeList(moduleEngine.propellants);
+
+                var persistentEngineModule = new PersistentEngineModule
+                {
+                    propellants = persistentPropellants,
+                    averageDensity = persistentPropellants.AverageDensity()
+                };
+                persistentEngineModules.Add(persistentEngineModule);
+            }
+
+            persistentEngine.moduleEngines = persistentEngineModules.ToArray();
 
             // check if there any active persistent engines that need to be processed
             if (persistentEngine.persistentThrust > 0)
@@ -46,7 +78,7 @@ namespace PersistentThrust
             return engineData;
         }
 
-        public static void ProcessUnloadedPersistentEngines(VesselData vesselData)
+        public static void ProcessUnloadedPersistentEngines(VesselData vesselData, double elapsedTime)
         {
             // ignore landed or floating vessels
             if (vesselData.Vessel.LandedOrSplashed)
@@ -54,19 +86,28 @@ namespace PersistentThrust
 
             vesselData.PersistentThrust = 0;
 
-            foreach (KeyValuePair<uint, EngineData> keyValuePair in vesselData.Engines)
+            foreach (KeyValuePair<uint, PersistentEngineData> keyValuePair in vesselData.Engines)
             {
-                EngineData engineData = keyValuePair.Value;
+                PersistentEngineData persistentEngineData = keyValuePair.Value;
 
-                double.TryParse(engineData.ProtoPartModuleSnapshot.moduleValues.GetValue(nameof(engineData.PersistentEngine.persistentThrust)), out engineData.PersistentEngine.persistentThrust);
-                if (engineData.PersistentEngine.persistentThrust <= 0)
+                // update snapshots
+                persistentEngineData.ProtoPartSnapshot = vesselData.Vessel.protoVessel.protoPartSnapshots[persistentEngineData.PartIndex];
+                persistentEngineData.ProtoPartModuleSnapshot = persistentEngineData.ProtoPartSnapshot.modules[persistentEngineData.ModuleIndex];
+
+                // update persistentThrust
+                double.TryParse(persistentEngineData.ProtoPartModuleSnapshot.moduleValues.GetValue(nameof(persistentEngineData.PersistentEngine.persistentThrust)), out persistentEngineData.PersistentEngine.persistentThrust);
+                if (persistentEngineData.PersistentEngine.persistentThrust <= 0)
                     continue;
 
-                vesselData.PersistentThrust += engineData.PersistentEngine.persistentThrust;
+                float.TryParse(persistentEngineData.ProtoPartModuleSnapshot.moduleValues.GetValue(nameof(persistentEngineData.PersistentEngine.maxThrust)), out persistentEngineData.PersistentEngine.maxThrust);
+                if (persistentEngineData.PersistentEngine.maxThrust <= 0)
+                    persistentEngineData.PersistentEngine.maxThrust = (float)persistentEngineData.PersistentEngine.persistentThrust;
+
+                vesselData.PersistentThrust += persistentEngineData.PersistentEngine.persistentThrust;
 
                 var resourceChangeRequests = new List<KeyValuePair<string, double>>();
 
-                ProcessUnloadedPersistentEngine(engineData.ProtoPartSnapshot, vesselData, resourceChangeRequests);
+                ProcessUnloadedPersistentEngine(persistentEngineData.ProtoPartSnapshot, vesselData, resourceChangeRequests, elapsedTime);
 
                 foreach (KeyValuePair<string, double> resourceChangeRequest in resourceChangeRequests)
                 {
@@ -78,13 +119,14 @@ namespace PersistentThrust
         private static void ProcessUnloadedPersistentEngine(
             ProtoPartSnapshot protoPartSnapshot,
             VesselData vesselData,
-            List<KeyValuePair<string, double>> resourceChangeRequest)
+            List<KeyValuePair<string, double>> resourceChangeRequest,
+            double elapsedTime)
         {
             if (DetectKerbalism.Found())
                 return;
 
             // lookup engine data
-            vesselData.Engines.TryGetValue(protoPartSnapshot.persistentId, out EngineData engineData);
+            vesselData.Engines.TryGetValue(protoPartSnapshot.persistentId, out PersistentEngineData engineData);
 
             if (engineData == null)
             {
@@ -101,7 +143,7 @@ namespace PersistentThrust
                 proto_part: engineData.ProtoPart,
                 availableResources: vesselData.AvailableResources,
                 resourceChangeRequest: resourceChangeRequest,
-                elapsed_s: TimeWarp.fixedDeltaTime);
+                elapsed_s: elapsedTime);
         }
 
         public static string BackgroundUpdateExecution(
@@ -114,12 +156,23 @@ namespace PersistentThrust
             List<KeyValuePair<string, double>> resourceChangeRequest,
             double elapsed_s)
         {
+
+            bool HasPersistentThrust = bool.Parse(module_snapshot.moduleValues.GetValue(nameof(HasPersistentThrust)));
+            if (!HasPersistentThrust)
+                return proto_part.partInfo.title;
+
             double persistentThrust = 0;
             if (!module_snapshot.moduleValues.TryGetValue(nameof(persistentThrust), ref persistentThrust))
                 return proto_part.partInfo.title;
 
+            double persistentThrottle = 0;
+            if (!module_snapshot.moduleValues.TryGetValue(nameof(persistentThrottle), ref persistentThrottle))
+                return proto_part.partInfo.title;
+
+            double requestedThrust = persistentThrust * persistentThrottle;
+
             // ignore background update when no thrust generated
-            if (persistentThrust <= 0)
+            if (requestedThrust <= 0)
                 return proto_part.partInfo.title;
 
             double vesselAlignmentWithAutopilotMode = 0;
@@ -143,9 +196,7 @@ namespace PersistentThrust
             if (resourceChanges.Any(m => m.Value == 0))
                 return proto_part.partInfo.title;
 
-            VesselAutopilot.AutopilotMode persistentAutopilotMode = (VesselAutopilot.AutopilotMode)Enum.Parse(
-                typeof(VesselAutopilot.AutopilotMode),
-                module_snapshot.moduleValues.GetValue(nameof(persistentAutopilotMode)));
+            VesselAutopilot.AutopilotMode persistentAutopilotMode = PersistentScenarioModule.VesselDataDict[vessel.id].VesselModule.persistentAutopilotMode;
 
             //Orbit orbit = vessel.GetOrbit();
             double UT = Planetarium.GetUniversalTime();
@@ -206,21 +257,21 @@ namespace PersistentThrust
             if (!module_snapshot.moduleValues.TryGetValue(nameof(persistentIsp), ref persistentIsp))
                 return proto_part.partInfo.title;
 
-            vesselData.Engines.TryGetValue(part_snapshot.persistentId, out EngineData engineData);
+            vesselData.Engines.TryGetValue(part_snapshot.persistentId, out PersistentEngineData engineData);
             if (engineData == null)
                 return proto_part.partInfo.title;
 
             engineData.DeltaVVector = Utils.CalculateDeltaVVector(persistentAverageDensity, vesselData.TotalVesselMassInTon, elapsed_s,
-                persistentThrust * fuelRequirementMet, persistentIsp, vesselData.ThrustVector.normalized);
+                requestedThrust * fuelRequirementMet, persistentIsp, vesselData.ThrustVector.normalized);
 
             return proto_part.partInfo.title;
         }
 
         public static Vector3d GetThrustVectorForAutoPilot(
-            Vessel vessel, 
+            Vessel vessel,
             ProtoPartModuleSnapshot moduleSnapshot,
-            VesselAutopilot.AutopilotMode persistentAutopilotMode, 
-            VesselData vesselData, 
+            VesselAutopilot.AutopilotMode persistentAutopilotMode,
+            VesselData vesselData,
             double UT)
         {
             Vector3d thrustVector = Vector3d.zero;

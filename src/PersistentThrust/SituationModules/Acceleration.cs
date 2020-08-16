@@ -1,11 +1,15 @@
-﻿using PersistentThrust.UI.SituationModules;
+﻿using PersistentThrust.BackgroundProcessing;
+using PersistentThrust.UI.SituationModules;
 
 namespace PersistentThrust.SituationModules
 {
     public class Acceleration : SituationModule
     {
-        public Vessel Vessel { private get; set; } = null;
-        public Acceleration(string t) : base(t) { }
+        private readonly VesselData vesselData;
+        public Acceleration(string t, Vessel v) : base(t, v)
+        {
+            vesselData = PersistentScenarioModule.VesselDataDict[v.id];
+        }
 
         protected override void UpdateVisible()
         {
@@ -14,41 +18,21 @@ namespace PersistentThrust.SituationModules
 
         protected override string FieldUpdate()
         {
-            if (Vessel == null)
+            if (vessel == null)
                 return "---";
 
-            if (Vessel.orbit == null)
+            if (vessel.orbit == null)
                 return "---";
 
-            if (!Vessel.HasPersistentEngineModules())
+            if (!vessel.HasPersistentEngineModules())
                 return Result(0);
             else
             {
-                if (Vessel == FlightGlobals.ActiveVessel && !Vessel.packed)
-                    return Result(Vessel.geeForce_immediate * PhysicsGlobals.GravitationalAcceleration);
+                if (vessel == FlightGlobals.ActiveVessel && !vessel.packed)
+                    return Result(vessel.geeForce_immediate * PhysicsGlobals.GravitationalAcceleration);
 
-                else if (Vessel == FlightGlobals.ActiveVessel)
-                {
-                    double acc = 0;
-
-                    foreach (var pm in Vessel.FindPartModulesImplementing<PersistentEngine>())
-                    {
-                        acc += pm.persistentAcceleration;
-                    }
-
-                    return Result(acc);
-                }
                 else
-                {
-                    double acc = 0;
-
-                    foreach (var peModSnaphot in Vessel.FindPersistentEngineModuleSnapshots())
-                    {
-                        acc += double.Parse(peModSnaphot.moduleValues.GetValue(nameof(PersistentEngine.persistentAcceleration)));
-                    }
-
-                    return Result(acc);
-                }
+                    return Result(vesselData.AccelerationVector.magnitude);
             }
         }
 

@@ -31,10 +31,10 @@ namespace PersistentThrust.SituationModules
 {
     public static class Extensions
     {
-        private static int[] times = new int[5];
-        private static string[] units = new string[5] { "s", "m", "h", "d", "y" };
+        private readonly static int[] times = new int[5];
+        private readonly static string[] units = new string[5] { "s", "m", "h", "d", "y" };
         private static StringBuilder sb = new StringBuilder();
-        private static double g0 = PhysicsGlobals.GravitationalAcceleration;
+        private readonly static double g0 = PhysicsGlobals.GravitationalAcceleration;
 
         public static string LocalizeBodyName(this string input)
         {
@@ -44,13 +44,13 @@ namespace PersistentThrust.SituationModules
         public static string Distance(this double d, int figs = 2)
         {
             if (d < 1e6)
-                return string.Format("{0} m", d.ToString("N" + figs.ToString()));
+                return string.Format("{0}m", d.ToString("N" + figs.ToString()));
             else if (d < 1e9)
-                return string.Format("{0} km", (d / 1e3).ToString("N1"));
+                return string.Format("{0}km", (d / 1e3).ToString("N1"));
             else if (d < 1e12)
-                return string.Format("{0} Mm", (d / 1e6).ToString("N1"));
+                return string.Format("{0}Mm", (d / 1e6).ToString("N1"));
             else
-                return string.Format("{0} Gm", (d / 1e9).ToString("N0"));
+                return string.Format("{0}Gm", (d / 1e9).ToString("N0"));
         }
 
         public static string CloseDistance(this double d)
@@ -58,36 +58,36 @@ namespace PersistentThrust.SituationModules
             if (Math.Abs(d) < 1e4)
             {
                 if (Math.Abs(d) > 10)
-                    return string.Format("{0} m", d.ToString("N1"));
+                    return string.Format("{0}m", d.ToString("N1"));
                 else if (Math.Abs(d) > 0.1)
-                    return string.Format("{0} cm", (d * 100).ToString("N2"));
+                    return string.Format("{0}cm", (d * 100).ToString("N2"));
                 else
-                    return string.Format("{0} mm", (d * 1e3).ToString("N2"));
+                    return string.Format("{0}mm", (d * 1e3).ToString("N2"));
             }
             else if (d < 1e9)
-                return string.Format("{0} km", (d / 1e3).ToString("N1"));
+                return string.Format("{0}km", (d / 1e3).ToString("N1"));
             else
-                return string.Format("{0} Mm", (d / 1e6).ToString("N0"));
+                return string.Format("{0}Mm", (d / 1e6).ToString("N0"));
         }
 
         public static string Speed(this double d, int figs = 2, int cmFigs = 3)
         {
             if (Math.Abs(d) < 1)
-                return string.Format("{0} cm/s", (d * 100).ToString("N" + cmFigs.ToString()));
+                return string.Format("{0}cm/s", (d * 100).ToString("N" + cmFigs.ToString()));
             else if (Math.Abs(d) < 1e4)
-                return string.Format("{0} m/s", d.ToString("N" + figs.ToString()));
+                return string.Format("{0}m/s", d.ToString("N" + figs.ToString()));
             else
-                return string.Format("{0} km/s", (d / 1000).ToString("N" + cmFigs.ToString()));
+                return string.Format("{0}km/s", (d / 1000).ToString("N" + cmFigs.ToString()));
         }
 
         public static string Acceleration(this double a, int figs = 2, int mmFigs = 3)
         {
             if (a < 0.1)
-                return string.Format("{0} mm/s²", (a * 1000).ToString("N" + mmFigs.ToString()));
+                return string.Format("{0}mm/s²", (a * 1000).ToString("N" + mmFigs.ToString()));
             else if (a <= g0)
-                return string.Format("{0} m/s²", a.ToString("N" + figs.ToString()));
+                return string.Format("{0}m/s²", a.ToString("N" + figs.ToString()));
             else
-                return string.Format("{0} g", (a / g0).ToString("N" + figs.ToString()));
+                return string.Format("{0}g", (a / g0).ToString("N" + figs.ToString()));
         }
 
         public static string Time(this double d, int values)

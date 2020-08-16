@@ -78,9 +78,14 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BackgroundProcessing.cs" />
+    <Compile Include="BackgroundProcessing\EngineBackgroundProcessing.cs" />
+    <Compile Include="BackgroundProcessing\VesselData.cs" />
+    <Compile Include="BackgroundProcessing\PersistentScenarioModule.cs" />
+    <Compile Include="BackgroundProcessing\PersistentProcessingVesselModule.cs" />
+    <Compile Include="Helpers\KopernicusHelper.cs" />
     <Compile Include="Helpers\DetectKerbalism.cs" />
     <Compile Include="Helpers\DetectRealFuels.cs" />
+    <Compile Include="Helpers\TweaksSaleHelper.cs" />
     <Compile Include="GUI\PTGUI.cs" />
     <Compile Include="GameEventSubscriber.cs" />
     <Compile Include="PersistentEngine.cs" />
@@ -111,7 +116,6 @@
       <Name>PersistentThrust.UI</Name>
     </ProjectReference>
   </ItemGroup>
-  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>copy /y "$(TargetDir)$(ProjectName).dll" "$(SolutionDir)\..\GameData\$(ProjectName)\Plugin\$(ProjectName).dll"
