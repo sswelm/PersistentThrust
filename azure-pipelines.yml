@@ -30,7 +30,7 @@ steps:
 - task: VSBuild@1
   displayName: 'Build the project - $(buildConfiguration)'
   inputs:
-    solution: '$(solution)\src\PersistentThrust.sln'
+    solution: '$(Build.SourcesDirectory)\src\PersistentThrust.sln'
     msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:PackageLocation="$(build.artifactStagingDirectory)"'
     platform: '$(buildPlatform)'
     configuration: '$(buildConfiguration)'
