@@ -43,7 +43,9 @@
     <Reference Include="Assembly-CSharp-firstpass">
       <HintPath>..\Unity\8.1\Assembly-CSharp-firstpass.dll</HintPath>
     </Reference>
-    <Reference Include="System" />
+    <Reference Include="System">
+      <HintPath>..\Unity\8.1\System.dll</HintPath>
+    </Reference>
     <Reference Include="UnityEngine">
       <HintPath>..\Unity\8.1\UnityEngine.dll</HintPath>
     </Reference>
