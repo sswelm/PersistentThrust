@@ -450,7 +450,7 @@ namespace PersistentThrust
                         // Resource demand from propellants with mass
                         currentEngine.demandMass = currentEngine.averageDensity > 0 ? massFlowRate * TimeWarp.fixedDeltaTime / currentEngine.averageDensity : 0;
                         // Calculate resource demands
-                        currentEngine.fuelDemands = CalculateDemands(currentEngine.demandMass);
+                        currentEngine.fuelDemands = CalculateDemands(currentEngine.demandMass, currentEngine.propellants);
                         // Apply resource demands & test for resource depletion
                         ApplyDemands(currentEngine.fuelDemands, ref currentEngine.propellantReqMetFactor);
 
@@ -509,7 +509,7 @@ namespace PersistentThrust
                         // Calculate deltaV vector & resource demand from propellants with mass
                         Vector3d deltaVVector = Utils.CalculateDeltaVVector(currentEngine.averageDensity, vessel.GetTotalMass(), TimeWarp.fixedDeltaTime, requestedThrust, currentEngine.persistentIsp, part.transform.up, out currentEngine.demandMass);
                         // Calculate resource demands
-                        currentEngine.fuelDemands = CalculateDemands(currentEngine.demandMass);
+                        currentEngine.fuelDemands = CalculateDemands(currentEngine.demandMass, currentEngine.propellants);
                         // Apply resource demands & test for resource depletion
                         ApplyDemands(currentEngine.fuelDemands, ref currentEngine.propellantReqMetFactor);
 
@@ -638,15 +638,15 @@ namespace PersistentThrust
         /// <summary>
         /// Calculates demands of each resource from a total mass input.
         /// </summary>
-        public double[] CalculateDemands(double mass)
+        public static double[] CalculateDemands(double mass, List<PersistentPropellant> propellants)
         {
-            var demands = new double[currentEngine.propellants.Count];
+            var demands = new double[propellants.Count];
             if (mass <= 0) return demands;
 
             // Per propellant demand
-            for (var i = 0; i < currentEngine.propellants.Count; i++)
+            for (var i = 0; i < propellants.Count; i++)
             {
-                demands[i] = currentEngine.propellants[i].CalculateDemand(mass);
+                demands[i] = propellants[i].CalculateDemand(mass);
             }
             return demands;
         }

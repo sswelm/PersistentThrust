@@ -79,11 +79,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BackgroundProcessing.cs" />
-    <Compile Include="DetectKerbalism.cs" />
-    <Compile Include="DetectRealFuels.cs" />
-    <Compile Include="GoToVessel.cs" />
+    <Compile Include="Helpers\DetectKerbalism.cs" />
+    <Compile Include="Helpers\DetectRealFuels.cs" />
     <Compile Include="GUI\PTGUI.cs" />
-    <Compile Include="OrbitExtensions.cs" />
     <Compile Include="GameEventSubscriber.cs" />
     <Compile Include="PersistentEngine.cs" />
     <Compile Include="Preferences.cs" />
@@ -104,7 +102,8 @@
     <Compile Include="SituationModules\SituationModule.cs" />
     <Compile Include="SituationModules\Velocity.cs" />
     <Compile Include="Utils.cs" />
-    <Compile Include="VesselExtension.cs" />
+    <Compile Include="Extensions\OrbitExtensions.cs" />
+    <Compile Include="Extensions\VesselExtension.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\PersistentThrust.UI\PersistentThrust.UI.csproj">

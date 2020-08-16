@@ -151,15 +151,15 @@ namespace PersistentThrust
                 if (HighLogic.LoadedSceneIsFlight)
                 {
                     buttons = new DialogGUIButton[] {
-                        new DialogGUIButton("Go", () => { GotoVessel.JumpToVessel(vessel); }),
-                        new DialogGUIButton("Target", () => { GotoVessel.SetVesselAsTarget(vessel); }),
+                        new DialogGUIButton("Go", () => { Utils.JumpToVessel(vessel); }),
+                        new DialogGUIButton("Target", () => { Utils.SetVesselAsTarget(vessel); }),
                         new DialogGUIButton("Stay", () => { })
                     };
                 }
                 else
                 {
                     buttons = new DialogGUIButton[] {
-                        new DialogGUIButton("Go", () => { GotoVessel.JumpToVessel(vessel); }),
+                        new DialogGUIButton("Go", () => { Utils.JumpToVessel(vessel); }),
                         new DialogGUIButton("Stay", () => { })
                     };
                 }
@@ -320,7 +320,7 @@ namespace PersistentThrust
                     {
                         msg = $"Vessel {VesselName} doesn't have a valid target.";
                         buttons = new DialogGUIButton[] {
-                        new DialogGUIButton($"Jump to vessel to set a Target", () => { GotoVessel.JumpToVessel(vessel); }),
+                        new DialogGUIButton($"Jump to vessel to set a Target", () => { Utils.JumpToVessel(vessel); }),
                         new DialogGUIButton("Ok", () => { })
                         };
                         break;
@@ -329,7 +329,7 @@ namespace PersistentThrust
                     {
                         msg = $"Vessel {VesselName} has no active maneuver nodes.";
                         buttons = new DialogGUIButton[] {
-                        new DialogGUIButton($"Jump to vessel to plot a maneuver", () => { GotoVessel.JumpToVessel(vessel); }),
+                        new DialogGUIButton($"Jump to vessel to plot a maneuver", () => { Utils.JumpToVessel(vessel); }),
                         new DialogGUIButton("Ok", () => { })
                         };
                         break;
