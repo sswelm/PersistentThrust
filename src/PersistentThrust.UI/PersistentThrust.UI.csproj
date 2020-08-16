@@ -71,7 +71,7 @@
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>copy /y "$(TargetPath)" "C:\Users\Davide\PTUI\Assets\Plugins"
+    <PostBuildEvent>copy /y "$(TargetPath)" "$(SolutionDir)\..\Unity\PTUI\Assets\Plugins"
 copy /y "$(TargetDir)\IPersistentThrust.UI.pdb" "$(SolutionDir)\..\GameData\$(SolutionName)\Plugin"
 copy /y "$(TargetPath)" "$(SolutionDir)\..\GameData\$(SolutionName)\Plugin"</PostBuildEvent>
   </PropertyGroup>
