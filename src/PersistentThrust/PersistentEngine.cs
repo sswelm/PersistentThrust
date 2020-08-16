@@ -142,31 +142,6 @@ namespace PersistentThrust
         #region Events
 
         /// <summary>
-        /// Uses the OnLoad event to initialize the PersistentEngine module.
-        /// </summary>
-        /// <param name="node"></param>
-        public override void OnLoad(ConfigNode node)
-        {
-            // Run base OnLoad method
-            base.OnLoad(node);
-
-            if (part?.partInfo is null)
-                return;
-
-            Debug.Log("[PersistentThrust]: OnLoad called for " + part.partInfo.title + " " + part.persistentId);
-
-            // Populate moduleEngine and moduleEngineFx fields
-            FindModuleEngines();
-
-            // Initialize PersistentPropellant list
-            foreach (var engine in moduleEngines)
-            {
-                engine.propellants = PersistentPropellant.MakeList(engine.engine.propellants);
-                engine.averageDensity = engine.propellants.AverageDensity();
-            }
-        }
-
-        /// <summary>
         /// Uses the to store data required for background processing
         /// </summary>
         /// <param name="node"></param>
@@ -233,11 +208,13 @@ namespace PersistentThrust
 
 
         /// <summary>
-        /// Called when the part starts.
+        /// Called when the part finishes starting.
         /// </summary>
         /// <param name="state"> gives an indication of where in flight you are </param>
-        public override void OnStart(StartState state)
+        public override void OnStartFinished(StartState state)
         {
+            Debug.Log("[PersistentThrust]: OnStartFinished called for " + part.partInfo.title + " " + part.persistentId);
+
             if (!defaultsLoaded)
             {
                 HasPersistentThrust = HighLogic.CurrentGame.Parameters.CustomParams<PTSettings>().defaultHasPersistentThrust;
@@ -258,6 +235,16 @@ namespace PersistentThrust
             GameEvents.onVesselChange.Add(ResetFixedUpdateCount);
 
             masslessUsageField = Fields[nameof(this.masslessUsage)];
+
+            // Populate moduleEngine and moduleEngineFx fields
+            FindModuleEngines();
+
+            // Initialize PersistentPropellant list
+            foreach (var engine in moduleEngines)
+            {
+                engine.propellants = PersistentPropellant.MakeList(engine.engine.propellants);
+                engine.averageDensity = engine.propellants.AverageDensity();
+            }
         }
 
         private void OnPersistentThrustPAWToggled(BaseField f, object obj)
