@@ -8,6 +8,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{456A2B5A-FBB2-4A0A-A9B8-F32F42AF7EEF}"
 	ProjectSection(SolutionItems) = preProject
 		..\azure-pipelines.yml = ..\azure-pipelines.yml
+		..\create-release-with-assets-and-rename.ps1 = ..\create-release-with-assets-and-rename.ps1
 	EndProjectSection
 EndProject
 Global
