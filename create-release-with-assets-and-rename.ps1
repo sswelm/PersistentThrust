@@ -1,6 +1,7 @@
 ﻿param (
-$DllPath = $(throw "Need filepath to dll as first parameter!"), 
-$ZipFilePath = $(throw "Need filepath to download as second parameter!"))
+$AccessToken = $(throw "Need access token as first parameter"),
+$DllPath = $(throw "Need filepath to dll as second parameter!"), 
+$ZipFilePath = $(throw "Need filepath to download as third parameter!"))
 
 # reconstruct version
 $vPSObject = get-command $DllPath
@@ -21,7 +22,7 @@ $DownloadName = "$($PublishName).zip"
 
 # create header
 $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
-$headers.Add("Authorization", "Bearer c50a9c2a8b150588c9001874e957e0ed2dfed388")
+$headers.Add("Authorization", "Bearer $($AccessToken)")
 $headers.Add("Content-Type", "text/plain")
 $headers.Add("Cookie", "_octo=GH1.1.132013813.1594973163; logged_in=no")
 
@@ -41,7 +42,7 @@ $response = Invoke-RestMethod 'https://api.github.com/repos/sswelm/PersistentThr
 $ReleaseId = $response.id
 
 $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
-$headers.Add("Authorization", "Bearer c50a9c2a8b150588c9001874e957e0ed2dfed388")
+$headers.Add("Authorization", "Bearer $($AccessToken)")
 $headers.Add("Content-Type", "application/zip")
 $headers.Add("Cookie", "_octo=GH1.1.132013813.1594973163; logged_in=no")
 
