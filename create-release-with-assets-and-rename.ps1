@@ -41,6 +41,11 @@ $response = Invoke-RestMethod 'https://api.github.com/repos/sswelm/PersistentThr
 # retrieve releaseId
 $ReleaseId = $response.id
 
+if ($ReleaseId -eq $null)
+{
+    return
+}
+
 $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
 $headers.Add("Authorization", "Bearer $($AccessToken)")
 $headers.Add("Content-Type", "application/zip")
