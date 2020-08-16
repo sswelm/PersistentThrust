@@ -52,7 +52,7 @@ steps:
 - task: PowerShell@2
   displayName: add dll version to zip file name
   inputs:
-    filePath: '$(Build.SourcesDirectory)\renameWithDllVersion.ps1'
+    filePath: '$(Build.SourcesDirectory)\create-release-with-assets-and-rename.ps1'
     arguments: '$(Build.SourcesDirectory)\GameData\PersistentThrust\Plugin\PersistentThrust.dll $(Build.ArtifactStagingDirectory)/PersistentThrust.zip'
 
 
