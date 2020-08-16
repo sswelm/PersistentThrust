@@ -53,7 +53,6 @@ namespace PersistentThrust
         public double ReqMultiplier { get; set; } = 1;
 
         public List<ModuleResourceConverter> ModuleResourceConverters { get; set; }
-        //public List<ProtoPartModuleSnapshot> ProtoPartModuleSnapshots { get; set; }
         public List<int> ProtoPartModuleSnapshotIndexes { get; set; }
     }
 
