@@ -182,31 +182,31 @@
     <None Include="Assets\SquadCore\Shaders\EmissiveBumpedSpecularMapped.shader" />
     <None Include="Assets\SquadCore\Shaders\SpecularCutoff.shader" />
     <Reference Include="Unity.Timeline.Editor">
-      <HintPath>C:/Users/Davide/PTUI/Library/ScriptAssemblies/Unity.Timeline.Editor.dll</HintPath>
+      <HintPath>E:/GitHub/PersistentThrust/Unity/PTUI/Library/ScriptAssemblies/Unity.Timeline.Editor.dll</HintPath>
     </Reference>
     <Reference Include="Unity.VSCode.Editor">
-      <HintPath>C:/Users/Davide/PTUI/Library/ScriptAssemblies/Unity.VSCode.Editor.dll</HintPath>
+      <HintPath>E:/GitHub/PersistentThrust/Unity/PTUI/Library/ScriptAssemblies/Unity.VSCode.Editor.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UI">
-      <HintPath>C:/Users/Davide/PTUI/Library/ScriptAssemblies/UnityEngine.UI.dll</HintPath>
+      <HintPath>E:/GitHub/PersistentThrust/Unity/PTUI/Library/ScriptAssemblies/UnityEngine.UI.dll</HintPath>
     </Reference>
     <Reference Include="Unity.Timeline">
-      <HintPath>C:/Users/Davide/PTUI/Library/ScriptAssemblies/Unity.Timeline.dll</HintPath>
+      <HintPath>E:/GitHub/PersistentThrust/Unity/PTUI/Library/ScriptAssemblies/Unity.Timeline.dll</HintPath>
     </Reference>
     <Reference Include="Unity.CollabProxy.Editor">
-      <HintPath>C:/Users/Davide/PTUI/Library/ScriptAssemblies/Unity.CollabProxy.Editor.dll</HintPath>
+      <HintPath>E:/GitHub/PersistentThrust/Unity/PTUI/Library/ScriptAssemblies/Unity.CollabProxy.Editor.dll</HintPath>
     </Reference>
     <Reference Include="Unity.Rider.Editor">
-      <HintPath>C:/Users/Davide/PTUI/Library/ScriptAssemblies/Unity.Rider.Editor.dll</HintPath>
+      <HintPath>E:/GitHub/PersistentThrust/Unity/PTUI/Library/ScriptAssemblies/Unity.Rider.Editor.dll</HintPath>
     </Reference>
     <Reference Include="Unity.2D.Sprite.Editor">
-      <HintPath>C:/Users/Davide/PTUI/Library/ScriptAssemblies/Unity.2D.Sprite.Editor.dll</HintPath>
+      <HintPath>E:/GitHub/PersistentThrust/Unity/PTUI/Library/ScriptAssemblies/Unity.2D.Sprite.Editor.dll</HintPath>
     </Reference>
     <Reference Include="Unity.2D.Tilemap.Editor">
-      <HintPath>C:/Users/Davide/PTUI/Library/ScriptAssemblies/Unity.2D.Tilemap.Editor.dll</HintPath>
+      <HintPath>E:/GitHub/PersistentThrust/Unity/PTUI/Library/ScriptAssemblies/Unity.2D.Tilemap.Editor.dll</HintPath>
     </Reference>
     <Reference Include="UnityEditor.UI">
-      <HintPath>C:/Users/Davide/PTUI/Library/ScriptAssemblies/UnityEditor.UI.dll</HintPath>
+      <HintPath>E:/GitHub/PersistentThrust/Unity/PTUI/Library/ScriptAssemblies/UnityEditor.UI.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.AIModule">
       <HintPath>C:/Program Files/Unity/Hub/Editor/2019.2.2f1/Editor/Data/Managed/UnityEngine/UnityEngine.AIModule.dll</HintPath>
@@ -386,25 +386,25 @@
       <HintPath>C:/Program Files/Unity/Hub/Editor/2019.2.2f1/Editor/Data/Managed/UnityEngine/UnityEngine.XRModule.dll</HintPath>
     </Reference>
     <Reference Include="PartTools">
-      <HintPath>C:/Users/Davide/PTUI/Assets/PartTools/Lib/PartTools.dll</HintPath>
+      <HintPath>E:/GitHub/PersistentThrust/Unity/PTUI/Assets/PartTools/Lib/PartTools.dll</HintPath>
     </Reference>
     <Reference Include="PartToolsEditor">
-      <HintPath>C:/Users/Davide/PTUI/Assets/PartTools/Lib/PartToolsEditor.dll</HintPath>
+      <HintPath>E:/GitHub/PersistentThrust/Unity/PTUI/Assets/PartTools/Lib/PartToolsEditor.dll</HintPath>
     </Reference>
     <Reference Include="IPersistentThrust.UI">
-      <HintPath>C:/Users/Davide/PTUI/Assets/Plugins/IPersistentThrust.UI.dll</HintPath>
+      <HintPath>E:/GitHub/PersistentThrust/Unity/PTUI/Assets/Plugins/IPersistentThrust.UI.dll</HintPath>
     </Reference>
     <Reference Include="KSPAssetCompiler">
-      <HintPath>C:/Users/Davide/PTUI/Assets/Plugins/KSPAssets/KSPAssetCompiler.dll</HintPath>
+      <HintPath>E:/GitHub/PersistentThrust/Unity/PTUI/Assets/Plugins/KSPAssets/KSPAssetCompiler.dll</HintPath>
     </Reference>
     <Reference Include="KSPAssets">
-      <HintPath>C:/Users/Davide/PTUI/Assets/Plugins/KSPAssets/KSPAssets.dll</HintPath>
+      <HintPath>E:/GitHub/PersistentThrust/Unity/PTUI/Assets/Plugins/KSPAssets/KSPAssets.dll</HintPath>
     </Reference>
     <Reference Include="TextMeshPro-2017.1-1.0.56-Editor">
-      <HintPath>C:/Users/Davide/PTUI/Assets/TextMesh Pro/Plugins/Editor DLL/TextMeshPro-2017.1-1.0.56-Editor.dll</HintPath>
+      <HintPath>E:/GitHub/PersistentThrust/Unity/PTUI/Assets/TextMesh Pro/Plugins/Editor DLL/TextMeshPro-2017.1-1.0.56-Editor.dll</HintPath>
     </Reference>
     <Reference Include="TextMeshPro-2017.1-1.0.56-Runtime">
-      <HintPath>C:/Users/Davide/PTUI/Assets/TextMesh Pro/Plugins/Editor DLL/TextMeshPro-2017.1-1.0.56-Runtime.dll</HintPath>
+      <HintPath>E:/GitHub/PersistentThrust/Unity/PTUI/Assets/TextMesh Pro/Plugins/Editor DLL/TextMeshPro-2017.1-1.0.56-Runtime.dll</HintPath>
     </Reference>
     <Reference Include="mscorlib">
       <HintPath>C:/Program Files/Unity/Hub/Editor/2019.2.2f1/Editor/Data/MonoBleedingEdge/lib/mono/4.7.1-api/mscorlib.dll</HintPath>
