@@ -59,7 +59,7 @@ namespace PersistentThrust
         public void ChangeHasPersistentThrustState(bool isOn)
         {
             HasPersistentThrustActive = isOn;
-            SetVesselWidePersistentThurst(isOn);
+            SetVesselWidePersistentThrust(isOn);
         }
 
         public void ChangeAutopilotMode()
@@ -72,7 +72,7 @@ namespace PersistentThrust
             }
             else
             {
-                PersistentScenarioModule.VesselDataDict[vessel.id].VesselModule.persistentAutopilotMode = VesselAutopilotMode.ToKSPEnum();
+                PersistentScenarioModule.VesselDataDict[vessel.id].PersistentAutopilotMode = VesselAutopilotMode.ToKSPEnum();
             }
         }
 
@@ -84,29 +84,20 @@ namespace PersistentThrust
             if (vessel.loaded)
                 return true;
 
+            var vesselData = PersistentScenarioModule.VesselDataDict[vessel.id];
+
             switch (apMode.ToKSPEnum())
             {
                 case VesselAutopilot.AutopilotMode.Target:
                 case VesselAutopilot.AutopilotMode.AntiTarget:
-                    {
-                        foreach (var x in vessel.FindPersistentEngineModuleSnapshots())
-                        {
-                            string persistentVesselTargetBodyName = string.Empty;
-                            x.moduleValues.TryGetValue(nameof(persistentVesselTargetBodyName), ref persistentVesselTargetBodyName);
+                {
+                    Guid persistentVesselTargetGuid = new Guid(vesselData.persistentVesselTargetId);
 
-                            string persistentVesselTargetId = Guid.Empty.ToString();
-                            x.moduleValues.TryGetValue(nameof(persistentVesselTargetId), ref persistentVesselTargetId);
+                    if (persistentVesselTargetGuid != Guid.Empty || !string.IsNullOrEmpty(vesselData.persistentVesselTargetBodyName))
+                        return true;
 
-                            Guid persistentVesselTargetGuid = new Guid(persistentVesselTargetId);
-
-                            if (persistentVesselTargetGuid != Guid.Empty || !string.IsNullOrEmpty(persistentVesselTargetBodyName))
-                            {
-                                return true;
-                            }
-
-                        }
-                        break;
-                    }
+                    break;
+                }
                 case VesselAutopilot.AutopilotMode.Maneuver:
                     {
                         //if (vessel.patchedConicSolver is null)
@@ -115,20 +106,12 @@ namespace PersistentThrust
                         //else if (vessel.patchedConicSolver.maneuverNodes.Count > 0)
                         //    return true;
 
-                        foreach (var x in vessel.FindPersistentEngineModuleSnapshots())
-                        {
-                            string persistentManeuverNextPatch = string.Empty;
-                            x.moduleValues.TryGetValue(nameof(persistentManeuverNextPatch), ref persistentManeuverNextPatch);
+                        if (vessel.orbit.GetThrustVectorToManeuver(vesselData.persistentManeuverNextPatch, vesselData.persistentManeuverPatch, vesselData.persistentManeuverUT, vesselData.maneuverToleranceInDegree) != Vector3d.zero)
+                            return true;
 
-                            if (vessel.GetOrbit().GetThrustVectorToManeuver(x) != null && vessel.GetOrbit().GetThrustVectorToManeuver(x) != Vector3d.zero)
-                                return true;
+                        if (!string.IsNullOrEmpty(vesselData.persistentManeuverNextPatch))
+                            return true;
 
-                            if (!string.IsNullOrEmpty(persistentManeuverNextPatch))
-                            {
-                                return true;
-                            }
-
-                        }
                         break;
                     }
                 default:
@@ -186,7 +169,7 @@ namespace PersistentThrust
 
         private void OnDestroy()
         {
-            SetVesselWidePersistentThurst(HasPersistentThrustActive);
+            SetVesselWidePersistentThrust(HasPersistentThrustActive);
         }
 
         /// <summary>
@@ -286,7 +269,7 @@ namespace PersistentThrust
             didCheckPTEnabled = false;
         }
 
-        public void SetVesselWidePersistentThurst(bool isOn)
+        public void SetVesselWidePersistentThrust(bool isOn)
         {
             if (vessel.loaded)
             {

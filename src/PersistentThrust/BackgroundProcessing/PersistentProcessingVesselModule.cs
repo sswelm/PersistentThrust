@@ -9,6 +9,8 @@ namespace PersistentThrust.BackgroundProcessing
         [KSPField(isPersistant = true)]
         public VesselAutopilot.AutopilotMode persistentAutopilotMode;
 
+        public GameScenes linkedScene;
+
         //List of scenes where we shouldn't run the mod. I toyed with runOnce, but couldn't get it working
         private static readonly List<GameScenes> forbiddenScenes = new List<GameScenes> { GameScenes.LOADING, GameScenes.LOADINGBUFFER, GameScenes.CREDITS, GameScenes.MAINMENU, GameScenes.SETTINGS };
 
@@ -32,6 +34,8 @@ namespace PersistentThrust.BackgroundProcessing
         protected override void OnStart()
         {
             base.OnStart();
+
+            linkedScene = HighLogic.LoadedScene;
 
             //If we're in the MainMenu, don't do anything
             if (forbiddenScenes.Contains(HighLogic.LoadedScene))
@@ -96,13 +100,30 @@ namespace PersistentThrust.BackgroundProcessing
         /// <summary>
         /// Is called on every frame
         /// </summary>
-        public  void FixedUpdate()
+        public void FixedUpdate()
         {
-            if (vessel.loaded == false)
+            PersistentScenarioModule.VesselDataDict.TryGetValue(vessel.id, out VesselData vesselData);
+
+            if (vesselData == null)
                 return;
 
-            if(fixedUpdateCount++ > 60)
+            if (vessel.loaded == false)
+            {
+                    if (vesselData.hasBeenLoaded)
+                        persistentAutopilotMode = vesselData.PersistentAutopilotMode;
+                    else
+                        vesselData.PersistentAutopilotMode = persistentAutopilotMode;
+
+                    return;
+            }
+
+            if (fixedUpdateCount++ > 60)
+            {
                 persistentAutopilotMode = vessel.Autopilot.Mode;
+
+                vesselData.hasBeenLoaded = true;
+                vesselData.PersistentAutopilotMode = persistentAutopilotMode;
+            }
         }
 
         void OmVesselSOIChanged(GameEvents.HostedFromToAction<Vessel, CelestialBody> gameEvent)

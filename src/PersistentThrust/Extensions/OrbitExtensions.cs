@@ -93,24 +93,10 @@ namespace PersistentThrust
                 return Math.Min(-orbitHeadingAtManeuverVsBurn, Vector3d.Dot(-obtVelocity, burnVector));
         }
 
-        public static Vector3d GetThrustVectorToManeuver(this Orbit orbit, ProtoPartModuleSnapshot module_snapshot)
+        public static Vector3d GetThrustVectorToManeuver(this Orbit orbit, string persistentManeuverNextPatch, string persistentManeuverPatch,  double persistentManeuverUT, double maneuverToleranceInDegree)
         {
-            double persistentManeuverUT = 0;
-            if (!module_snapshot.moduleValues.TryGetValue(nameof(persistentManeuverUT), ref persistentManeuverUT))
-                return Vector3d.zero;
-
-            float maneuverToleranceInDegree = 0;
-            if (!module_snapshot.moduleValues.TryGetValue(nameof(maneuverToleranceInDegree), ref maneuverToleranceInDegree))
-                return Vector3d.zero;
-
-            string persistentManeuverNextPatch = string.Empty;
-            module_snapshot.moduleValues.TryGetValue(nameof(persistentManeuverNextPatch), ref persistentManeuverNextPatch);
-
             if (string.IsNullOrEmpty(persistentManeuverNextPatch))
                 return Vector3d.zero;
-
-            string persistentManeuverPatch = string.Empty;
-            module_snapshot.moduleValues.TryGetValue(nameof(persistentManeuverPatch), ref persistentManeuverPatch);
 
             Orbit nextPatch = Deserialize(persistentManeuverNextPatch);
             Orbit patch = Deserialize(persistentManeuverPatch);

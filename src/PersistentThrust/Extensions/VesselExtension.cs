@@ -66,9 +66,9 @@ namespace PersistentThrust
             {
                 return vessel.Autopilot.Mode;
             }
-            else if(PersistentScenarioModule.VesselDataDict?[vessel.id]?.VesselModule.persistentAutopilotMode != null)
+            else if(PersistentScenarioModule.VesselDataDict?[vessel.id]?.PersistentAutopilotMode != null)
             {
-                return PersistentScenarioModule.VesselDataDict[vessel.id].VesselModule.persistentAutopilotMode;
+                return PersistentScenarioModule.VesselDataDict[vessel.id].PersistentAutopilotMode;
             }
 
             return VesselAutopilot.AutopilotMode.StabilityAssist;

@@ -72,6 +72,11 @@ namespace PersistentThrust.BackgroundProcessing
                     last_time = vesselData.Time;
                     last_vd = vesselData;
                 }
+
+                // determine available resources and total vessel mass
+                UnityEngine.Profiling.Profiler.BeginSample("PersistentThrust.PersistentScenarioModule.FixedUpdate.UpdateUnloadedVesselData");
+                vesselData.UpdateUnloadedVesselData();
+                UnityEngine.Profiling.Profiler.EndSample(); 
             }
 
             // at most one vessel gets background processing per physics tick :
@@ -79,10 +84,7 @@ namespace PersistentThrust.BackgroundProcessing
             // we will update the vessel whose most recent background update is the oldest
             if (last_vd != null)
             {
-                // determine available resources and total vessel mass
-                UnityEngine.Profiling.Profiler.BeginSample("PersistentThrust.PersistentScenarioModule.FixedUpdate.UpdateUnloadedVesselData");
-                last_vd.UpdateUnloadedVesselData(last_time);
-                UnityEngine.Profiling.Profiler.EndSample();
+                last_vd.DeltaTime = last_time;
 
                 // look for relevant modules in all vessel parts
                 UnityEngine.Profiling.Profiler.BeginSample("PersistentThrust.PersistentScenarioModule.FixedUpdate.LoadUnloadedParts");

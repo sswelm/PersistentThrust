@@ -256,7 +256,7 @@ namespace PersistentThrust
                 return;
 
             v.UpdateVesselThrustInfo(HasPersistentThrust);
-            v.SetVesselWidePersistentThurst(HasPersistentThrust);
+            v.SetVesselWidePersistentThrust(HasPersistentThrust);
         }
 
 
@@ -1187,7 +1187,7 @@ namespace PersistentThrust
 
         private void RestoreHeadingAtLoad()
         {
-            var persistentAutopilotMode = PersistentScenarioModule.VesselDataDict?[vessel.id].VesselModule.persistentAutopilotMode;
+            var persistentAutopilotMode = PersistentScenarioModule.VesselDataDict?[vessel.id].PersistentAutopilotMode;
 
             if (persistentAutopilotMode is null)
                 return;

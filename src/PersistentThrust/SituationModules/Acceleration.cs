@@ -5,10 +5,11 @@ namespace PersistentThrust.SituationModules
 {
     public class Acceleration : SituationModule
     {
-        private readonly VesselData vesselData;
+        private readonly VesselData _vesselData;
+
         public Acceleration(string t, Vessel v) : base(t, v)
         {
-            vesselData = PersistentScenarioModule.VesselDataDict[v.id];
+            PersistentScenarioModule.VesselDataDict.TryGetValue(vessel.id, out _vesselData);
         }
 
         protected override void UpdateVisible()
@@ -31,8 +32,11 @@ namespace PersistentThrust.SituationModules
                 if (vessel == FlightGlobals.ActiveVessel && !vessel.packed)
                     return Result(vessel.geeForce_immediate * PhysicsGlobals.GravitationalAcceleration);
 
+                else if (_vesselData != null)
+                    return Result(_vesselData.AccelerationVector.magnitude);
+                
                 else
-                    return Result(vesselData.AccelerationVector.magnitude);
+                    return "---";
             }
         }
 

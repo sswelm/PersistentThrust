@@ -13,6 +13,7 @@ namespace PersistentThrust.BackgroundProcessing
         public PersistentEngine PersistentEngine { get; set; }
         public ProtoPartModuleSnapshot ProtoPartModuleSnapshot { get; set; }
         public Vector3d DeltaVVector { get; set; }
+        public double DeltaV { get; set; }
         public float MaxThrust { get; set; }
     }
 
@@ -64,21 +65,28 @@ namespace PersistentThrust.BackgroundProcessing
 
     public class VesselData
     {
+        public string persistentVesselTargetBodyName;
+        public string persistentVesselTargetId = Guid.Empty.ToString();
+        public double persistentManeuverUT;
+        public float maneuverToleranceInDegree;
+        public string persistentManeuverNextPatch;
+        public string persistentManeuverPatch;
+
+        public bool hasBeenLoaded;
+
         public Vessel Vessel { get; set; }
         public double PersistentThrust { get; set; }
         public double TotalVesselMassInKg { get; set; }
         public double TotalVesselMassInTon { get; set; }
         public Vector3d Position { get; set; }
         public double Time { get; set; } = 0;
+        public double DeltaTime { get; set; }
         public Orbit Orbit  { get; set; }
         public Vector3d OrbitalVelocityAtUt { get; set; }
-
+        public VesselAutopilot.AutopilotMode PersistentAutopilotMode { get; set; }
         public Vector3d ThrustVector { get; set; }
-
         public Vector3d AccelerationVector { get; private set; }
-
-        public Vector3d DeltaVVector { get; set; }
-
+        //public Vector3d DeltaVVector { get; set; }
         public bool? HasAnyActivePersistentEngine { get; set; }
 
         public Dictionary<uint, double> PartSizeMultipliers { get; set; } = new Dictionary<uint, double>();
@@ -93,13 +101,13 @@ namespace PersistentThrust.BackgroundProcessing
         public Dictionary<string, double> MaxAmountResources { get; set; } = new Dictionary<string, double>();
         public Dictionary<string, double> AvailableStorage{ get; set; } = new Dictionary<string, double>();
 
-        public PersistentProcessingVesselModule VesselModule { get; set; }
+        //public PersistentProcessingVesselModule VesselModule { get; set; }
 
 
         public VesselData(Vessel vessel)
         {
             Vessel = vessel;
-            VesselModule = vessel.GetComponent<PersistentProcessingVesselModule>();
+            //VesselModule = vessel.GetComponent<PersistentProcessingVesselModule>();
         }
 
 
@@ -128,7 +136,7 @@ namespace PersistentThrust.BackgroundProcessing
             AvailableResources[resourceName] = availableAmount + changeAmount;
         }
 
-        public void UpdateUnloadedVesselData(double elapsed_s)
+        public void UpdateUnloadedVesselData()
         {
             // clear reference dictionaries
             foreach (var vesselDataResourceChange in ResourceChanges)
@@ -144,17 +152,24 @@ namespace PersistentThrust.BackgroundProcessing
             Position = Vessel.GetWorldPos3D();
             Orbit = Vessel.GetOrbit();
             OrbitalVelocityAtUt = Orbit.getOrbitalVelocityAtUT(Planetarium.GetUniversalTime()).xzy;
-            ThrustVector = Vector3d.zero;
 
-            // apply Perturb only once per frame per vessel
-            DeltaVVector = Vector3d.zero;
-            foreach (KeyValuePair<uint, PersistentEngineData> engineData in Engines)
+            // calculate thrust vector once per frame per vessel
+            ThrustVector = EngineBackgroundProcessing.GetThrustVectorForAutoPilot(vesselData: this, UT: Planetarium.GetUniversalTime());
+
+            if (ThrustVector != Vector3d.zero && DeltaTime != 0)
             {
-                DeltaVVector += engineData.Value.DeltaVVector;
-                engineData.Value.DeltaVVector = Vector3d.zero;
+                // apply Perturb once per frame per vessel
+                AccelerationVector = Vector3d.zero;
+                foreach (KeyValuePair<uint, PersistentEngineData> engineData in Engines)
+                {
+                    PersistentEngineData persistentEngineData = engineData.Value;
+
+                    persistentEngineData.DeltaVVector = persistentEngineData.DeltaV * ThrustVector.normalized;
+                    AccelerationVector += persistentEngineData.DeltaVVector / DeltaTime;
+                }
+
+                Orbit.Perturb(AccelerationVector * TimeWarp.fixedDeltaTime, Planetarium.GetUniversalTime());
             }
-            Orbit.Perturb(DeltaVVector, Planetarium.GetUniversalTime());
-            AccelerationVector = DeltaVVector / elapsed_s;
 
             // calculate vessel mass and total resource amounts
             TotalVesselMassInTon = 0;
