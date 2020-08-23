@@ -9,6 +9,8 @@ namespace PersistentThrust.BackgroundProcessing
     public sealed class PersistentScenarioModule : ScenarioModule
     {
         public static readonly Dictionary<Guid, VesselData> VesselDataDict = new Dictionary<Guid, VesselData>();
+        
+        public static string ScenarioName { get; set; }
 
         public static double UniversalTime { get; set; }
 
@@ -16,7 +18,9 @@ namespace PersistentThrust.BackgroundProcessing
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
-            //VesselDataDict.Clear();
+            if (ScenarioName != HighLogic.CurrentGame.Title)
+                VesselDataDict.Clear();
+            ScenarioName = HighLogic.CurrentGame.Title;
         }
 
         void FixedUpdate()

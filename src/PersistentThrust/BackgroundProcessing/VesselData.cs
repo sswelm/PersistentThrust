@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace PersistentThrust
+namespace PersistentThrust.BackgroundProcessing
 {
     public class PersistentEngineData
     {
@@ -105,6 +105,9 @@ namespace PersistentThrust
 
         public void ResourceChange(string resourceName, double changeAmount)
         {
+            if (changeAmount == 0)
+                return;
+
             ResourceChanges.TryGetValue(resourceName, out ResourceChange resourceChange);
 
             if (resourceChange == null)
@@ -118,6 +121,9 @@ namespace PersistentThrust
 
         public void UpdateAvailableResource(string resourceName, double changeAmount)
         {
+            if (changeAmount == 0)
+                return;
+
             AvailableResources.TryGetValue(resourceName, out double availableAmount);
             AvailableResources[resourceName] = availableAmount + changeAmount;
         }
@@ -157,6 +163,9 @@ namespace PersistentThrust
                 TotalVesselMassInTon += protoPartSnapshot.mass;
                 foreach (ProtoPartResourceSnapshot protoPartResourceSnapshot in protoPartSnapshot.resources)
                 {
+                    if (protoPartResourceSnapshot.definition == null)
+                        continue;
+
                     TotalVesselMassInTon += protoPartResourceSnapshot.amount * protoPartResourceSnapshot.definition.density;
 
                     MaxAmountResources.TryGetValue(protoPartResourceSnapshot.resourceName, out double maxAmount);

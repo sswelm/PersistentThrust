@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 
-namespace PersistentThrust
+namespace PersistentThrust.BackgroundProcessing
 {
     public class PersistentProcessingVesselModule : VesselModule
     {
@@ -10,7 +10,7 @@ namespace PersistentThrust
         public VesselAutopilot.AutopilotMode persistentAutopilotMode;
 
         //List of scenes where we shouldn't run the mod. I toyed with runOnce, but couldn't get it working
-        private static List<GameScenes> forbiddenScenes = new List<GameScenes> { GameScenes.LOADING, GameScenes.LOADINGBUFFER, GameScenes.CREDITS, GameScenes.MAINMENU, GameScenes.SETTINGS };
+        private static readonly List<GameScenes> forbiddenScenes = new List<GameScenes> { GameScenes.LOADING, GameScenes.LOADINGBUFFER, GameScenes.CREDITS, GameScenes.MAINMENU, GameScenes.SETTINGS };
 
         private static bool _initialized;
         private static int fixedUpdateCount = 0;
