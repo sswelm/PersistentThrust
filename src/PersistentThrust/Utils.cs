@@ -5,7 +5,6 @@ namespace PersistentThrust
 {
     public class Utils
     {
-
         /// <summary>
         /// Formats thrust into μN, mN, N, kN.
         /// </summary>
@@ -58,17 +57,9 @@ namespace PersistentThrust
 
         public static Vector3d CalculateDeltaVVector(double vesselMass, double deltaTime, double thrust, float isp, Vector3d thrustVector)
         {
-            // Mass flow rate
-            var massFlowRate = isp > 0 ? thrust / (isp * PhysicsGlobals.GravitationalAcceleration) : 0;
-            // Change in mass over time interval dT
-            var deltaMass = massFlowRate * deltaTime;
-            // Resource demand from propellants with mass
-            var remainingMass = vesselMass - deltaMass;
-            // deltaV amount
-            var deltaV = isp * PhysicsGlobals.GravitationalAcceleration * Math.Log(remainingMass > 0 ? vesselMass / remainingMass : 1);
-            // Return deltaV vector
             return CalculateDeltaV(vesselMass, deltaTime, thrust, isp) * thrustVector;
         }
+
 
         public static double CalculateDeltaV(double vesselMass, double deltaTime, double thrust, float isp)
         {
@@ -80,13 +71,14 @@ namespace PersistentThrust
             var remainingMass = vesselMass - deltaMass;
             // deltaV amount
             var deltaV = isp * PhysicsGlobals.GravitationalAcceleration * Math.Log(remainingMass > 0 ? vesselMass / remainingMass : 1);
-            // Return deltaV vector
+            // Return deltaV
             return deltaV;
         }
 
+
         public static void JumpToVessel(Vessel v, bool skipKerbalism = false)
         {
-            string _saveGame = GamePersistence.SaveGame("PT_Goto_backup", HighLogic.SaveFolder, SaveMode.OVERWRITE);
+            string saveGame = GamePersistence.SaveGame("PT_Goto_backup", HighLogic.SaveFolder, SaveMode.OVERWRITE);
 
             if (HighLogic.LoadedSceneIsFlight)
             {
@@ -94,23 +86,19 @@ namespace PersistentThrust
             }
             else
             {
-                int _idx = HighLogic.CurrentGame.flightState.protoVessels.FindLastIndex(pv => pv.vesselID == v.id);
+                int idx = HighLogic.CurrentGame.flightState.protoVessels.FindLastIndex(pv => pv.vesselID == v.id);
 
-                if (_idx != -1)
-                {
-                    FlightDriver.StartAndFocusVessel(_saveGame, _idx);
-                }
+                if (idx != -1)
+                    FlightDriver.StartAndFocusVessel(saveGame, idx);
                 else
-                {
-                    UnityEngine.Debug.Log("Invalid vessel Id:" + _idx);
-                }
+                    UnityEngine.Debug.Log("Invalid vessel Id:" + idx);
             }
         }
+
 
         public static void SetVesselAsTarget(Vessel v)
         {
             if (v != FlightGlobals.ActiveVessel) FlightGlobals.fetch.SetVesselTarget(v);
         }
-
     }
 }
