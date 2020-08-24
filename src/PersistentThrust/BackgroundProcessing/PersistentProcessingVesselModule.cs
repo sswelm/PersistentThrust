@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace PersistentThrust.BackgroundProcessing
@@ -8,8 +9,20 @@ namespace PersistentThrust.BackgroundProcessing
         // KSP doesn't save Vessel AutopilotMode so we have to do it ourselves
         [KSPField(isPersistant = true)]
         public VesselAutopilot.AutopilotMode persistentAutopilotMode;
+        [KSPField(isPersistant = true)]
+        public string persistentVesselTargetBodyName;
+        [KSPField(isPersistant = true)]
+        public string persistentVesselTargetId = Guid.Empty.ToString();
+        [KSPField(isPersistant = true)]
+        public double persistentManeuverUT;
+        [KSPField(isPersistant = true)]
+        public string persistentManeuverNextPatch;
+        [KSPField(isPersistant = true)]
+        public string persistentManeuverPatch;
 
         public GameScenes linkedScene;
+
+        public float headingTolerance = 0.002f;
 
         //List of scenes where we shouldn't run the mod. I toyed with runOnce, but couldn't get it working
         private static readonly List<GameScenes> forbiddenScenes = new List<GameScenes> { GameScenes.LOADING, GameScenes.LOADINGBUFFER, GameScenes.CREDITS, GameScenes.MAINMENU, GameScenes.SETTINGS };
@@ -102,6 +115,20 @@ namespace PersistentThrust.BackgroundProcessing
         /// </summary>
         public void FixedUpdate()
         {
+            // ignore Kerbals
+            if (vessel.isEVA)
+                return;
+
+            // ignore irrelevant vessel types
+            if (vessel.vesselType == VesselType.Debris
+                || vessel.vesselType == VesselType.Flag
+                || vessel.vesselType == VesselType.SpaceObject
+                || vessel.vesselType == VesselType.DeployedSciencePart
+                || vessel.vesselType == VesselType.DeployedScienceController
+            )
+                return;
+
+            // lookup vessel data
             PersistentScenarioModule.VesselDataDict.TryGetValue(vessel.id, out VesselData vesselData);
 
             if (vesselData == null)
@@ -109,20 +136,53 @@ namespace PersistentThrust.BackgroundProcessing
 
             if (vessel.loaded == false)
             {
-                    if (vesselData.hasBeenLoaded)
-                        persistentAutopilotMode = vesselData.PersistentAutopilotMode;
-                    else
-                        vesselData.PersistentAutopilotMode = persistentAutopilotMode;
+                vesselData.PersistentAutopilotMode = persistentAutopilotMode;
+                vesselData.persistentVesselTargetId = persistentVesselTargetId;
+                vesselData.persistentVesselTargetBodyName = persistentVesselTargetBodyName;
+                vesselData.persistentManeuverUT = persistentManeuverUT;
+                vesselData.persistentManeuverNextPatch = persistentManeuverNextPatch;
+                vesselData.persistentManeuverPatch = persistentManeuverPatch;
 
-                    return;
+                return;
             }
 
-            if (fixedUpdateCount++ > 60)
+            if (fixedUpdateCount++ > 100)
             {
                 persistentAutopilotMode = vessel.Autopilot.Mode;
 
-                vesselData.hasBeenLoaded = true;
-                vesselData.PersistentAutopilotMode = persistentAutopilotMode;
+                if (vessel.targetObject != null)
+                {
+                    var orbitDriver = vessel.targetObject.GetOrbitDriver();
+                    if (orbitDriver.vessel != null)
+                    {
+                        persistentVesselTargetId = orbitDriver.vessel.id.ToString();
+                        persistentVesselTargetBodyName = string.Empty;
+                    }
+                    else if (orbitDriver.celestialBody != null)
+                    {
+                        persistentVesselTargetId = Guid.Empty.ToString();
+                        persistentVesselTargetBodyName = orbitDriver.celestialBody.bodyName;
+                    }
+                }
+                else
+                {
+                    persistentVesselTargetId = Guid.Empty.ToString();
+                    persistentVesselTargetBodyName = string.Empty;
+                }
+
+                if (vessel.patchedConicSolver.maneuverNodes.Count > 0)
+                {
+                    var maneuverNode = vessel.patchedConicSolver.maneuverNodes[0];
+
+                    persistentManeuverUT = maneuverNode.UT;
+                    persistentManeuverNextPatch = maneuverNode.patch.Serialize();
+                    persistentManeuverPatch = maneuverNode.patch.Serialize();
+                }
+            }
+            else
+            {
+                vessel.Autopilot.SetMode(persistentAutopilotMode);
+                vessel.PersistHeading(TimeWarp.fixedDeltaTime, headingTolerance, true);
             }
         }
 
