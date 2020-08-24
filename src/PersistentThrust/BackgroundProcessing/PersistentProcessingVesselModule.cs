@@ -22,6 +22,8 @@ namespace PersistentThrust.BackgroundProcessing
 
         public GameScenes linkedScene;
 
+        public float headingTolerance = 0.002f;
+
         //List of scenes where we shouldn't run the mod. I toyed with runOnce, but couldn't get it working
         private static readonly List<GameScenes> forbiddenScenes = new List<GameScenes> { GameScenes.LOADING, GameScenes.LOADINGBUFFER, GameScenes.CREDITS, GameScenes.MAINMENU, GameScenes.SETTINGS };
 
@@ -130,7 +132,7 @@ namespace PersistentThrust.BackgroundProcessing
                 return;
             }
 
-            if (fixedUpdateCount++ > 60)
+            if (fixedUpdateCount++ > 100)
             {
                 persistentAutopilotMode = vessel.Autopilot.Mode;
 
@@ -162,6 +164,11 @@ namespace PersistentThrust.BackgroundProcessing
                     persistentManeuverNextPatch = maneuverNode.patch.Serialize();
                     persistentManeuverPatch = maneuverNode.patch.Serialize();
                 }
+            }
+            else
+            {
+                vessel.Autopilot.SetMode(persistentAutopilotMode);
+                vessel.PersistHeading(TimeWarp.fixedDeltaTime, headingTolerance, true);
             }
         }
 

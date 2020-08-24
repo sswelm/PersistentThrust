@@ -370,8 +370,6 @@ namespace PersistentThrust
             vesselHeadingVersusManeuver = vessel.GetVesselOrbitHeadingVersusManeuverVector();
             vesselHeadingVersusManeuverInDegree = Math.Acos(Math.Max(-1, Math.Min(1, vesselHeadingVersusManeuver))) * Orbit.Rad2Deg;
 
-            RestoreHeadingAtLoad();
-
             _resourceChangeRequest.Clear();
 
             if (vesselChangedSoiCountdown > 0)
@@ -1183,21 +1181,6 @@ namespace PersistentThrust
         {
             //currentEngine.engine.maxFuelFlow = (float)(currentEngine.persistentIsp > 0 ? currentEngine.engine.maxThrust / (currentEngine.persistentIsp * PhysicsGlobals.GravitationalAcceleration) : 1e-10f);
             currentEngine.engine.multFlow = 1;
-        }
-
-        private void RestoreHeadingAtLoad()
-        {
-            var persistentAutopilotMode = PersistentScenarioModule.VesselDataDict?[vessel.id].PersistentAutopilotMode;
-
-            if (persistentAutopilotMode is null)
-                return;
-
-            // restore heading at load
-            if (HasPersistentHeadingEnabled && fixedUpdateCount++ <= 60 && vesselAlignmentWithAutopilotMode > 0.995)
-            {
-                vessel.Autopilot.SetMode((VesselAutopilot.AutopilotMode)persistentAutopilotMode);
-                vessel.PersistHeading(TimeWarp.fixedDeltaTime, headingTolerance, vesselChangedSoiCountdown > 0);
-            }
         }
 
         private void ResetMonitoringVariables()
