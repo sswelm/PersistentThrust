@@ -46,9 +46,11 @@
     </Reference>
     <Reference Include="UnityEngine.CoreModule">
       <HintPath>..\Unity\8.1\UnityEngine.CoreModule.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="UnityEngine.InputLegacyModule">
       <HintPath>..\Unity\8.1\UnityEngine.InputLegacyModule.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="UnityEngine.UI">
       <HintPath>..\Unity\8.1\UnityEngine.UI.dll</HintPath>
@@ -57,6 +59,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="InfoWindow.cs" />
+    <Compile Include="TextHandler.cs" />
     <Compile Include="ThrottleInputField.cs" />
     <Compile Include="Interface\IInfoWindow.cs" />
     <Compile Include="Interface\IInfoModule.cs" />

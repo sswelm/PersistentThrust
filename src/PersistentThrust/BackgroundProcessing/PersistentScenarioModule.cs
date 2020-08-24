@@ -1,5 +1,4 @@
-﻿using PersistentThrust.Helpers;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -122,7 +121,7 @@ namespace PersistentThrust.BackgroundProcessing
 
         private static void ProcessUnloadedModuleGenerators(VesselData vesselData, double elapsedTime)
         {
-            if (DetectKerbalism.Found())
+            if (DetectKerbalism.Found)
                 return;
 
             foreach (KeyValuePair<uint, ModuleGeneratorData> keyValuePair in vesselData.Generators)
@@ -187,7 +186,7 @@ namespace PersistentThrust.BackgroundProcessing
 
         private static void ProcessUnloadedResourceConverters(VesselData vesselData, double elapsedTime)
         {
-            if (DetectKerbalism.Found())
+            if (DetectKerbalism.Found)
                 return;
 
             foreach (KeyValuePair<uint, ModuleResourceConverterData> keyValuePair in vesselData.ResourceConverters)
@@ -287,7 +286,7 @@ namespace PersistentThrust.BackgroundProcessing
 
         private static void ProcessUnloadedSolarPanels(VesselData vesselData)
         {
-            if (DetectKerbalism.Found())
+            if (DetectKerbalism.Found)
                 return;
 
             if (!vesselData.SolarPanels.Any())

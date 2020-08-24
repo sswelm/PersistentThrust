@@ -9,10 +9,14 @@ namespace PersistentThrust.UI
 	/// </summary>
     class InfoModule : MonoBehaviour
     {
+        // [SerializeField]
+        // private Text m_title = null;
+        // [SerializeField]
+        // private Text m_field = null;
         [SerializeField]
-        private Text m_title = null;
+        private TextHandler m_title = null;
         [SerializeField]
-        private Text m_field = null;
+        private TextHandler m_field = null;
 
         private IInfoModule moduleInterface;
 
@@ -27,7 +31,8 @@ namespace PersistentThrust.UI
 
             moduleInterface = module;
 
-            m_title.text = module.ModuleTitle + ":";
+            //m_title.text = module.ModuleTitle + ":";
+            m_title.OnTextUpdate.Invoke(module.ModuleTitle + ":");
         }
 
         /// <summary>
@@ -77,7 +82,8 @@ namespace PersistentThrust.UI
 
             moduleInterface.Update();
 
-            m_field.text = moduleInterface.FieldText;
+            //m_field.text = moduleInterface.FieldText;
+            m_field.OnTextUpdate.Invoke(moduleInterface.FieldText);
         }
     }
 }

@@ -41,7 +41,8 @@ namespace PersistentThrust
             PTGUI_Loader.LoadTextures();
 
             Instance = this;
-            Version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+            AssemblyName assemName = Assembly.GetExecutingAssembly().GetName();
+            Version = $"v{assemName.Version.Major}.{assemName.Version.Minor}.{assemName.Version.Build}";
 
             if (VesselElementPrefab is null)
                 VesselElementPrefab = PTGUI_Loader.VesselElementPrefab;

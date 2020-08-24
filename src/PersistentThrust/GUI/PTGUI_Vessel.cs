@@ -152,9 +152,7 @@ namespace PersistentThrust
                         new Vector2(0.5f, 0.5f),
                         new MultiOptionDialog(title, msg, title, HighLogic.UISkin, buttons),
                         false,
-                        HighLogic.UISkin,
-                        true,
-                        string.Empty
+                        HighLogic.UISkin
                     );
             }
         }

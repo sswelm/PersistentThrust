@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using System;
+using System.Linq;
 
 namespace PersistentThrust.UI
 {
@@ -11,7 +12,11 @@ namespace PersistentThrust.UI
     public class MainWindow : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
     {
         [SerializeField]
-        public Text m_VersionText = null;
+        public TextHandler m_VersionText = null;
+        [SerializeField]
+        public TextHandler m_TitleText = null;
+        [SerializeField]
+        public TextHandler m_NoVesselText = null;
         [SerializeField]
         public GameObject m_VesselElementPrefab = null;
         [SerializeField]
@@ -30,6 +35,9 @@ namespace PersistentThrust.UI
         private void Awake()
         {
             rect = GetComponent<RectTransform>();
+
+            // from XKCDColors.ElectricLime
+            m_TitleText.OnColorUpdate.Invoke(new Color(0.6588235f, 1f, 0.01568628f, 1f));
         }
 
         public void SetInitialState(IMainWindow main)
@@ -42,13 +50,18 @@ namespace PersistentThrust.UI
             m_VesselElementPrefab = main.VesselElementPrefab;
 
             if (m_VersionText != null)
-                m_VersionText.text = main.Version;
+                m_VersionText.OnTextUpdate.Invoke(main.Version);
 
             SetPosition(main.Position);
 
             transform.localScale *= main.Scale;
 
             CreateVesselList(main.Vessels);
+
+            if (main.Vessels.Any())
+                m_NoVesselText.gameObject.SetActive(false);
+            else
+                m_NoVesselText.gameObject.SetActive(true);
         }
 
         public void Update()

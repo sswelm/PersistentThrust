@@ -23,6 +23,7 @@ namespace PersistentThrust
         Acceleration acc;
 
         public static PTGUI_Info Instance { get; private set; } = null;
+        public GameObject SituationModulePrefab { get; private set; }
         public string VesselName { get; private set; }
         public float Throttle { get; set; }
         public float ThrottleChangedByKSP { get; set; }
@@ -46,6 +47,9 @@ namespace PersistentThrust
         private void Awake()
         {
             Instance = this;
+
+            if (SituationModulePrefab is null)
+                SituationModulePrefab = PTGUI_Loader.SituationModulePrefab;
         }
 
         private void Start()

@@ -14,7 +14,7 @@ namespace PersistentThrust.UI
         [SerializeField]
         private Transform m_ModuleTransform = null;
         [SerializeField]
-        public Text m_vesselName = null;
+        public TextHandler m_vesselName = null;
         [SerializeField]
         public Toggle m_deltaVToggle = null;
         [SerializeField]
@@ -27,7 +27,9 @@ namespace PersistentThrust.UI
         public InputField m_throttleInput = null;
 
         [SerializeField]
-        public Text m_situationInfo = null;
+        public TextHandler m_situationPanelTitle = null;
+        [SerializeField]
+        public TextHandler m_situationInfo = null;
 
         private bool dragging = false;
         private bool throttleWasChanged = false;
@@ -71,8 +73,10 @@ namespace PersistentThrust.UI
 
             infoWindowInterface = info;
 
+            m_ModulePrefab = info.SituationModulePrefab;
+
             if (m_vesselName != null)
-                m_vesselName.text = info.VesselName;
+                m_vesselName.OnTextUpdate.Invoke(info.VesselName);
 
             if (m_throttleInput != null)
                 m_throttleInput.GetComponent<ThrottleInputField>().SetInterface(info);
@@ -109,7 +113,7 @@ namespace PersistentThrust.UI
 
             if (infoWindowInterface.SituationVisible)
             {
-                m_situationInfo.text = infoWindowInterface.SituationTextString;
+                m_situationInfo.OnTextUpdate.Invoke(infoWindowInterface.SituationTextString);
                 for (int i = Modules.Count - 1; i >= 0; i--)
                 {
                     InfoModule mod = Modules[i];
@@ -208,9 +212,7 @@ namespace PersistentThrust.UI
 
         private void ValidateThrottle(string input)
         {
-            float throttleNum;
-
-            if (string.IsNullOrEmpty(input) || !float.TryParse(input, out throttleNum))
+            if (string.IsNullOrEmpty(input) || !float.TryParse(input, out float throttleNum))
                 throttleNum = m_throttleSlider.value;
             else
                 throttleNum = Mathf.Clamp(throttleNum, 0, 1);

@@ -668,7 +668,7 @@ namespace PersistentThrust
 
                     _availablePartResources.TryGetValue(persistentPropellant.definition.name, out var kerbalismAmount);
 
-                    double currentPropellantAmount = DetectKerbalism.Found() ? kerbalismAmount : availablePropellant.amount;
+                    double currentPropellantAmount = DetectKerbalism.Found ? kerbalismAmount : availablePropellant.amount;
 
                     // update power buffer
                     bufferSize = UpdateBuffer(availablePropellant, persistentPropellant.demandIn);
@@ -860,7 +860,7 @@ namespace PersistentThrust
                 }
 
                 // adjust ignited information if RF is installed to prevent engine shutdown in the warp to realtime transition
-                if (!DetectRealFuels.Found() || newSetting <= 0) continue;
+                if (!DetectRealFuels.Found || newSetting <= 0) continue;
 
                 FieldInfo ignitedInfo = currentEngine.engine.GetType().GetField("ignited", BindingFlags.NonPublic | BindingFlags.Instance);
 
@@ -1173,7 +1173,7 @@ namespace PersistentThrust
                 _resourceChangeRequest[propellant.definition.name] = currentDemand - (demand / TimeWarp.fixedDeltaTime);
             }
 
-            if (DetectKerbalism.Found())
+            if (DetectKerbalism.Found)
                 return Math.Min(availableAmount, demand);
             else
                 return part.RequestResource(propellant.definition.id, demand, propellant.propellant.GetFlowMode(), simulate || (propellant.density > 0 && !vessel.packed)); ;

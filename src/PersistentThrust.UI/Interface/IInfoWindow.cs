@@ -17,6 +17,8 @@ namespace PersistentThrust.UI.Interface
 
         string SituationTextString { get; }
 
+        GameObject SituationModulePrefab { get; }
+
         List<IInfoModule> Modules { get; }
 
         bool ThrottleVisible { get; set; }

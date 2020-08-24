@@ -10,7 +10,7 @@ namespace PersistentThrust.UI
         [SerializeField]
         private Image m_image = null;
         [SerializeField]
-        private Text m_vesselName = null;
+        private TextHandler m_vesselName = null;
         [SerializeField]
         private Toggle m_persistentThrustToggle = null;
         [SerializeField]
@@ -143,7 +143,7 @@ namespace PersistentThrust.UI
             vesselElementInterface = element;
 
             if (element.VesselName != null)
-                m_vesselName.text = element.VesselName;
+                m_vesselName.OnTextUpdate.Invoke(element.VesselName);
 
             if (element.VesselIcon != null)
                 m_vesselIcon.sprite = element.VesselIcon;
@@ -156,7 +156,7 @@ namespace PersistentThrust.UI
             if (goToButton != null && element.IsActiveVessel)
                 goToButton.enabled = false;
 
-            m_vesselName.color = vesselElementInterface.IsVesselCommandable ? Color.white : Color.yellow;
+            m_vesselName.OnColorUpdate.Invoke(vesselElementInterface.IsVesselCommandable ? Color.white : Color.yellow);
 
             UpdateElementAutopilotInfo(element.VesselAutopilotMode);
         }
@@ -168,8 +168,7 @@ namespace PersistentThrust.UI
 
             vesselElementInterface = element;
 
-            if (element.VesselName != m_vesselName.text)
-                m_vesselName.text = element.VesselName;
+            m_vesselName.OnTextUpdate.Invoke(element.VesselName);
 
             if (element.VesselIcon != m_vesselIcon.sprite)
                 m_vesselIcon.sprite = element.VesselIcon;
@@ -177,7 +176,7 @@ namespace PersistentThrust.UI
             m_persistentThrustToggle.isOn = element.HasPersistentThrustActive;
             m_vesselInfoToggle.isOn = element.HasInfoWindowActive;
 
-            m_vesselName.color = vesselElementInterface.IsVesselCommandable ? Color.white : Color.yellow;
+            m_vesselName.OnColorUpdate.Invoke(vesselElementInterface.IsVesselCommandable ? Color.white : Color.yellow);
 
             if (currentAutopilotMode != element.VesselAutopilotMode)
             {

@@ -122,7 +122,7 @@ namespace PersistentThrust.BackgroundProcessing
             List<KeyValuePair<string, double>> resourceChangeRequest,
             double elapsedTime)
         {
-            if (DetectKerbalism.Found())
+            if (DetectKerbalism.Found)
                 return;
 
             // lookup engine data

@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using PersistentThrust.UI;
 using System.Linq;
+using TMPro;
 
 namespace PersistentThrust
 {
@@ -16,6 +17,7 @@ namespace PersistentThrust
         public static GameObject MainWindowPrefab { get; private set; }
         public static GameObject VesselElementPrefab { get; private set; }
         public static GameObject InfoWindowPrefab { get; private set; }
+        public static GameObject SituationModulePrefab { get; private set; }
 
         /// <summary>
         /// Called by Unity at initialization, which happens as soon as the game starts.
@@ -54,8 +56,14 @@ namespace PersistentThrust
                 else if (o.name == "InfoPanel")
                     InfoWindowPrefab = o;
 
+                else if (o.name == "SituationModule")
+                    SituationModulePrefab = o;
+
                 if (o != null)
+                {
+                    ProcessTMP(o);
                     ProcessUIComponents(o);
+                }
             }
         }
         private void ProcessUIComponents(GameObject obj)
@@ -105,6 +113,63 @@ namespace PersistentThrust
                 default:
                     break;
             }
+        }
+
+        private void ProcessTMP(GameObject obj)
+        {
+            TextHandler[] handlers = obj.GetComponentsInChildren<TextHandler>(true);
+
+            if (handlers == null)
+                return;
+
+            for (int i = 0; i < handlers.Length; i++)
+                TMProFromText(handlers[i]);
+        }
+
+        private void TMProFromText(TextHandler handler)
+        {
+            if (handler == null)
+                return;
+
+            //The TextHandler element should be attached only to objects with a Unity Text element
+            //Note that the "[RequireComponent(typeof(Text))]" attribute cannot be attached to TextHandler since Unity will not allow the Text element to be removed
+            Text text = handler.GetComponent<Text>();
+
+            if (text == null)
+                return;
+
+            //Cache all of the relevent information from the Text element
+            string t = text.text;
+            Color c = text.color;
+            int i = text.fontSize;
+            bool r = text.raycastTarget;
+            FontStyles sty = TMPProUtil.FontStyle(text.fontStyle);
+            TextAlignmentOptions align = TMPProUtil.TextAlignment(text.alignment);
+            float spacing = text.lineSpacing;
+            GameObject obj = text.gameObject;
+
+            //The existing Text element must by destroyed since Unity will not allow two UI elements to be placed on the same GameObject
+            DestroyImmediate(text);
+
+            PTTextMeshProHolder tmp = obj.AddComponent<PTTextMeshProHolder>();
+
+            //Populate the TextMeshPro fields with the cached data from the old Text element
+            tmp.text = t;
+            tmp.color = c;
+            tmp.fontSize = i;
+            tmp.raycastTarget = r;
+            tmp.alignment = align;
+            tmp.fontStyle = sty;
+            tmp.lineSpacing = spacing;
+
+            //Load the TMP Font from disk
+            tmp.font = UISkinManager.TMPFont;
+            //tmp.font = Resources.Load("Fonts/Calibri SDF", typeof(TMP_FontAsset)) as TMP_FontAsset;
+            tmp.fontSharedMaterial = Resources.Load("Fonts/Materials/Calibri Dropshadow", typeof(Material)) as Material;
+
+            tmp.enableWordWrapping = true;
+            tmp.isOverlay = false;
+            tmp.richText = true;
         }
 
         /// <summary>

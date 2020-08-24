@@ -29,7 +29,7 @@ namespace PersistentThrust
         [Persistent]
         public bool showAcceleration = true;
         [Persistent]
-        public float UIScale = 1;
+        public float UIScale = 0.8f;
 
         private const string fileName = "PluginData/settings.cfg";
         private string fullPath;

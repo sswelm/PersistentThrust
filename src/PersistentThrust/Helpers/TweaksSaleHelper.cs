@@ -2,7 +2,7 @@
 using System.Diagnostics.Eventing.Reader;
 using UnityEngine;
 
-namespace PersistentThrust.Helpers
+namespace PersistentThrust
 {
     public class TweakScaleData
     {
