@@ -99,15 +99,10 @@ namespace PersistentThrust.BackgroundProcessing
         public Dictionary<string, double> MaxAmountResources { get; set; } = new Dictionary<string, double>();
         public Dictionary<string, double> AvailableStorage{ get; set; } = new Dictionary<string, double>();
 
-        //public PersistentProcessingVesselModule VesselModule { get; set; }
-
-
         public VesselData(Vessel vessel)
         {
             Vessel = vessel;
-            //VesselModule = vessel.GetComponent<PersistentProcessingVesselModule>();
         }
-
 
         public void ResourceChange(string resourceName, double changeAmount)
         {

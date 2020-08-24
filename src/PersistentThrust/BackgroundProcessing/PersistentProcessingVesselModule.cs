@@ -115,6 +115,20 @@ namespace PersistentThrust.BackgroundProcessing
         /// </summary>
         public void FixedUpdate()
         {
+            // ignore Kerbals
+            if (vessel.isEVA)
+                return;
+
+            // ignore irrelevant vessel types
+            if (vessel.vesselType == VesselType.Debris
+                || vessel.vesselType == VesselType.Flag
+                || vessel.vesselType == VesselType.SpaceObject
+                || vessel.vesselType == VesselType.DeployedSciencePart
+                || vessel.vesselType == VesselType.DeployedScienceController
+            )
+                return;
+
+            // lookup vessel data
             PersistentScenarioModule.VesselDataDict.TryGetValue(vessel.id, out VesselData vesselData);
 
             if (vesselData == null)
