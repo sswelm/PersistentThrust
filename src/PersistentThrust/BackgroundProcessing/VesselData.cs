@@ -72,8 +72,6 @@ namespace PersistentThrust.BackgroundProcessing
         public string persistentManeuverNextPatch;
         public string persistentManeuverPatch;
 
-        public bool hasBeenLoaded;
-
         public Vessel Vessel { get; set; }
         public double PersistentThrust { get; set; }
         public double TotalVesselMassInKg { get; set; }

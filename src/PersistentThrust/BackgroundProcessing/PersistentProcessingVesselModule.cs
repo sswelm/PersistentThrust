@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace PersistentThrust.BackgroundProcessing
@@ -8,6 +9,16 @@ namespace PersistentThrust.BackgroundProcessing
         // KSP doesn't save Vessel AutopilotMode so we have to do it ourselves
         [KSPField(isPersistant = true)]
         public VesselAutopilot.AutopilotMode persistentAutopilotMode;
+        [KSPField(isPersistant = true)]
+        public string persistentVesselTargetBodyName;
+        [KSPField(isPersistant = true)]
+        public string persistentVesselTargetId = Guid.Empty.ToString();
+        [KSPField(isPersistant = true)]
+        public double persistentManeuverUT;
+        [KSPField(isPersistant = true)]
+        public string persistentManeuverNextPatch;
+        [KSPField(isPersistant = true)]
+        public string persistentManeuverPatch;
 
         public GameScenes linkedScene;
 
@@ -109,20 +120,48 @@ namespace PersistentThrust.BackgroundProcessing
 
             if (vessel.loaded == false)
             {
-                    if (vesselData.hasBeenLoaded)
-                        persistentAutopilotMode = vesselData.PersistentAutopilotMode;
-                    else
-                        vesselData.PersistentAutopilotMode = persistentAutopilotMode;
+                vesselData.PersistentAutopilotMode = persistentAutopilotMode;
+                vesselData.persistentVesselTargetId = persistentVesselTargetId;
+                vesselData.persistentVesselTargetBodyName = persistentVesselTargetBodyName;
+                vesselData.persistentManeuverUT = persistentManeuverUT;
+                vesselData.persistentManeuverNextPatch = persistentManeuverNextPatch;
+                vesselData.persistentManeuverPatch = persistentManeuverPatch;
 
-                    return;
+                return;
             }
 
             if (fixedUpdateCount++ > 60)
             {
                 persistentAutopilotMode = vessel.Autopilot.Mode;
 
-                vesselData.hasBeenLoaded = true;
-                vesselData.PersistentAutopilotMode = persistentAutopilotMode;
+                if (vessel.targetObject != null)
+                {
+                    var orbitDriver = vessel.targetObject.GetOrbitDriver();
+                    if (orbitDriver.vessel != null)
+                    {
+                        persistentVesselTargetId = orbitDriver.vessel.id.ToString();
+                        persistentVesselTargetBodyName = string.Empty;
+                    }
+                    else if (orbitDriver.celestialBody != null)
+                    {
+                        persistentVesselTargetId = Guid.Empty.ToString();
+                        persistentVesselTargetBodyName = orbitDriver.celestialBody.bodyName;
+                    }
+                }
+                else
+                {
+                    persistentVesselTargetId = Guid.Empty.ToString();
+                    persistentVesselTargetBodyName = string.Empty;
+                }
+
+                if (vessel.patchedConicSolver.maneuverNodes.Count > 0)
+                {
+                    var maneuverNode = vessel.patchedConicSolver.maneuverNodes[0];
+
+                    persistentManeuverUT = maneuverNode.UT;
+                    persistentManeuverNextPatch = maneuverNode.patch.Serialize();
+                    persistentManeuverPatch = maneuverNode.patch.Serialize();
+                }
             }
         }
 
