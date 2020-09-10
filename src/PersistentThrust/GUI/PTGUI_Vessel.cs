@@ -195,6 +195,8 @@ namespace PersistentThrust
         /// </summary>
         private void UpdateVesselInfo()
         {
+            IsVesselCommandable = vessel.IsVesselSituationValid();
+
             if (VesselName != vessel.vesselName)
                 VesselName = vessel.vesselName;
 

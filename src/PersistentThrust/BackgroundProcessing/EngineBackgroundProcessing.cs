@@ -208,7 +208,7 @@ namespace PersistentThrust.BackgroundProcessing
             module_snapshot.moduleValues.TryGetValue(nameof(vesselData.maneuverToleranceInDegree), ref vesselData.maneuverToleranceInDegree);
             module_snapshot.moduleValues.TryGetValue(nameof(vesselData.persistentManeuverNextPatch), ref vesselData.persistentManeuverNextPatch);
 
-            if (vesselData.ThrustVector == Vector3d.zero)
+            if (vesselData.HeadingVector == Vector3d.zero)
                 return proto_part.partInfo.title;
 
             double fuelRequirementMet = 1;
@@ -266,53 +266,53 @@ namespace PersistentThrust.BackgroundProcessing
             return proto_part.partInfo.title;
         }
 
-        public static Vector3d GetThrustVectorForAutoPilot(VesselData vesselData, double UT)
+        public static Vector3d GetHeadingVectorForAutoPilot(VesselData vesselData, double UT)
         {
-            Vector3d thrustVector = Vector3d.zero;
+            Vector3d headingVector = Vector3d.zero;
             switch (vesselData.PersistentAutopilotMode)
             {
                 case VesselAutopilot.AutopilotMode.StabilityAssist:
-                    thrustVector = vesselData.Vessel.GetTransform().up.normalized;
+                    headingVector = vesselData.Vessel.GetTransform().up.normalized;
                     break;
                 case VesselAutopilot.AutopilotMode.Prograde:
-                    thrustVector = vesselData.OrbitalVelocityAtUt;
+                    headingVector = vesselData.OrbitalVelocityAtUt;
                     break;
                 case VesselAutopilot.AutopilotMode.Retrograde:
-                    thrustVector = -vesselData.OrbitalVelocityAtUt;
+                    headingVector = -vesselData.OrbitalVelocityAtUt;
                     break;
                 case VesselAutopilot.AutopilotMode.Normal:
-                    thrustVector = Vector3.Cross(vesselData.OrbitalVelocityAtUt,
+                    headingVector = Vector3.Cross(vesselData.OrbitalVelocityAtUt,
                         vesselData.Orbit.getPositionAtUT(UT) - vesselData.Vessel.mainBody.getPositionAtUT(UT));
                     break;
                 case VesselAutopilot.AutopilotMode.Antinormal:
-                    thrustVector = -Vector3.Cross(vesselData.OrbitalVelocityAtUt,
+                    headingVector = -Vector3.Cross(vesselData.OrbitalVelocityAtUt,
                         vesselData.Orbit.getPositionAtUT(UT) - vesselData.Vessel.mainBody.getPositionAtUT(UT));
                     break;
                 case VesselAutopilot.AutopilotMode.RadialIn:
-                    thrustVector = -Vector3.Cross(vesselData.OrbitalVelocityAtUt,
+                    headingVector = -Vector3.Cross(vesselData.OrbitalVelocityAtUt,
                         Vector3.Cross(vesselData.OrbitalVelocityAtUt,
                             vesselData.Orbit.getPositionAtUT(UT) - vesselData.Orbit.referenceBody.position));
                     break;
                 case VesselAutopilot.AutopilotMode.RadialOut:
-                    thrustVector = Vector3.Cross(vesselData.OrbitalVelocityAtUt,
+                    headingVector = Vector3.Cross(vesselData.OrbitalVelocityAtUt,
                         Vector3.Cross(vesselData.OrbitalVelocityAtUt,
                             vesselData.Orbit.getPositionAtUT(UT) - vesselData.Orbit.referenceBody.position));
                     break;
                 case VesselAutopilot.AutopilotMode.Target:
-                    thrustVector = GetThrustVectorToTarget(vesselData.Vessel, UT, vesselData.persistentVesselTargetBodyName, vesselData.persistentVesselTargetId);
+                    headingVector = GetHeadingVectorToTarget(vesselData.Vessel, UT, vesselData.persistentVesselTargetBodyName, vesselData.persistentVesselTargetId);
                     break;
                 case VesselAutopilot.AutopilotMode.AntiTarget:
-                    thrustVector = -GetThrustVectorToTarget(vesselData.Vessel, UT, vesselData.persistentVesselTargetBodyName, vesselData.persistentVesselTargetId);
+                    headingVector = -GetHeadingVectorToTarget(vesselData.Vessel, UT, vesselData.persistentVesselTargetBodyName, vesselData.persistentVesselTargetId);
                     break;
                 case VesselAutopilot.AutopilotMode.Maneuver:
-                    thrustVector = vesselData.Orbit.GetThrustVectorToManeuver(vesselData.persistentManeuverNextPatch, vesselData.persistentManeuverPatch, vesselData.persistentManeuverUT, vesselData.maneuverToleranceInDegree);
+                    headingVector = vesselData.Orbit.GetThrustVectorToManeuver(vesselData.persistentManeuverNextPatch, vesselData.persistentManeuverPatch, vesselData.persistentManeuverUT, vesselData.maneuverToleranceInDegree);
                     break;
             }
 
-            return thrustVector;
+            return headingVector;
         }
 
-        private static Vector3d GetThrustVectorToTarget(Vessel vessel, double UT, string persistentVesselTargetBodyName, string persistentVesselTargetId)
+        private static Vector3d GetHeadingVectorToTarget(Vessel vessel, double UT, string persistentVesselTargetBodyName, string persistentVesselTargetId)
         {
             Guid persistentVesselTargetGuid = new Guid(persistentVesselTargetId);
 

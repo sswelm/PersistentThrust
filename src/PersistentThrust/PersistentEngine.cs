@@ -71,6 +71,7 @@ namespace PersistentThrust
         [KSPField(isPersistant = true)]
         public bool defaultsLoaded;
 
+
         // GUI
         [KSPField(guiFormat = "F1", guiActive = true, guiName = "#autoLOC_6001378", guiUnits = "#autoLOC_7001400")]
         public float realIsp;
@@ -82,6 +83,8 @@ namespace PersistentThrust
         public double masslessUsage;
         [KSPField(guiFormat = "F3", guiActive = true, guiName = "#LOC_PT_HeadingVersusManeuver", guiUnits = " deg")]
         public double vesselHeadingVersusManeuverInDegree;
+        [KSPField(isPersistant = true, guiFormat = "F6", guiActive = true, guiName = "cosine")]
+        public double cosine;
 
         // Config Settings
         [KSPField]
@@ -134,7 +137,6 @@ namespace PersistentThrust
         private Dictionary<string, double> _availablePartResources = new Dictionary<string, double>();
 
         #endregion
-
 
         #region Events
 
@@ -304,16 +306,17 @@ namespace PersistentThrust
 
             UpdateMasslessPropellant();
 
-            if (!isPersistentEngine || !HasPersistentThrust) return;
-
             // When transitioning from TimeWarp to real update throttle
             if (warpToReal)
             {
-                SetThrottle(persistentThrottle, true);
+                if (isPersistentEngine && HasPersistentThrust)
+                    SetThrottle(persistentThrottle, true);
 
                 if (warpToRealCountDown-- <= 0)
                     warpToReal = false;
             }
+
+            if (!isPersistentEngine || !HasPersistentThrust) return;
 
             if (vessel.packed)
             {
@@ -464,7 +467,7 @@ namespace PersistentThrust
             }
             else
             {
-                if (TimeWarp.CurrentRateIndex == 0)
+                if (TimeWarp.CurrentRateIndex == 0 && !vessel.HoldPhysics)
                 {
                     if (!warpToReal)
                         warpToRealCountDown = 2;
@@ -1204,24 +1207,45 @@ namespace PersistentThrust
                 maxThrust = currentEngine.engine.maxThrust;
                 persistentThrust = currentEngine.finalThrust;
                 persistentIsp = currentEngine.persistentIsp;
+
+                Vector3 thrust = ThrustVectorFromEngine(currentEngine.engine);
+                cosine = Vector3.Dot(-thrust.normalized, vessel.transform.up);
             }
             else
             {
                 maxThrust = 0;
                 persistentThrust = 0;
+                cosine = 0;
                 float persistentIspThrustSum = 0;
                 foreach (var persistentEngineModule in moduleEngines)
                 {
-                    maxThrust += persistentEngineModule.engine.maxThrust;
+                    var engine = persistentEngineModule.engine;
+                    Vector3 thrust = ThrustVectorFromEngine(engine);
+                    cosine += Vector3.Dot(-thrust.normalized, vessel.transform.up) * engine.maxThrust;
+
+                    maxThrust += engine.maxThrust;
                     persistentThrust += persistentEngineModule.finalThrust;
-                    persistentIspThrustSum += persistentEngineModule.persistentIsp * persistentEngineModule.engine.maxThrust;
+                    persistentIspThrustSum += persistentEngineModule.persistentIsp * engine.maxThrust;
                 }
 
+                cosine /= maxThrust;
                 persistentIsp = persistentIspThrustSum / maxThrust;
             }
 
             // store current fixedDeltaTime for comparison
             previousFixedDeltaTime = TimeWarp.fixedDeltaTime;
+        }
+
+        private Vector3 ThrustVectorFromEngine(ModuleEngines engine)
+        {
+            var thrust = Vector3.zero;
+            int i = 0;
+            for (int count = engine.thrustTransforms.Count; i < count; i++)
+            {
+                Transform transform = engine.thrustTransforms[i];
+                thrust += transform.forward * engine.maxThrust * engine.thrustTransformMultipliers[i];
+            }
+            return thrust;
         }
 
         #endregion

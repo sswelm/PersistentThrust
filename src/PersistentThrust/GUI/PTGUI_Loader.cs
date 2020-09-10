@@ -1,9 +1,9 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
-using PersistentThrust.UI;
-using System.Linq;
 using TMPro;
+using PersistentThrust.UI;
+using UnityEditor;
 
 namespace PersistentThrust
 {
@@ -41,6 +41,7 @@ namespace PersistentThrust
                     ProcessUIPrefabs();
             }
         }
+
         private void ProcessUIPrefabs()
         {
             for (int i = loadedPrefabs.Length - 1; i >= 0; i--)
@@ -142,6 +143,9 @@ namespace PersistentThrust
             string t = text.text;
             Color c = text.color;
             int i = text.fontSize;
+            bool resize = text.resizeTextForBestFit;
+            int maxs = text.resizeTextMaxSize;
+            int mins = text.resizeTextMinSize;
             bool r = text.raycastTarget;
             FontStyles sty = TMPProUtil.FontStyle(text.fontStyle);
             TextAlignmentOptions align = TMPProUtil.TextAlignment(text.alignment);
@@ -157,19 +161,24 @@ namespace PersistentThrust
             tmp.text = t;
             tmp.color = c;
             tmp.fontSize = i;
+            tmp.enableAutoSizing = resize;
+            tmp.fontSizeMax = maxs;
+            tmp.fontSizeMin = mins;
             tmp.raycastTarget = r;
             tmp.alignment = align;
             tmp.fontStyle = sty;
             tmp.lineSpacing = spacing;
 
-            //Load the TMP Font from disk
             tmp.font = UISkinManager.TMPFont;
-            //tmp.font = Resources.Load("Fonts/Calibri SDF", typeof(TMP_FontAsset)) as TMP_FontAsset;
             tmp.fontSharedMaterial = Resources.Load("Fonts/Materials/Calibri Dropshadow", typeof(Material)) as Material;
 
             tmp.enableWordWrapping = true;
             tmp.isOverlay = false;
             tmp.richText = true;
+
+            //No idea why this is needed, but TMP needs this field to be set to true for correct initialization of the alignment style
+            var prop = tmp.GetType().GetField("m_isAlignmentEnumConverted", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            prop.SetValue(tmp, true);
         }
 
         /// <summary>
