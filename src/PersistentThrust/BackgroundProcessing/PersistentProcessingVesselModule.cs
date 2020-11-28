@@ -10,15 +10,15 @@ namespace PersistentThrust.BackgroundProcessing
         [KSPField(isPersistant = true)]
         public VesselAutopilot.AutopilotMode persistentAutopilotMode;
         [KSPField(isPersistant = true)]
-        public string persistentVesselTargetBodyName;
+        public string persistentVesselTargetBodyName = string.Empty;
         [KSPField(isPersistant = true)]
         public string persistentVesselTargetId = Guid.Empty.ToString();
         [KSPField(isPersistant = true)]
-        public double persistentManeuverUT;
+        public double persistentManeuverUT = 0;
         [KSPField(isPersistant = true)]
-        public string persistentManeuverNextPatch;
+        public string persistentManeuverNextPatch = string.Empty;
         [KSPField(isPersistant = true)]
-        public string persistentManeuverPatch;
+        public string persistentManeuverPatch = string.Empty;
 
         public GameScenes linkedScene;
 
@@ -170,7 +170,7 @@ namespace PersistentThrust.BackgroundProcessing
                     persistentVesselTargetBodyName = string.Empty;
                 }
 
-                if (vessel.patchedConicSolver.maneuverNodes.Count > 0)
+                if (vessel.patchedConicSolver != null && vessel.patchedConicSolver.maneuverNodes.Count > 0)
                 {
                     var maneuverNode = vessel.patchedConicSolver.maneuverNodes[0];
 

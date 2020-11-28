@@ -15,6 +15,7 @@ namespace PersistentThrust
             {
                 if(!_kerbalismFound.HasValue)
                 {
+                    _kerbalismFound = false;
                     foreach (var a in AssemblyLoader.loadedAssemblies)
                     {
                         // Kerbalism comes with more than one assembly. There is Kerbalism for debug builds, KerbalismBootLoader,

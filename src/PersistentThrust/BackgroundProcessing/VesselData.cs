@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace PersistentThrust.BackgroundProcessing
 {
@@ -79,10 +80,10 @@ namespace PersistentThrust.BackgroundProcessing
         public Vector3d Position { get; set; }
         public double Time { get; set; } = 0;
         public double DeltaTime { get; set; }
-        public Orbit Orbit  { get; set; }
+        public Orbit Orbit { get; set; }
         public Vector3d OrbitalVelocityAtUt { get; set; }
         public VesselAutopilot.AutopilotMode PersistentAutopilotMode { get; set; }
-        public Vector3d ThrustVector { get; set; }
+        public Vector3d HeadingVector { get; set; }
         public Vector3d AccelerationVector { get; private set; }
         //public Vector3d DeltaVVector { get; set; }
         public bool? HasAnyActivePersistentEngine { get; set; }
@@ -97,7 +98,7 @@ namespace PersistentThrust.BackgroundProcessing
 
         public Dictionary<string, double> AvailableResources { get; set; } = new Dictionary<string, double>();
         public Dictionary<string, double> MaxAmountResources { get; set; } = new Dictionary<string, double>();
-        public Dictionary<string, double> AvailableStorage{ get; set; } = new Dictionary<string, double>();
+        public Dictionary<string, double> AvailableStorage { get; set; } = new Dictionary<string, double>();
 
         public VesselData(Vessel vessel)
         {
@@ -146,10 +147,10 @@ namespace PersistentThrust.BackgroundProcessing
             Orbit = Vessel.GetOrbit();
             OrbitalVelocityAtUt = Orbit.getOrbitalVelocityAtUT(Planetarium.GetUniversalTime()).xzy;
 
-            // calculate thrust vector once per frame per vessel
-            ThrustVector = EngineBackgroundProcessing.GetThrustVectorForAutoPilot(vesselData: this, UT: Planetarium.GetUniversalTime());
+            // calculate heading vector once per frame per vessel
+            HeadingVector = EngineBackgroundProcessing.GetHeadingVectorForAutoPilot(vesselData: this, UT: Planetarium.GetUniversalTime());
 
-            if (ThrustVector != Vector3d.zero && DeltaTime != 0)
+            if (HeadingVector != Vector3d.zero && DeltaTime != 0)
             {
                 // apply Perturb once per frame per vessel
                 AccelerationVector = Vector3d.zero;
@@ -157,7 +158,7 @@ namespace PersistentThrust.BackgroundProcessing
                 {
                     PersistentEngineData persistentEngineData = engineData.Value;
 
-                    persistentEngineData.DeltaVVector = persistentEngineData.DeltaV * ThrustVector.normalized;
+                    persistentEngineData.DeltaVVector = persistentEngineData.DeltaV * HeadingVector.normalized * persistentEngineData.PersistentEngine.cosine;
                     AccelerationVector += persistentEngineData.DeltaVVector / DeltaTime;
                 }
 
