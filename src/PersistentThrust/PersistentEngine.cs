@@ -282,7 +282,7 @@ namespace PersistentThrust
                 persistentEngine.engine.Fields[nameof(persistentEngine.engine.propellantReqMet)].guiActive = false;
             }
 
-            float averagePropellantReqMetFactor = isMultiMode
+            float averagePropellantReqMetFactor = isMultiMode || moduleEngines.Length == 0
                 ? currentEngine.propellantReqMetFactor
                 : moduleEngines.Average(m => m.propellantReqMetFactor);
 
@@ -711,7 +711,7 @@ namespace PersistentThrust
             currentEngine.propellantReqMetFactorQueue.Enqueue((float)overallPropellantReqMet);
             if (currentEngine.propellantReqMetFactorQueue.Count() > propellantReqMetFactorQueueSize)
                 currentEngine.propellantReqMetFactorQueue.Dequeue();
-            float averagePropellantReqMetFactor = currentEngine.propellantReqMetFactorQueue.Average();
+            float averagePropellantReqMetFactor = currentEngine.propellantReqMetFactorQueue.Count > 0 ? currentEngine.propellantReqMetFactorQueue.Average(): 0;
 
             if (averagePropellantReqMetFactor < minimumPropellantReqMetFactor)
                 currentEngine.autoMaximizePersistentIsp = true;
