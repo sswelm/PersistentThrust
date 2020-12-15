@@ -18,6 +18,7 @@ namespace PersistentThrust
         public bool engineHasAnyMassLessPropellants;
         public bool autoMaximizePersistentIsp;
         public float finalThrust;
+        public float minThrottle;
         public float propellantReqMetFactor;
         public float persistentIsp;
         public double averageDensity;
@@ -237,10 +238,11 @@ namespace PersistentThrust
             FindModuleEngines();
 
             // Initialize PersistentPropellant list
-            foreach (var engine in moduleEngines)
+            foreach (PersistentEngineModule engine in moduleEngines)
             {
                 engine.propellants = PersistentPropellant.MakeList(engine.engine.propellants);
                 engine.averageDensity = engine.propellants.AverageDensity();
+                engine.minThrottle = engine.engine.minFuelFlow / engine.engine.maxFuelFlow;
             }
         }
 
@@ -484,8 +486,7 @@ namespace PersistentThrust
 
                     if (persistentThrottle > 0 && currentEngine.persistentIsp > 0 && isPersistentEngine && HasPersistentThrust)
                     {
-                        float minThrottle = currentEngine.engine.minFuelFlow / currentEngine.engine.maxFuelFlow;
-                        float actualThrottle = Mathf.Lerp(minThrottle, 1f, persistentThrottle * currentEngine.engine.thrustPercentage * 0.01f);
+                        float actualThrottle = Mathf.Lerp(currentEngine.minThrottle, 1f, persistentThrottle * currentEngine.engine.thrustPercentage * 0.01f);
 
                         // Calculated requested thrust
                         var requestedThrust = vesselHeadingVersusManeuverInDegree <= (maneuverToleranceInDegree + (persistentThrust > 0 ? 1 : 0))
