@@ -1,0 +1,17 @@
+{
+  "name": "com.unity.code-analysis",
+  "displayName": "Code Analysis",
+  "version": "0.1.0-preview.2",
+  "unity": "2018.3",
+  "description": "Roslyn C# code analysis and evaluation tool for Unity.",
+  "keywords": [
+    "scripting",
+    "compiler"
+  ],
+  "dependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git@github.cds.internal.unity3d.com:unity/com.unity.code-analysis.git",
+    "revision": "0eb7aeb86fea90c21fe42ab9488a1f9d72c52b50"
+  }
+}

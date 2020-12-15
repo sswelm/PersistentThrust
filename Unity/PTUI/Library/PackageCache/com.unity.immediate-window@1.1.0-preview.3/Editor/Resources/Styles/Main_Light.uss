@@ -1,0 +1,623 @@
+/***************************************************************************************************
+
+														*** Auto-Generated - Do not modify .uss File ***
+
+																		Only Modify Main.scss
+
+***************************************************************************************************/
+.display-none {
+  display: none;
+}
+
+.row, .quickInspector .expandable .viewModes, .quickInspector .expandable .viewModes TypeViewSelection, .quickInspector .expandable ExpandedMethodGroup Method .parameter {
+  flex-direction: row;
+}
+
+.column, #immediateWindow .scrollView {
+  flex: 1 0 0;
+  flex-direction: column;
+}
+
+.tag {
+  border-top-width: 1px;
+  border-left-width: 1px;
+  border-bottom-width: 1px;
+  border-right-width: 1px;
+  padding-top: 1px;
+  padding-left: 3px;
+  padding-bottom: 1px;
+  padding-right: 3px;
+  font-size: 9px;
+  border-radius: 5px;
+  -unity-text-align: middle-center;
+  border-color: #000000;
+  color: #000000;
+}
+
+#immediateWindow {
+  flex: 1 0 0;
+}
+#immediateWindow .root {
+  flex: 1 0 0;
+}
+#immediateWindow #windowContent {
+  flex: 1 0 0;
+  flex-direction: row;
+}
+#immediateWindow .scrollView #VerticalScroller {
+  bottom: 0;
+}
+#immediateWindow .scrollView #HorizontalScroller {
+  height: 0;
+}
+#immediateWindow .scrollView #ContentViewport {
+  bottom: 0;
+}
+#immediateWindow .scrollView #ContentViewport #ContentView {
+  right: 0;
+  left: 0;
+}
+#immediateWindow .no-background, #immediateWindow .textfield-label, #immediateWindow .span, #immediateWindow .span TextInput, .span #immediateWindow TextInput {
+  background-color: rgba(0, 0, 0, 0);
+  background-image: none;
+  margin-top: 0;
+  margin-left: 0;
+  margin-bottom: 0;
+  margin-right: 0;
+  padding-top: 0;
+  padding-left: 0;
+  padding-bottom: 0;
+  padding-right: 0;
+}
+#immediateWindow .alert {
+  background-color: rgba(200, 0, 0, 0.8);
+  border-color: #FF0000;
+  flex-direction: row;
+  white-space: normal;
+  border-top-width: 1px;
+  border-left-width: 1px;
+  border-bottom-width: 1px;
+  border-right-width: 1px;
+  padding-top: 5px;
+  padding-left: 10px;
+  padding-bottom: 5px;
+  padding-right: 10px;
+}
+#immediateWindow .alert #alertMessage {
+  flex: 1 0 0;
+  color: #f4f4f4;
+  white-space: normal;
+  overflow: hidden;
+}
+#immediateWindow .alert #close {
+  flex: 0 0 auto;
+  max-height: 30px;
+  left: 5px;
+  padding-top: 3px;
+  padding-left: 3px;
+  padding-bottom: 4px;
+  padding-right: 3px;
+}
+#immediateWindow .alert #close.display-none {
+  display: none;
+}
+#immediateWindow .alert #close:hover {
+  color: #000000;
+}
+#immediateWindow Button.compact {
+  margin-top: 0;
+  margin-left: 0;
+  margin-bottom: 0;
+  margin-right: 0;
+  padding-top: 0;
+  padding-left: 4px;
+  padding-bottom: 0;
+  padding-right: 4px;
+}
+#immediateWindow .spinner {
+  flex: 0 0 auto;
+  top: -7px;
+  left: -7px;
+  min-width: 14px;
+  min-height: 14px;
+  max-width: 14px;
+  max-height: 14px;
+  background-image: resource("Images/Light/loading");
+}
+#immediateWindow .largeSpinner {
+  flex: 0 0 auto;
+  top: -16px;
+  left: -16px;
+  min-width: 32px;
+  min-height: 32px;
+  max-width: 32px;
+  max-height: 32px;
+  background-image: resource("Images/Light/loading");
+}
+#immediateWindow #console {
+  flex: 1 0 0;
+}
+#immediateWindow #console .console-log {
+  white-space: normal;
+}
+#immediateWindow #console #console-mode-singleline {
+  flex: 1 0 0;
+}
+#immediateWindow #console #console-mode-multiline {
+  flex: 1 0 0;
+}
+#immediateWindow #console #console-output {
+  flex: 1 0 0;
+}
+#immediateWindow #console #console-output #output-content {
+  flex: 1 0 0;
+}
+#immediateWindow #console #console-output .content-view {
+  flex: 0 0 auto;
+}
+#immediateWindow #console #console-output .output-item {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  margin-left: 4px;
+  margin-bottom: 2px;
+  margin-right: 4px;
+  padding-top: 1px;
+  padding-left: 2px;
+  padding-bottom: 2px;
+  padding-right: 2px;
+  border-top-width: 0;
+  border-left-width: 0;
+  border-bottom-width: 1px;
+  border-right-width: 0;
+  border-color: rgba(0, 0, 0, 0.05);
+}
+#immediateWindow #console #console-input {
+  bottom: 0;
+}
+#immediateWindow #console #console-input-multiline {
+  flex: 1 0 0;
+}
+#immediateWindow #console #console-input-multiline TextInput {
+  -unity-text-align: upper-left;
+}
+#immediateWindow #sideview {
+  flex: 0.35 0 0;
+  border-left-width: 1px;
+  border-color: rgba(0, 0, 0, 0.25);
+}
+#immediateWindow #context {
+  flex: 1 0 0;
+}
+#immediateWindow #context #contextInspector {
+  flex: 1 0 0;
+}
+#immediateWindow #context #contextInspector .context-inspector-scrollview {
+  flex: 1 0 0;
+}
+#immediateWindow #context .context-inspector {
+  flex: 1 0 0;
+}
+#immediateWindow #context .context-inspector .assembly-label {
+  flex: 1 0 0;
+  -unity-font-style: bold;
+  white-space: normal;
+}
+#immediateWindow #context .context-inspector .namespace {
+  margin-left: 10px;
+}
+#immediateWindow #context .context-inspector .namespace .namespace-label {
+  flex: 1 0 0;
+  -unity-font-style: italic;
+  white-space: normal;
+}
+#immediateWindow #context .context-inspector .namespace .object-container {
+  flex: 1 0 0;
+}
+#immediateWindow #context .context-inspector .namespace .object-container .type {
+  margin-left: 15px;
+}
+#immediateWindow #context .context-inspector .namespace .object-container .typeProperties {
+  margin-left: 15px;
+}
+#immediateWindow #context .context-inspector .namespace .object-container .typename {
+  color: #8e2296;
+}
+#immediateWindow #context .context-inspector .namespace .object-container .propertyLabel {
+  color: #1c01d2;
+}
+
+#toggleContainer {
+  flex: 0 0 auto;
+  flex-direction: row;
+}
+#toggleContainer .label {
+  margin-right: 0;
+}
+#toggleContainer .toggle {
+  margin-left: 0;
+}
+
+.icon.context {
+  max-width: 14px;
+  max-height: 14px;
+  min-width: 14px;
+  min-height: 14px;
+  background-image: resource("Builtin Skins/LightSkin/Images/ShurikenModuleActive.png");
+}
+.icon.context.pressed {
+  background-image: resource("Builtin Skins/LightSkin/Images/ShurikenEmitterActive.png");
+}
+.icon.node0 {
+  width: 14px;
+  height: 14px;
+  background-image: resource("Builtin Skins/LightSkin/Images/node0 hex.png");
+  margin-top: 0;
+  margin-left: 0;
+  margin-bottom: 0;
+  margin-right: 0;
+  padding-top: 0;
+  padding-left: 0;
+  padding-bottom: 0;
+  padding-right: 0;
+}
+.icon.node0.pressed {
+  background-image: resource("Builtin Skins/LightSkin/Images/node0 hex on.png");
+}
+.icon.node1 {
+  width: 14px;
+  height: 14px;
+  background-image: resource("Builtin Skins/LightSkin/Images/node1 hex.png");
+  margin-top: 0;
+  margin-left: 0;
+  margin-bottom: 0;
+  margin-right: 0;
+  padding-top: 0;
+  padding-left: 0;
+  padding-bottom: 0;
+  padding-right: 0;
+}
+.icon.node1.pressed {
+  background-image: resource("Builtin Skins/LightSkin/Images/node1 hex on.png");
+}
+.icon.node2 {
+  width: 14px;
+  height: 14px;
+  background-image: resource("Builtin Skins/LightSkin/Images/node2 hex.png");
+  margin-top: 0;
+  margin-left: 0;
+  margin-bottom: 0;
+  margin-right: 0;
+  padding-top: 0;
+  padding-left: 0;
+  padding-bottom: 0;
+  padding-right: 0;
+}
+.icon.node2.pressed {
+  background-image: resource("Builtin Skins/LightSkin/Images/node2 hex on.png");
+}
+.icon.popup {
+  width: 14px;
+  height: 14px;
+  background-image: resource("Builtin Skins/LightSkin/Images/popup.png");
+}
+.icon.popup.pressed {
+  background-image: resource("Builtin Skins/LightSkin/Images/popup act.png");
+}
+.icon.play {
+  width: 14px;
+  height: 14px;
+  background-image: resource("Builtin Skins/LightSkin/Images/IN foldout act.png");
+}
+.icon.play.pressed {
+  background-image: resource("Builtin Skins/LightSkin/Images/IN foldout.png");
+}
+.icon.cancel {
+  width: 14px;
+  height: 14px;
+  background-image: resource("Builtin Skins/LightSkin/Images/ol minus.png");
+}
+.icon.cancel.pressed {
+  background-image: resource("Builtin Skins/LightSkin/Images/ol minus act.png");
+}
+
+#toolbarContainer {
+  flex: 0 0 auto;
+  flex-direction: row;
+  align-items: flex-start;
+  height: 18px;
+}
+#toolbarContainer #toolbarView {
+  flex: 1 0 0;
+  flex-direction: row;
+  align-items: flex-start;
+  background-image: resource("Builtin Skins/LightSkin/Images/Toolbar.png");
+  margin-top: -1px;
+  -unity-slice-top: 1;
+  -unity-slice-left: 1;
+  -unity-slice-bottom: 1;
+  -unity-slice-right: 1;
+}
+#toolbarContainer #toolbarView .toolbarButton {
+  font-size: 9px;
+  -unity-text-align: middle-center;
+  background-image: resource("Builtin Skins/LightSkin/Images/toolbar button.png");
+  padding-top: 0;
+  padding-left: 0;
+  padding-bottom: 0;
+  padding-right: 0;
+  margin-top: 0;
+  margin-left: 0;
+  margin-bottom: 0;
+  margin-right: -1px;
+  padding-top: 0;
+  padding-left: 5px;
+  padding-bottom: 0;
+  padding-right: 5px;
+  height: 19px;
+}
+#toolbarContainer #toolbarView .toolbarButton.display-none {
+  display: none;
+}
+#toolbarContainer #toolbarView .toolbarButton:hover {
+  color: #000000;
+}
+#toolbarContainer #toolbarView .toolbarButton.space {
+  margin-left: 7px;
+}
+#toolbarContainer #toolbarView .toolbarButton.active {
+  background-image: resource("Builtin Skins/LightSkin/Images/toolbar button act.png");
+}
+#toolbarContainer #toolbarView .toolbarButton.pulldown:active {
+  background-image: resource("Builtin Skins/LightSkin/Images/toolbar button.png");
+}
+#toolbarContainer #toolbarView #toolbarLeft {
+  flex: 1 0 0;
+  flex-direction: row;
+  align-items: flex-start;
+}
+#toolbarContainer #toolbarView #toolbarLeft #templates {
+  -unity-slice-top: 0;
+  -unity-slice-left: 1;
+  -unity-slice-bottom: 0;
+  -unity-slice-right: 1;
+}
+#toolbarContainer #toolbarView #toolbarRight {
+  flex: 1 0 0;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+}
+#toolbarContainer #toolbarView #toolbarRight #toolbarSearch {
+  flex: 1 0 0;
+  height: 18px;
+  max-width: 500px;
+  flex-direction: row;
+  margin-top: 0;
+  margin-left: 0;
+  margin-bottom: 0;
+  margin-right: 5px;
+}
+#toolbarContainer #toolbarView #toolbarRight Label {
+  margin-top: 2px;
+  margin-left: 2px;
+  margin-bottom: 2px;
+  margin-right: 2px;
+}
+#toolbarContainer #toolbarView #toolbarRight #reset {
+  min-height: 16px;
+  height: 16px;
+  margin-top: 0;
+  margin-left: 2px;
+  margin-bottom: 0;
+  margin-right: 2px;
+}
+
+.arrow {
+  align-self: center;
+  width: 12px;
+  height: 10px;
+  font-size: 8px;
+  padding-top: 1px;
+  padding-left: 2px;
+  padding-bottom: 0;
+  padding-right: 2px;
+  margin-right: 2px;
+  opacity: 0.5;
+}
+.arrow.expanded {
+  padding-right: 1px;
+}
+
+.quickInspector {
+  flex: 0 0 auto;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+}
+.quickInspector .value {
+  flex-direction: column;
+  justify-content: center;
+}
+.quickInspector .propertyLabelGroup {
+  flex-direction: row;
+  align-items: center;
+}
+.quickInspector .typename {
+  -unity-font-style: italic;
+  opacity: 0.5;
+}
+.quickInspector .propertyValueGroup {
+  flex-direction: row;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  flex: 0 0 auto;
+}
+.quickInspector .propertyValueGroup.private .propertyLabel {
+  color: #b95600;
+}
+.quickInspector .typeInspector {
+  flex: 1 0 0;
+  flex-wrap: wrap;
+}
+.quickInspector .typeInspector > TextField {
+  flex: 0 1 auto;
+}
+.quickInspector .typeInspector > TextField TextInput {
+  flex: 0 1 auto;
+}
+.quickInspector .row, .quickInspector .expandable .viewModes, .quickInspector .expandable .viewModes TypeViewSelection, .quickInspector .expandable ExpandedMethodGroup Method .parameter {
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.quickInspector .isNumber > TextInput {
+  color: #1c01d2;
+}
+.quickInspector .isNull > TextInput {
+  -unity-font-style: italic;
+  color: #1c01d2;
+  padding-right: 2px;
+}
+.quickInspector .isString > TextInput {
+  color: #c51916;
+}
+.quickInspector .propertyLabel {
+  color: #8e2296;
+  flex: 0 0 auto;
+}
+.quickInspector .enumerable .propertyLabel {
+  color: rgba(0, 0, 0, 0.5);
+  -unity-font-style: italic;
+}
+.quickInspector .empty {
+  opacity: 0.25;
+  -unity-font-style: italic;
+  white-space: normal;
+}
+.quickInspector .span#pinned-symbol {
+  margin-left: 75px;
+  -unity-font-style: italic;
+  opacity: 0.25;
+}
+.quickInspector .collapsedPropertyGroup, .quickInspector .collapsedArrayGroup {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  flex: 0 1 auto;
+  margin-left: 4px;
+  margin-right: 4px;
+}
+.quickInspector .collapsedPropertyGroup .typeInspector, .quickInspector .collapsedArrayGroup .typeInspector {
+  flex: 1 0 auto;
+  flex-wrap: wrap;
+}
+.quickInspector .expandedPropertyGroup, .quickInspector .expandedArrayGroup {
+  flex-direction: column;
+  justify-content: center;
+}
+.quickInspector .expandable .viewModes {
+  flex-wrap: wrap;
+}
+.quickInspector .expandable .viewModes TypeViewSelection {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.quickInspector .expandable .viewModes TypeViewSelection TypeViewMenu Label {
+  color: #d25a00;
+  -unity-font-style: italic;
+}
+.quickInspector .expandable ExpandedClassType .expandedClassLabel {
+  color: rgba(0, 0, 0, 0.5);
+}
+.quickInspector .expandable ExpandedInterfaceGroup Interface {
+  flex: 1 0 auto;
+  flex-direction: row;
+}
+.quickInspector .expandable ExpandedMethodGroup Method {
+  flex: 1 0 auto;
+  flex-direction: row;
+}
+.quickInspector .expandable ExpandedMethodGroup Method .name {
+  color: #B12697;
+}
+.quickInspector .expandable ExpandedMethodGroup Method .return {
+  margin-right: 4px;
+  color: #6C6C6C;
+}
+.quickInspector .expandable ExpandedMethodGroup Method .parameter .parameterType {
+  color: #1c01d2;
+  margin-right: 4px;
+}
+.quickInspector .expandable ExpandedMethodGroup Method .parameters {
+  flex: 0 1 auto;
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.expandable {
+  flex: 1 0 auto;
+  flex-wrap: wrap;
+}
+.expandable .expandedGroup {
+  margin-left: 10px;
+}
+.expandable .collapseRow {
+  flex: 1 0 0;
+  flex-direction: row;
+  justify-content: space-between;
+}
+.expandable .collapsedGroup {
+  flex: 0 1 auto;
+  flex-direction: row;
+  align-items: center;
+}
+.expandable .collapsedGroup > .typename {
+  align-self: flex-start;
+  flex: 1 0 auto;
+}
+.expandable .collapsedGroup > .arrow {
+  align-self: flex-start;
+  margin-top: 1px;
+}
+.expandable .collapseView {
+  flex: 0 1 auto;
+  align-self: flex-start;
+}
+.expandable .tools {
+  flex: 1 0 auto;
+  justify-content: flex-end;
+  align-self: flex-start;
+}
+.expandable .tools Button.compact {
+  height: 16px;
+}
+.expandable .tools .viewModes {
+  justify-content: flex-end;
+}
+
+.textfield-label, .span, .span TextInput {
+  color: #000000;
+  margin-top: 0;
+  margin-left: 0;
+  margin-bottom: 0;
+  margin-right: 0;
+  padding-top: 0;
+  padding-left: 0;
+  padding-bottom: 0;
+  padding-right: 0;
+}
+.textfield-label.disabled, .disabled.span, .span TextInput.disabled {
+  opacity: 0.5;
+}
+.textfield-label.faded, .faded.span, .span TextInput.faded {
+  opacity: 0.75;
+}
+
+#immediateWindow .no-background, #immediateWindow .textfield-label, #immediateWindow .span, #immediateWindow .span TextInput, .span #immediateWindow TextInput, #immediateWindow .textfield-label, #immediateWindow .span, #immediateWindow .span TextInput, .span #immediateWindow TextInput, #immediateWindow .span, #immediateWindow .span TextInput, .span #immediateWindow TextInput {
+  padding-right: 2px;
+}
+
+.text {
+  min-height: 9px;
+}

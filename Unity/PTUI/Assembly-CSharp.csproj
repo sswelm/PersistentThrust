@@ -209,6 +209,9 @@
     <Reference Include="UnityEditor.UI">
       <HintPath>E:/GitHub/PersistentThrust/Unity/PTUI/Library/ScriptAssemblies/UnityEditor.UI.dll</HintPath>
     </Reference>
+    <Reference Include="Unity.ImmediateWindow.Editor">
+      <HintPath>E:/GitHub/PersistentThrust/Unity/PTUI/Library/ScriptAssemblies/Unity.ImmediateWindow.Editor.dll</HintPath>
+    </Reference>
     <Reference Include="UnityEngine.AIModule">
       <HintPath>C:/Program Files/Unity/Hub/Editor/2019.2.2f1/Editor/Data/Managed/UnityEngine/UnityEngine.AIModule.dll</HintPath>
     </Reference>

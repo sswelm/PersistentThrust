@@ -1,0 +1,834 @@
+// If you are using IntelliJ Rider, you can simply turn on the SCSS compiler, otherwise here is how to convert scss to uss
+//		# Install Sass
+//				gem install sass
+//
+//		# Convert
+//				sass --sourcemap=none --style=expanded --scss --no-cache Main_Dark.scss Main_Dark.uss
+//				sass --sourcemap=none --style=expanded --scss --no-cache Main_Light.scss Main_Light.uss
+//
+//		# Watch
+//				sass --watch --sourcemap=none --style=expanded --scss --no-cache Main_Light.scss:Main_Light.uss Main_Dark.scss:Main_Dark.uss
+//
+//	Sass to Uss Notes
+//		- Sass converts rgb(0,0,0) to css 'black'. Uss doesn't support named colors. The workaround is to set the color in sass as #000000
+//
+// Uss Notes
+//		Runtime\UIElements\Managed\StyleSheets\StyleSheetCache.cs:50 to see which properties are available (until there is a doc)
+
+//--------------------------------------------------------------------------------------------------
+// Helper Mixins
+//--------------------------------------------------------------------------------------------------
+
+@mixin border($top, $right, $bottom, $left) {
+	@if $top != 'auto' {border-top-width: $top;}
+	@if $left != 'auto' {border-left-width: $right;}
+	@if $bottom != 'auto' {border-bottom-width: $bottom;}
+	@if $right != 'auto' {border-right-width: $left;}
+}
+
+@mixin border-box($width: 1) {
+	@include border($width, $width, $width, $width);
+}
+
+@mixin padding($top, $right, $bottom, $left) {
+	@if $top != 'auto' {padding-top: $top;}
+	@if $left != 'auto' {padding-left: $left;}
+	@if $bottom != 'auto' {padding-bottom: $bottom;}
+	@if $right != 'auto' {padding-right: $right;}
+}
+
+@mixin padding-box($size) {
+	@include padding($size, $size, $size, $size);
+}
+
+@mixin margin($top, $right, $bottom, $left) {
+	@if $top != 'auto' {margin-top: $top;}
+	@if $left != 'auto' {margin-left: $left;}
+	@if $bottom != 'auto' {margin-bottom: $bottom;}
+	@if $right != 'auto' {margin-right: $right;}
+}
+
+@mixin margin-box($size) {
+	@include margin($size, $size, $size, $size);
+}
+
+@mixin slice($top, $right, $bottom, $left) {
+	@if $top != 'auto' {-unity-slice-top: $top;}
+	@if $left != 'auto' {-unity-slice-left: $left;}
+	@if $bottom != 'auto' {-unity-slice-bottom: $bottom;}
+	@if $right != 'auto' {-unity-slice-right: $right;}
+}
+
+@mixin slice-box($size) {
+	@include slice($size, $size, $size, $size);
+}
+
+@mixin position($top, $right, $bottom, $left) {
+	@if $top != 'auto' {top: $top;}
+	@if $left != 'auto' {left: $left;}
+	@if $bottom != 'auto' {bottom: $bottom;}
+	@if $right != 'auto' {right: $right;}
+}
+
+@mixin text-clip() {
+	overflow: hidden;
+}
+
+@mixin selected-element() {
+	background-color: $unity-list-selected-background;
+	color: $unity-text-color-highlight;
+}
+
+@mixin active-tab() {
+	background-color: $unity-background-dark-contrast;
+	color: $unity-text-color-highlight;
+}
+
+@mixin inactive-tab() {
+	background-color: $unity-background-light-contrast;
+	color: $unity-text-color;
+}
+
+@mixin button($top, $right, $bottom, $left) {
+//	flex: 0 0 auto;
+
+	@include padding($top, $right, $bottom, $left);
+	//@include slice(4px, 6px, 4px, 6px);
+
+	&.display-none {
+		display: none;
+	}
+
+	&:hover {
+		color: $unity-text-color;
+	}
+}
+
+@mixin button-box($size) {
+	@include button($size, $size, $size, $size);
+}
+
+@mixin console-margins() {
+	@include margin(2px, 4px, 2px, 4px); // Default editor for Label
+	@include padding(1px, 2px, 2px, 2px); // Default editor for Label
+}
+
+//--------------------------------------------------------------------------------------------------
+// Font
+//--------------------------------------------------------------------------------------------------
+
+@mixin font-small() {
+	font-size: 9px;
+}
+
+@mixin font-normal() {
+	font-size: 12px;
+}
+
+$tree-margin: 15px;
+
+//--------------------------------------------------------------------------------------------------
+// Styles
+//--------------------------------------------------------------------------------------------------
+.display-none {
+	display: none;
+}
+
+.row {
+	flex-direction: row;
+}
+
+.column {
+	flex: 1 0 0;
+	flex-direction: column;
+}
+
+.tag {
+	@include border-box(1px);
+	@include padding(1px, 3px, 1px, 3px);
+	@include font-small();
+	border-radius: 5px;
+	-unity-text-align: middle-center;
+
+	border-color: #000000;
+	color: #000000;
+}
+
+$spinner-large-size: 32px;
+$spinner-large-half-size: 16px;
+$spinner-normal-size: 14px;
+$spinner-normal-half-size: 7px;
+$toolbar-height: 18px;
+
+#immediateWindow {
+	flex: 1 0 0;
+
+	.root {
+		flex: 1 0 0;
+	}
+
+	#windowContent {
+		flex: 1 0 0;
+		flex-direction: row;
+	}
+
+	.scrollView {
+		@extend .column;
+
+		#VerticalScroller {
+			bottom: 0;
+		}
+
+		#HorizontalScroller {
+			height: 0;
+		}
+
+		#ContentViewport {
+			bottom: 0;
+
+			#ContentView {
+				right: 0;
+				left: 0;
+			}
+		}
+	}
+
+	.no-background {
+		background-color: rgba(0, 0, 0, 0);
+		background-image: none;
+		@include margin-box(0);
+		@include padding-box(0);
+	}
+
+	.alert {
+		background-color: rgba(200,0,0,0.8);
+		border-color: #FF0000;
+		flex-direction: row;
+		white-space: normal;
+
+		@include border-box(1px);
+		@include padding(5px, 10px, 5px, 10px);
+
+		#alertMessage {
+			flex: 1 0 0;
+			color: $unity-text-color-highlight;
+			white-space: normal;
+			@include text-clip();
+		}
+
+		#close {
+			flex: 0 0 auto;
+			max-height: 30px;
+			@include position(auto, auto, auto, 5px);
+			@include button(3px,3px,4px,3px);
+		}
+	}
+
+	Button.compact {
+		@include margin-box(0);
+		@include padding(0, 4px, 0, 4px);
+	}
+
+	.spinner {
+		flex: 0 0 auto;
+		@include position(-$spinner-normal-half-size, auto, auto, -$spinner-normal-half-size);
+
+		min-width: $spinner-normal-size;
+		min-height: $spinner-normal-size;
+		max-width: $spinner-normal-size;
+		max-height: $spinner-normal-size;
+		background-image: $background-spinner-normal;
+	}
+
+	.largeSpinner {
+		flex: 0 0 auto;
+		@include position(-$spinner-large-half-size, auto, auto, -$spinner-large-half-size);
+
+		min-width: $spinner-large-size;
+		min-height: $spinner-large-size;
+		max-width: $spinner-large-size;
+		max-height: $spinner-large-size;
+		background-image: $background-spinner-large;
+	}
+
+	#console {
+		flex: 1 0 0;
+		$height-console-output: 250px;		// Hack until I figure out how to make scrollview work
+
+		.console-log {
+			white-space: normal;
+		}
+
+
+		#console-mode-singleline {
+			flex: 1 0 0;
+		}
+
+		#console-mode-multiline {
+			flex: 1 0 0;
+		}
+
+		&.singleline {
+
+		}
+
+		&.multiline {
+			#console-output {
+			}
+		}
+
+		#console-output {
+			flex: 1 0 0;
+
+			#output-content {
+				flex: 1 0 0;
+			}
+
+			.content-view {
+				flex: 0 0 auto;
+			}
+
+			.output-item {
+				flex: 0 0 auto;
+
+				@include console-margins();
+				@include border(0, 0, 1px, 0);
+				border-color: rgba(0, 0, 0, 0.05);
+
+				#content {
+				}
+			}
+		}
+
+		#console-input {
+			bottom: 0;
+		}
+
+		#console-input-multiline {
+			flex: 1 0 0;
+
+			TextInput {
+				-unity-text-align: upper-left;
+			}
+		}
+	}
+
+	#sideview {
+		flex: 0.35 0 0;
+
+		border-left-width: 1px;
+		border-color: rgba(0, 0, 0, 0.25);
+	}
+
+	#context {
+		flex: 1 0 0;
+
+		#contextInspector {
+			flex: 1 0 0;
+
+			.context-inspector-scrollview {
+				flex: 1 0 0;
+			}
+		}
+
+		.context-inspector {
+			flex: 1 0 0;
+
+			.assembly {
+			}
+
+			.assembly-label {
+				flex: 1 0 0;
+				-unity-font-style: bold;
+				white-space: normal;
+			}
+
+			.namespace {
+				margin-left: 10px;
+
+				.namespace-label {
+					flex: 1 0 0;
+					-unity-font-style: italic;
+					white-space: normal;
+				}
+
+				// Possibly should be in quick inspector if quick inspector starts having assemblies and namespaces too
+				.object-container {
+					flex: 1 0 0;
+
+					.type {
+						margin-left: $tree-margin;
+					}
+
+					.typeProperties {
+						margin-left: $tree-margin;
+					}
+
+					.typename {
+						color: $property-label;
+					}
+
+					.propertyLabel {
+						color: $value-number;
+					}
+
+				}
+			}
+		}
+	}
+}
+
+#toggleContainer {
+	flex: 0 0 auto;
+	flex-direction: row;
+
+	.label {
+		margin-right: 0;
+	}
+
+	.toggle {
+		margin-left: 0;
+	}
+}
+
+.icon {
+	&.context {
+		max-width: 14px;
+		max-height: 14px;
+		min-width: 14px;
+		min-height: 14px;
+		background-image: $context-background;
+
+		&.pressed {
+			background-image: $context-pressed-background;
+		}
+	}
+
+	&.node0 {
+		width: 14px;
+		height: 14px;
+		background-image: $icon-node0;
+		@include margin-box(0);
+		@include padding-box(0);
+
+		&.pressed {
+			background-image: $icon-node0-on;
+		}
+	}
+
+	&.node1 {
+		width: 14px;
+		height: 14px;
+		background-image: $icon-node1;
+		@include margin-box(0);
+		@include padding-box(0);
+
+		&.pressed {
+			background-image: $icon-node1-on;
+		}
+	}
+
+	&.node2 {
+		width: 14px;
+		height: 14px;
+		background-image: $icon-node2;
+		@include margin-box(0);
+		@include padding-box(0);
+
+		&.pressed {
+			background-image: $icon-node2-on;
+		}
+	}
+
+	&.popup {
+		width: 14px;
+		height: 14px;
+		background-image: $popup-background;
+
+		&.pressed {
+			background-image: $popup-pressed-background;
+		}
+	}
+
+	&.play {
+		width: 14px;
+		height: 14px;
+		background-image: $play-background;
+
+		&.pressed {
+			background-image: $play-pressed-background;
+		}
+	}
+
+	&.cancel {
+		width: 14px;
+		height: 14px;
+		background-image: $cancel-background;
+
+		&.pressed {
+			background-image: $cancel-pressed-background;
+		}
+	}
+}
+
+#toolbarContainer {
+	flex: 0 0 auto;
+	flex-direction: row;
+	align-items: flex-start;
+	height: $toolbar-height;
+
+	#toolbarView {
+		flex: 1 0 0;
+		flex-direction: row;
+		align-items: flex-start;
+		background-image: $toolbar-background;
+		margin-top: -1px;
+		@include slice(1, 1, 1, 1);
+
+		.toolbarButton {
+			font-size: 9px;
+			-unity-text-align: middle-center;
+			background-image: $toolbar-button-background;
+			@include button-box(0);
+			@include margin(0, -1px, 0, 0);
+			@include padding(0, 5px, 0, 5px);
+			height: 19px;
+
+			&.space {
+				margin-left: 7px;
+			}
+
+			&.active {
+				background-image: $toolbar-button-active-background;
+			}
+
+			&.pulldown {
+
+				&:active {
+					background-image: $toolbar-button-background;
+				}
+			}
+		}
+
+		#toolbarLeft {
+			flex: 1 0 0;
+			flex-direction: row;
+			align-items: flex-start;
+
+			#templates {
+				@include slice(0, 1, 0, 1);
+			}
+		}
+
+		#toolbarRight {
+			flex: 1 0 0;
+			flex-direction: row;
+			align-items: center;
+			justify-content: flex-end;
+
+			#toolbarSearch {
+				flex: 1 0 0;
+				height: $toolbar-height;
+				max-width: 500px;
+				flex-direction: row;
+				@include margin(0, 5px, 0, 0);
+			}
+
+			Label {
+				@include margin-box(2px);
+			}
+
+			#reset {
+				min-height: 16px;
+				height: 16px;
+				@include margin(0, 2px, 0, 2px);
+			}
+		}
+	}
+}
+
+.arrow {
+	align-self: center;
+	width: 12px;
+	height: 10px;
+	font-size: 8px;
+	@include padding(1px, 2px, 0, 2px);
+	margin-right: 2px;
+	opacity: 0.5;
+
+	&.expanded {
+		padding-right: 1px;
+	}
+}
+
+.quickInspector {
+	flex: 0 0 auto;
+	flex-direction: row;
+	flex-wrap: wrap;							// Note: Pretty much every flex row should wrap.. ?
+	align-items: center;
+
+	.value {
+		flex-direction: column;
+		justify-content: center;
+	}
+
+	.propertyLabelGroup {
+		flex-direction: row;
+		align-items: center;
+	}
+
+	.typename {
+		-unity-font-style: italic;
+		opacity: 0.5;
+	}
+
+	.propertyValueGroup {
+		flex-direction: row;
+		align-items: flex-start;
+		flex-wrap: wrap;
+		flex: 0 0 auto;
+
+		&.private {
+			.propertyLabel {
+				color: $property-label-private;
+			}
+		}
+
+		& > PropertyLabel {
+		}
+
+		& > .typeInspector {
+		}
+	}
+
+	justify-content: flex-end;
+	.typeInspector {
+		flex: 1 0 0;
+		flex-wrap: wrap;
+
+		& > TextField {
+			flex: 0 1 auto;
+			TextInput {
+				flex: 0 1 auto;
+			}
+		}
+	}
+
+	.row {
+		flex-direction: row;
+		align-items: center;
+		flex-wrap: wrap;
+	}
+
+
+	.isNumber > TextInput {
+		color: $value-number;
+	}
+
+	.isNull > TextInput {
+		-unity-font-style: italic;
+		color: $value-null;
+		padding-right: 2px;				// Hack to Fix italic getting clipped
+	}
+
+	.isString > TextInput {
+		color: $value-string;
+	}
+
+	.propertyLabel {
+		color: $property-label;
+		flex: 0 0 auto;
+	}
+
+	.enumerable {
+		.propertyLabel {
+			color: $property-label-enumerable;
+			-unity-font-style: italic;
+		}
+	}
+
+	.empty {
+		opacity: 0.25;
+		-unity-font-style:italic;
+		white-space: normal;
+	}
+
+	.span {
+		&#pinned-symbol {
+			margin-left: 75px;
+			-unity-font-style: italic;
+			opacity: 0.25;
+		}
+	}
+
+	.collapsedPropertyGroup, .collapsedArrayGroup {
+		flex-direction: row;
+		flex-wrap: wrap;
+		align-items: center;
+		flex: 0 1 auto;
+
+		margin-left: 4px;
+		margin-right: 4px;
+
+		.typeInspector {
+			flex: 1 0 auto;
+			flex-wrap: wrap;
+		}
+	}
+
+	.expandedPropertyGroup, .expandedArrayGroup {
+		flex-direction: column;
+		justify-content: center;
+	}
+
+	.expandable {
+		.viewModes {
+			@extend .row;
+			flex-wrap: wrap;
+
+			TypeViewSelection {
+				@extend .row;
+				flex-wrap: wrap;
+				justify-content: flex-end;
+
+				TypeViewMenu {
+					Label {
+						color: $package-tag-color;
+						-unity-font-style: italic;
+					}
+				}
+			}
+		}
+
+		ExpandedClassType {
+			.expandedClassLabel {
+				color: $text-faded;
+			}
+		}
+
+		ExpandedInterfaceGroup {
+			Interface {
+				flex: 1 0 auto;
+				flex-direction: row;
+			}
+		}
+
+		ExpandedMethodGroup {
+			Method {
+				flex: 1 0 auto;
+				flex-direction: row;
+
+				.name {
+					color: $method-name;
+				}
+
+				.return {
+					margin-right: 4px;
+					color: $method-return;
+				}
+
+				.parameter {
+					@extend .row;
+
+					.parameterType {
+						color: $method-argument;
+						margin-right: 4px;
+					}
+
+					.parameterName {
+					}
+				}
+
+				.parameters {
+					flex: 0 1 auto;
+					flex-direction: row;
+					flex-wrap: wrap;
+				}
+			}
+		}
+	}
+}
+
+.expandable {
+	flex: 1 0 auto;
+	flex-wrap: wrap;
+
+	.expandedGroup {
+		margin-left: 10px;
+	}
+
+	.collapseRow {
+		flex: 1 0 0;
+		flex-direction: row;
+		justify-content: space-between;
+	}
+
+	.collapsedGroup {
+		flex: 0 1 auto;
+		flex-direction: row;
+		align-items: center;
+
+		& > .typename {
+			align-self: flex-start;
+			flex: 1 0 auto;
+		}
+
+		& > .arrow {
+			align-self: flex-start;
+			margin-top: 1px;
+		}
+	}
+
+	.collapseView {
+		flex: 0 1 auto;
+		align-self: flex-start;
+	}
+
+	.tools {
+		flex: 1 0 auto;
+		justify-content: flex-end;
+		align-self: flex-start;
+
+		Button.compact {
+			height: 16px; // otherwise takes the entire height content and is too big
+		}
+
+		.viewModes {
+			justify-content: flex-end;
+		}
+	}
+}
+
+.textfield-label {
+	// No default dark color for text other then Label and such. So this is to fix this
+	color: $unity-text-color;
+
+	@include margin-box(0);
+	@include padding-box(0);
+	@extend .no-background;
+
+	&.disabled {
+		opacity: 0.5;
+	}
+
+	&.faded {
+		opacity: 0.75;
+	}
+}
+
+// Used for label that shouldn't have their default margin/padding (since it's put on the quick inspector line instead
+.span {
+	@extend .textfield-label;
+
+	TextInput {
+		@extend .textfield-label;
+	}
+}
+
+#immediateWindow .no-background, #immediateWindow .textfield-label, #immediateWindow .span, #immediateWindow .span TextInput, .span #immediateWindow TextInput {
+	padding-right: 2px; // Hack to Fix italic getting clipped
+}
+
+.text {
+	min-height: 9px;		// Normally 15, make sure it's tighter
+}
