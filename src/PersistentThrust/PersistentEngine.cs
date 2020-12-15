@@ -32,7 +32,7 @@ namespace PersistentThrust
     {
         #region Fields
 
-        // Persistant
+        // Persistent
         [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiActiveUnfocused = true, guiName = "#LOC_PT_PersistentThrust"), UI_Toggle(disabledText = "#autoLOC_900890", enabledText = "#autoLOC_900889", affectSymCounterparts = UI_Scene.All)]
         public bool HasPersistentThrust = true;
         [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiActiveUnfocused = true, guiName = "#LOC_PT_PersistentHeading"), UI_Toggle(disabledText = "#autoLOC_900890", enabledText = "#autoLOC_900889", affectSymCounterparts = UI_Scene.All)]
@@ -40,8 +40,8 @@ namespace PersistentThrust
         [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiActiveUnfocused = true, guiName = "#LOC_PT_MaximizePersistentIsp"), UI_Toggle(disabledText = "#autoLOC_900890", enabledText = "#autoLOC_900889", affectSymCounterparts = UI_Scene.All)]
         public bool MaximizePersistentIsp = true;
         [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiActiveUnfocused = true, guiName = "#LOC_PT_MaximizePersistentPower"), UI_Toggle(disabledText = "#autoLOC_900890", enabledText = "#autoLOC_900889", affectSymCounterparts = UI_Scene.All)]
-        public bool MaximizePersistentPower = false;
-        [KSPField(isPersistant = true, guiActiveEditor = false, guiActive = true, guiName = "#LOC_PT_ManeuverTolerance", guiUnits = " %"), UI_FloatRange(stepIncrement = 1, maxValue = 90, minValue = 0, requireFullControl = false, affectSymCounterparts = UI_Scene.All)]//Beamed Power Throttle
+        public bool MaximizePersistentPower;
+        [KSPField(isPersistant = true, guiActiveEditor = false, guiActive = true, guiName = "#LOC_PT_ManeuverTolerance", guiUnits = " %"), UI_FloatRange(stepIncrement = 1, maxValue = 180, minValue = 0, requireFullControl = false, affectSymCounterparts = UI_Scene.All)]//Beamed Power Throttle
         public float maneuverToleranceInDegree = 90;
 
         // Persistent values to use during TimeWarp and offline processing
@@ -228,11 +228,11 @@ namespace PersistentThrust
 
             if (state == StartState.Editor) return;
 
-            Fields[nameof(this.HasPersistentThrust)].uiControlFlight.onFieldChanged += OnPersistentThrustPAWToggled;
+            Fields[nameof(HasPersistentThrust)].uiControlFlight.onFieldChanged += OnPersistentThrustPAWToggled;
 
             GameEvents.onVesselChange.Add(ResetFixedUpdateCount);
 
-            masslessUsageField = Fields[nameof(this.masslessUsage)];
+            masslessUsageField = Fields[nameof(masslessUsage)];
 
             // Populate moduleEngine and moduleEngineFx fields
             FindModuleEngines();
@@ -286,7 +286,7 @@ namespace PersistentThrust
                 persistentEngine.engine.Fields[nameof(persistentEngine.engine.propellantReqMet)].guiActive = false;
             }
 
-            float averagePropellantReqMetFactor = isMultiMode
+            float averagePropellantReqMetFactor = isMultiMode || moduleEngines.Length == 0
                 ? currentEngine.propellantReqMetFactor
                 : moduleEngines.Average(m => m.propellantReqMetFactor);
 
@@ -396,9 +396,9 @@ namespace PersistentThrust
                 if (!warpToReal)
                     UpdatePersistentThrottle();
 
-                for (var i = 0; i < persistentEngineModules.Length; i++)
+                foreach (var persistentEngineModule in persistentEngineModules)
                 {
-                    currentEngine = persistentEngineModules[i];
+                    currentEngine = persistentEngineModule;
 
                     // Update persistent thrust isp if NOT transitioning from warp to realtime
                     if (!warpToReal)
@@ -477,9 +477,9 @@ namespace PersistentThrust
                     warpToReal = true; // Set to true for transition to realtime
                 }
 
-                for (var i = 0; i < persistentEngineModules.Length; i++)
+                foreach (var persistentEngineModule in persistentEngineModules)
                 {
-                    currentEngine = persistentEngineModules[i];
+                    currentEngine = persistentEngineModule;
 
                     // restore maximum flow
                     RestoreMaxFuelFlow();
@@ -715,7 +715,7 @@ namespace PersistentThrust
             currentEngine.propellantReqMetFactorQueue.Enqueue((float)overallPropellantReqMet);
             if (currentEngine.propellantReqMetFactorQueue.Count() > propellantReqMetFactorQueueSize)
                 currentEngine.propellantReqMetFactorQueue.Dequeue();
-            float averagePropellantReqMetFactor = currentEngine.propellantReqMetFactorQueue.Average();
+            float averagePropellantReqMetFactor = currentEngine.propellantReqMetFactorQueue.Count > 0 ? currentEngine.propellantReqMetFactorQueue.Average(): 0;
 
             if (averagePropellantReqMetFactor < minimumPropellantReqMetFactor)
                 currentEngine.autoMaximizePersistentIsp = true;
